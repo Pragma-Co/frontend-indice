@@ -14,41 +14,35 @@ defineProps({
 
 <template>
   <ol class="steps">
-    <li v-for="(step, index) in steps" :key="step.title" class="step">
-      <div class="step-marker">
+    <template v-for="(step, index) in steps" :key="step.title">
+      <li class="step">
         <span class="step-circle" :class="{ active: index + 1 === currentStep }">
           {{ index + 1 }}
         </span>
-        <span v-if="index < steps.length - 1" class="step-line" />
-      </div>
-      <div class="step-text">
-        <p class="step-title">{{ step.title }}</p>
-        <p class="step-subtitle">{{ step.subtitle }}</p>
-      </div>
-    </li>
+        <span class="step-text">
+          <span class="step-title">{{ step.title }}</span>
+          <span class="step-subtitle">{{ step.subtitle }}</span>
+        </span>
+      </li>
+      <li v-if="index < steps.length - 1" class="step-connector" aria-hidden="true" />
+    </template>
   </ol>
 </template>
 
 <style scoped>
 .steps {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   list-style: none;
+  row-gap: 1rem;
 }
 
 .step {
   display: flex;
-  align-items: flex-start;
-  flex: 1;
-}
-
-.step:last-child {
-  flex: 0 0 auto;
-}
-
-.step-marker {
-  display: flex;
   align-items: center;
-  width: 100%;
+  gap: 0.75rem;
+  flex: 0 0 auto;
 }
 
 .step-circle {
@@ -57,7 +51,7 @@ defineProps({
   justify-content: center;
   width: 28px;
   height: 28px;
-  min-width: 28px;
+  flex-shrink: 0;
   border-radius: 50%;
   border: 2px solid var(--color-border);
   color: var(--color-text-muted);
@@ -71,25 +65,29 @@ defineProps({
   color: var(--color-text-inverse);
 }
 
-.step-line {
-  flex: 1;
+.step-connector {
+  flex: 1 1 32px;
+  min-width: 24px;
   height: 0;
+  align-self: center;
   border-top: 2px dashed var(--color-border);
   margin: 0 0.75rem;
 }
 
 .step-text {
-  margin-left: 0.75rem;
-  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
 }
 
 .step-title {
   font-weight: 600;
   font-size: 0.9rem;
+  line-height: 1.3;
 }
 
 .step-subtitle {
   font-size: 0.8rem;
   color: var(--color-text-muted);
+  line-height: 1.3;
 }
 </style>

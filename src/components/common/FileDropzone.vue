@@ -31,6 +31,19 @@ function onFileInputChange(event) {
   event.target.value = ''
 }
 
+function onDragEnter() {
+  isDragging.value = true
+}
+
+function onDragLeave(event) {
+  // Child elements (icon, text) fire their own dragleave as the pointer
+  // moves across them; only clear the state once we actually leave the
+  // dropzone bounds, or the "dragging" style flickers off mid-drag.
+  if (!event.currentTarget.contains(event.relatedTarget)) {
+    isDragging.value = false
+  }
+}
+
 function onDrop(event) {
   isDragging.value = false
   if (event.dataTransfer?.files?.length) {
@@ -47,8 +60,9 @@ function onDrop(event) {
     tabindex="0"
     @click="openFileDialog"
     @keydown.enter="openFileDialog"
-    @dragover.prevent="isDragging = true"
-    @dragleave.prevent="isDragging = false"
+    @dragenter.prevent="onDragEnter"
+    @dragover.prevent
+    @dragleave.prevent="onDragLeave"
     @drop.prevent="onDrop"
   >
     <svg class="dropzone-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -87,6 +101,14 @@ function onDrop(event) {
 
 .dropzone.dragging {
   background: #eef2ff;
+}
+
+.dropzone-icon,
+.dropzone-title,
+.dropzone-subtitle {
+  /* Keeps drag events targeting the dropzone itself instead of bubbling
+     through these children, so dragenter/dragleave stay reliable. */
+  pointer-events: none;
 }
 
 .dropzone-icon {

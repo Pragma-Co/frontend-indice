@@ -1,5 +1,5 @@
 <script setup>
-import { computed, watch } from 'vue'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from '../components/common/Button.vue'
 import DuplicateFileDialog from '../components/common/DuplicateFileDialog.vue'
@@ -42,6 +42,25 @@ watch(allSettled, (settled) => {
   if (settled && hasSucceededFile.value) {
     setTimeout(goToMetadataStep, AUTO_ADVANCE_DELAY_MS)
   }
+})
+
+// A drop that lands even slightly outside the dashed dropzone would
+// otherwise fall through to the browser's default action (opening the
+// file), which looks like the drag silently failed.
+function preventStrayFileDrop(event) {
+  if (event.dataTransfer?.types.includes('Files')) {
+    event.preventDefault()
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('dragover', preventStrayFileDrop)
+  window.addEventListener('drop', preventStrayFileDrop)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('dragover', preventStrayFileDrop)
+  window.removeEventListener('drop', preventStrayFileDrop)
 })
 </script>
 
