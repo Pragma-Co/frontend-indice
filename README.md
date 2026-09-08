@@ -84,7 +84,7 @@ npm run dev
 
 **5. Verify it works**
 
-Open <http://localhost:5173/> — the app should load without errors. To confirm the connection to the backend, check the proxied health endpoint at <http://localhost:5173/api/health/>:
+Open <http://localhost:5173/> — the app should load without errors and redirect to the document flow. To confirm the connection to the backend, check the proxied health endpoint at <http://localhost:5173/api/health/>:
 
 ```json
 {
@@ -101,7 +101,7 @@ Open <http://localhost:5173/> — the app should load without errors. To confirm
 
 | URL | Description |
 |-----|-------------|
-| <http://localhost:5173/> | Application (Vite dev server) |
+| <http://localhost:5173/> | Application (Vite dev server) — redirects to `/documentos/novo` |
 | <http://localhost:5173/api/health/> | Backend health endpoint, proxied by the Vite dev server |
 
 > These are dev-server URLs. The backend keeps answering on its own port (default 8000) — see the [backend README](https://github.com/Pragma-Co/backend-api-6#readme).
@@ -116,6 +116,10 @@ npm run dev -- --port 5174   # use another port if 5173 is busy
 # Production
 npm run build                # build the static bundle into dist/
 npm run preview              # serve the dist/ build locally for a final check
+
+# Tests (Vitest + Vue Test Utils)
+npm test                     # run the test suite once
+npm run test:watch           # re-run tests on file changes
 
 # Maintenance
 npm install                  # (re)install dependencies after a git pull
@@ -141,12 +145,33 @@ npm install                  # (re)install dependencies after a git pull
 
 ```
 frontend/
-├── index.html          # HTML shell that loads the Vue app
-├── vite.config.js      # Dev server + /api proxy (reads VITE_API_PORT)
-├── .env.example        # Environment template — copy to .env
-├── package.json        # Dependencies and npm scripts
+├── index.html                # HTML shell that loads the Vue app
+├── vite.config.js            # Dev server, /api proxy (reads VITE_API_PORT) and Vitest config
+├── .env.example              # Environment template — copy to .env
+├── package.json              # Dependencies and npm scripts
+├── docs/
+│   └── API_CONTRACT.md       # Endpoints and payloads consumed by the frontend
+├── tests/                    # Vitest suites (Given/When/Then), mirroring src/
 └── src/
-    ├── main.js         # Application bootstrap
-    ├── style.css       # Global styles
-    └── App.vue         # Root component
+    ├── main.js               # Application bootstrap (Pinia + Vue Router)
+    ├── App.vue               # Root component (persistent navbar + router view)
+    ├── api/                  # HTTP layer: client.js + one module per resource
+    ├── components/
+    │   ├── common/           # Reusable UI (BaseButton, FormField, TagMultiSelect)
+    │   ├── layout/           # AppNavbar
+    │   └── document-upload/  # Step indicator and the Metadados step
+    ├── composables/          # Reusable composition logic
+    ├── router/               # Route definitions
+    ├── stores/               # Pinia stores (auth, document form)
+    ├── styles/               # variables.css + globals.css
+    ├── utils/                # Pure helpers (document code, catalogs, validators)
+    └── views/                # Pages (DocumentUpload)
 ```
+
+## Document registration flow
+
+`/documentos/novo` is the "Fazer upload de arquivo" flow from the wireframe: **Upload → Metadados → Confirmação**.
+This repository currently implements step 2 (Metadados); steps 1 and 3 are separate tasks.
+The unique code follows `PROJETO-SUBGRUPO-TIPO-REV` (e.g. `PJT001-TUB-REV-REV01`) and is previewed
+read-only in the form; the backend generates the definitive value on submission. See
+[docs/API_CONTRACT.md](docs/API_CONTRACT.md) for the endpoints and form fields.
