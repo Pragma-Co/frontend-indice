@@ -79,16 +79,6 @@ describe('documentFormStore', () => {
     expect(store.codigoPreview).toBeNull()
   })
 
-  it('deve derivar a sigla da disciplina quando a API não a enviar', async () => {
-    // Given
-    listDisciplinas.mockResolvedValue([{ id: 2, nome: 'Estrutura' }])
-    await store.loadCatalogs()
-    // When
-    fillValidForm(store)
-    // Then
-    expect(store.codigoPreview).toBe('PJT001-EST-REV-REV01')
-  })
-
   it('deve preencher o responsável com o usuário logado sem sobrescrever edição manual', () => {
     // Given
     store.setDefaultResponsavel('João Silva')

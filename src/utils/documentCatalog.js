@@ -35,12 +35,6 @@ export const CONFIDENCIALIDADES = [
   { value: 'sigiloso', label: 'Sigiloso' },
 ]
 
-/** Disciplines may come without `sigla`; derive it from the name then. */
-export function disciplinaSigla(disciplina) {
-  if (!disciplina) return ''
-  return disciplina.sigla || toSigla(disciplina.nome)
-}
-
 export function findTipo(sigla) {
   return TIPOS_DOCUMENTO.find((t) => t.sigla === sigla) ?? null
 }

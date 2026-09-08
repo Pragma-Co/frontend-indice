@@ -18,8 +18,8 @@ Popula o select **Projeto Associado**.
 
 ### `GET /disciplinas/`
 
-Popula o select **Disciplina**. `sigla` é opcional: se ausente, o frontend deriva das três
-primeiras letras do nome (`"Tubulação"` → `"TUB"`).
+Popula o select **Disciplina**. `sigla` é obrigatória e é gerada pelo backend com as três
+primeiras letras do nome (`"Tubulação"` → `"TUB"`); o frontend a usa diretamente no código.
 
 ```json
 [

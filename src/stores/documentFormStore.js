@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { listProjetos } from '../api/projetos'
 import { listDisciplinas } from '../api/disciplinas'
 import { buildDocumentCode, INITIAL_REVISION } from '../utils/documentCode'
-import { disciplinaSigla, findTipo } from '../utils/documentCatalog'
+import { findTipo } from '../utils/documentCatalog'
 import { validateDocumentForm } from '../utils/validators'
 
 /** Steps of the "Fazer upload de arquivo" flow. This store covers step 2. */
@@ -51,7 +51,7 @@ export const useDocumentFormStore = defineStore('documentForm', {
     codigoPreview() {
       return buildDocumentCode({
         projeto: this.selectedProjeto?.codigo,
-        disciplina: disciplinaSigla(this.selectedDisciplina),
+        disciplina: this.selectedDisciplina?.sigla,
         tipo: this.selectedTipo?.sigla,
         revisao: this.form.revisao,
       })

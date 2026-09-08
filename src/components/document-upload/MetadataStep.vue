@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useDocumentFormStore } from '../../stores/documentFormStore'
-import { AREAS, CONFIDENCIALIDADES, TIPOS_DOCUMENTO, disciplinaSigla } from '../../utils/documentCatalog'
+import { AREAS, CONFIDENCIALIDADES, TIPOS_DOCUMENTO } from '../../utils/documentCatalog'
 import BaseButton from '../common/BaseButton.vue'
 import FormField from '../common/FormField.vue'
 import TagMultiSelect from '../common/TagMultiSelect.vue'
@@ -41,7 +41,7 @@ function next() {
         <select id="disciplina" v-model="store.form.disciplinaId" :disabled="store.catalogsLoading">
           <option value="">{{ store.catalogsLoading ? 'Carregando…' : 'Selecione a disciplina' }}</option>
           <option v-for="disciplina in store.disciplinas" :key="disciplina.id" :value="disciplina.id">
-            {{ disciplinaSigla(disciplina) }} - {{ disciplina.nome }}
+            {{ disciplina.sigla }} - {{ disciplina.nome }}
           </option>
         </select>
       </FormField>
