@@ -80,3 +80,14 @@ Resultado: `PJT001-TUB-REV-REV01`.
 
 Até existirem endpoints próprios, **tipo de documento**, **áreas** e **grau de confidencialidade**
 são listas estáticas em `src/utils/documentCatalog.js`. Projetos e disciplinas vêm da API.
+
+## Upload (etapa 1) — divergência conhecida
+
+A etapa de upload (`src/api/documents.js`, PR #3) chama `POST /documents/` e lê `id` da resposta.
+O endpoint de upload do backend (PR #2 do backend) é `POST /documents/upload` e devolve
+`temp_file_id`. Enquanto o backend dessa tela não for concluído, o ambiente local usa um alias
+temporário `POST /documents/` que devolve `id` junto de `temp_file_id`.
+
+**Pendência para quem fizer o backend da etapa de upload:** alinhar os dois lados
+(rota `/documents/upload` e campo `temp_file_id`) e remover o alias, porque `POST /documents/`
+é reservado ao endpoint de confirmação da etapa 3.
