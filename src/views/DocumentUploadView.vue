@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, onUnmounted, watch } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from '../components/common/Button.vue'
 import DuplicateFileDialog from '../components/common/DuplicateFileDialog.vue'
@@ -15,24 +15,13 @@ const STEPS = [
   { title: 'Confirmação', subtitle: 'Revisão e envio final' },
 ]
 
-const AUTO_ADVANCE_DELAY_MS = 1200
-
 const router = useRouter()
 const uploadStore = useUploadStore()
 
-const { queue, hasSucceededFile, allSettled, addFiles, resolveDuplicate, reset, ACCEPTED_EXTENSIONS } =
+const { queue, hasSucceededFile, addFiles, resolveDuplicate, reset, ACCEPTED_EXTENSIONS } =
   useDocumentUpload()
 
 const activeDuplicate = computed(() => queue.value.find((item) => item.status === 'duplicate'))
-
-let autoAdvanceTimeoutId = null
-
-function clearAutoAdvance() {
-  if (autoAdvanceTimeoutId !== null) {
-    clearTimeout(autoAdvanceTimeoutId)
-    autoAdvanceTimeoutId = null
-  }
-}
 
 function goToMetadataStep() {
   const uploadedDocuments = queue.value
@@ -44,21 +33,12 @@ function goToMetadataStep() {
 }
 
 function handleCancel() {
-  clearAutoAdvance()
   reset()
 }
 
 function handleFilesSelected(fileList) {
-  clearAutoAdvance()
   addFiles(fileList)
 }
-
-watch(allSettled, (settled) => {
-  if (settled && hasSucceededFile.value) {
-    clearAutoAdvance()
-    autoAdvanceTimeoutId = setTimeout(goToMetadataStep, AUTO_ADVANCE_DELAY_MS)
-  }
-})
 
 // A drop that lands even slightly outside the dashed dropzone would
 // otherwise fall through to the browser's default action (opening the
@@ -77,7 +57,6 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('dragover', preventStrayFileDrop)
   window.removeEventListener('drop', preventStrayFileDrop)
-  clearAutoAdvance()
 })
 </script>
 
