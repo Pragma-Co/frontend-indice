@@ -16,7 +16,7 @@ import {
 
 /**
  * Step 2 (Metadados) of the "Fazer upload de arquivo" flow. The upload step
- * (DocumentUploadView) redirects here; step 3 (Confirmação) is a separate task.
+ * (DocumentUploadView) leads here and "Próximo Passo" leads to the confirmation.
  */
 const router = useRouter()
 const auth = useAuthStore()
@@ -35,6 +35,10 @@ onMounted(() => {
 function goBackToUpload() {
   router.push({ name: 'document-upload' })
 }
+
+function goToConfirmation() {
+  router.push({ name: 'document-confirmation' })
+}
 </script>
 
 <template>
@@ -47,7 +51,7 @@ function goBackToUpload() {
       Arquivo(s) da etapa anterior: <strong>{{ uploadedFileNames.join(', ') }}</strong>
     </p>
 
-    <MetadataStep @back="goBackToUpload" />
+    <MetadataStep @back="goBackToUpload" @next="goToConfirmation" />
   </PageLayout>
 </template>
 
