@@ -117,6 +117,10 @@ npm run dev -- --port 5174   # use another port if 5173 is busy
 npm run build                # build the static bundle into dist/
 npm run preview              # serve the dist/ build locally for a final check
 
+# Tests (Vitest + Vue Test Utils)
+npm test                     # run the test suite once
+npm run test:watch           # re-run tests on file changes
+
 # Maintenance
 npm install                  # (re)install dependencies after a git pull
 ```
@@ -159,4 +163,13 @@ frontend/
     ├── utils/          # Pure helper functions
     ├── views/          # Page-level components
     └── assets/         # Static icons and images
+tests/                  # Vitest suites (Given/When/Then), mirroring src/
+docs/API_CONTRACT.md    # Endpoints and form fields consumed by the metadata step
 ```
+
+## Document registration flow
+
+`/documentos/upload` (step 1, Upload) redirects to `/documentos/metadados` (step 2, Metadados) once the file is sent.
+The metadata form previews the unique code `PROJETO-SUBGRUPO-TIPO-REV` (e.g. `PJT001-TUB-REV-REV01`); the backend
+generates the definitive value on submission. Step 3 (Confirmação) is a separate task. See
+[docs/API_CONTRACT.md](docs/API_CONTRACT.md).
