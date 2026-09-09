@@ -44,3 +44,7 @@ export function findArea(code) {
 export function findConfidentiality(value) {
   return CONFIDENTIALITY_LEVELS.find((c) => c.value === value) ?? null
 }
+
+export function findConfidentiality(value) {
+  return CONFIDENTIALITY_LEVELS.find((c) => c.value === value) ?? null
+}

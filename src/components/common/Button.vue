@@ -9,6 +9,10 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  loading: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 defineEmits(['click'])
@@ -17,10 +21,12 @@ defineEmits(['click'])
 <template>
   <button
     class="btn"
-    :class="`btn-${variant}`"
-    :disabled="disabled"
+    :class="[`btn-${variant}`, { 'btn-loading': loading }]"
+    :disabled="disabled || loading"
+    :aria-busy="loading || undefined"
     @click="$emit('click', $event)"
   >
+    <span v-if="loading" class="btn-spinner" aria-hidden="true" />
     <slot />
   </button>
 </template>
@@ -39,6 +45,29 @@ defineEmits(['click'])
 .btn:disabled {
   cursor: default;
   opacity: 0.5;
+}
+
+.btn-loading:disabled {
+  cursor: progress;
+  opacity: 0.8;
+}
+
+.btn-spinner {
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  margin-right: 0.5rem;
+  vertical-align: -0.1em;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: btn-spin 0.7s linear infinite;
+}
+
+@keyframes btn-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .btn-primary {

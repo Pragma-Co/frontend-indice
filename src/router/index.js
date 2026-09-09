@@ -16,6 +16,12 @@ const router = createRouter({
       component: () => import('../views/DocumentMetadataView.vue'),
       meta: { title: 'Colaborador - Metadados' },
     },
+    {
+      path: '/documentos/confirmacao',
+      name: 'document-confirmation',
+      component: () => import('../views/DocumentConfirmationView.vue'),
+      meta: { title: 'Colaborador - Confirmação' },
+    },
   ],
 })
 
