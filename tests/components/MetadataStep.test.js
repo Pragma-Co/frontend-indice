@@ -22,6 +22,7 @@ async function fillRequiredFields(wrapper) {
   await wrapper.find('#discipline').setValue(5)
   await wrapper.find('#document-type').setValue('REV')
   await wrapper.find('#title').setValue('Relatório de ensaio')
+  await wrapper.find('#author').setValue('João Silva')
   await wrapper.find('#areas').setValue('Petroquímica')
 }
 
@@ -109,6 +110,17 @@ describe('MetadataStep', () => {
     await wrapper.find('#author').setValue('Maria Souza')
     // Then
     expect(store.form.author).toBe('Maria Souza')
+  })
+
+  it('should block the next step when the pre-filled author is cleared', async () => {
+    // Given
+    const wrapper = mount(MetadataStep)
+    await fillRequiredFields(wrapper)
+    expect(nextButton(wrapper).attributes('disabled')).toBeUndefined()
+    // When
+    await wrapper.find('#author').setValue('')
+    // Then
+    expect(nextButton(wrapper).attributes('disabled')).toBeDefined()
   })
 
   it('should show an error message when the catalogs fail to load', () => {

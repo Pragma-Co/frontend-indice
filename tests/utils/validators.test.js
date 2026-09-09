@@ -6,6 +6,7 @@ const validForm = {
   projectId: 1,
   disciplineId: 2,
   documentType: 'REL',
+  confidentiality: 'public',
   areas: ['Petroquímica'],
   author: 'João Silva',
 }
@@ -22,12 +23,21 @@ describe('validateDocumentForm', () => {
 
   it('should flag every empty required field', () => {
     // Given
-    const form = { title: '  ', projectId: '', disciplineId: '', documentType: '', areas: [] }
+    const form = { title: '  ', projectId: '', disciplineId: '', documentType: '', confidentiality: '', author: '', areas: [] }
     // When
     const errors = validateDocumentForm(form)
     // Then
-    expect(Object.keys(errors).sort()).toEqual(['areas', 'disciplineId', 'documentType', 'projectId', 'title'])
+    expect(Object.keys(errors).sort()).toEqual([
+      'areas',
+      'author',
+      'confidentiality',
+      'disciplineId',
+      'documentType',
+      'projectId',
+      'title',
+    ])
     expect(errors.title).toBe('Título é obrigatório.')
+    expect(errors.author).toBe('Responsável/Autor é obrigatório.')
   })
 
   it('should require at least one related area', () => {
@@ -39,11 +49,23 @@ describe('validateDocumentForm', () => {
     expect(errors).toEqual({ areas: 'Área(s) relacionada(s) é obrigatório.' })
   })
 
-  it('should not require description or author', () => {
+  it('should not require the description', () => {
     // Given
-    const form = { ...validForm, description: '', author: '' }
+    const form = { ...validForm, description: '' }
     // When / Then
     expect(validateDocumentForm(form)).toEqual({})
+  })
+
+  it('should require author and confidentiality', () => {
+    // Given
+    const form = { ...validForm, author: '   ', confidentiality: '' }
+    // When
+    const errors = validateDocumentForm(form)
+    // Then
+    expect(errors).toEqual({
+      confidentiality: 'Grau de confidencialidade é obrigatório.',
+      author: 'Responsável/Autor é obrigatório.',
+    })
   })
 })
 

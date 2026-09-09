@@ -17,6 +17,7 @@ function fillValidForm(store) {
   store.form.projectId = 1
   store.form.disciplineId = 5
   store.form.documentType = 'REV'
+  store.form.author = 'João Silva'
   store.form.areas = ['Petroquímica']
 }
 
@@ -99,6 +100,16 @@ describe('documentFormStore', () => {
     // Then
     expect(store.isValid).toBe(false)
     expect(store.errors).toEqual({ areas: 'Área(s) relacionada(s) é obrigatório.' })
+  })
+
+  it('should become invalid when the author is cleared', () => {
+    // Given
+    fillValidForm(store)
+    // When
+    store.form.author = ''
+    // Then
+    expect(store.isValid).toBe(false)
+    expect(store.errors).toEqual({ author: 'Responsável/Autor é obrigatório.' })
   })
 
   it('should clear the form on reset while keeping the default author', () => {

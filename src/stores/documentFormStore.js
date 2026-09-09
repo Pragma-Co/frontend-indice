@@ -77,7 +77,7 @@ export const useDocumentFormStore = defineStore('documentForm', {
       }
     },
 
-    /** Pre-fill "Responsável/Autor" with the logged-in user (still editable). */
+    /** Pre-fill "Responsável/Autor" with the logged-in user (required, still editable). */
     setDefaultAuthor(name) {
       if (!this.form.author && name) this.form.author = name
     },

@@ -49,9 +49,9 @@ rótulos exibidos ao usuário em português.
 | `disciplineId` | sim | `id` de `GET /disciplines/` |
 | `documentType` | sim | acrônimo de 3 letras (`NOR`, `DES`, `REL`, `MEM`, `REV`, `PRO`, `ESP`) |
 | `description` | não | máx. 1000 caracteres |
-| `author` | não | pré-preenchido com o usuário logado, editável |
+| `author` | sim | pré-preenchido com o usuário logado, editável |
 | `areas` | sim | lista com pelo menos uma área; um documento pode ter várias |
-| `confidentiality` | não | `public` (padrão), `internal`, `confidential`, `secret` |
+| `confidentiality` | sim | `public` (padrão), `internal`, `confidential`, `secret` |
 | `revision` | — | somente leitura, iniciada em `REV01` |
 
 ## Regra do código único
@@ -73,9 +73,8 @@ Resultado: `PJT001-TUB-REV-REV01`.
 - O frontend exibe uma **prévia somente leitura** com essa regra (`src/utils/documentCode.js`);
   o valor definitivo é gerado pelo backend na submissão (etapa de Confirmação), que é a fonte
   de verdade e deve garantir unicidade.
-- **Ponto a confirmar com o cliente:** o exemplo do card (`PJT001-EST-REV01`) tem três partes,
-  enquanto o padrão descrito tem quatro. O frontend segue o padrão de quatro partes; se a
-  decisão for três partes, basta ajustar `buildDocumentCode`.
+- **Decisão do time (2026-09-09):** o código tem **quatro partes**. O exemplo `PJT001-EST-REV01`
+  que aparece nos cards está desatualizado; o correto é `PJT001-EST-REV-REV01`.
 
 ## Listas fixas no frontend
 

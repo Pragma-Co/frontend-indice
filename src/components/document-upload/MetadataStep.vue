@@ -102,7 +102,7 @@ function next() {
         <TagMultiSelect id="areas" v-model="store.form.areas" :options="AREAS" placeholder="Adicionar área…" />
       </FormField>
 
-      <FormField label="Responsável / Autor" html-for="author" class="metadata__full">
+      <FormField label="Responsável / Autor" html-for="author" required class="metadata__full">
         <input id="author" v-model="store.form.author" type="text" placeholder="Nome do responsável" />
       </FormField>
     </div>
