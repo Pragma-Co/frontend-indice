@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia'
-import { listProjetos } from '../api/projetos'
-import { listDisciplinas } from '../api/disciplinas'
+import { listProjects } from '../api/projects'
+import { listDisciplines } from '../api/disciplines'
 import { buildDocumentCode, INITIAL_REVISION } from '../utils/documentCode'
-import { findTipo } from '../utils/documentCatalog'
+import { findDocumentType } from '../utils/documentCatalog'
 import { validateDocumentForm } from '../utils/validators'
 
-/** Steps of the "Fazer upload de arquivo" flow. This store covers step 2. */
+/** Steps of the "Fazer upload de arquivo" flow (user-facing labels). This store covers step 2. */
 export const STEPS = [
   { number: 1, title: 'Upload', description: 'Arquivos do projeto' },
   { number: 2, title: 'Metadados', description: 'Definição de atributos' },
@@ -14,17 +14,17 @@ export const STEPS = [
 
 export const METADATA_STEP = 2
 
-export function emptyForm(responsavel = '') {
+export function emptyForm(author = '') {
   return {
-    titulo: '',
-    projetoId: '',
-    disciplinaId: '',
-    tipoDocumento: '',
-    descricao: '',
-    responsavel,
+    title: '',
+    projectId: '',
+    disciplineId: '',
+    documentType: '',
+    description: '',
+    author,
     areas: [],
-    confidencialidade: 'publico',
-    revisao: INITIAL_REVISION,
+    confidentiality: 'public',
+    revision: INITIAL_REVISION,
   }
 }
 
@@ -36,24 +36,24 @@ export function emptyForm(responsavel = '') {
 export const useDocumentFormStore = defineStore('documentForm', {
   state: () => ({
     form: emptyForm(),
-    projetos: [],
-    disciplinas: [],
+    projects: [],
+    disciplines: [],
     catalogsLoading: false,
     catalogsError: null,
   }),
 
   getters: {
-    selectedProjeto: (state) =>
-      state.projetos.find((p) => String(p.id) === String(state.form.projetoId)) ?? null,
-    selectedDisciplina: (state) =>
-      state.disciplinas.find((d) => String(d.id) === String(state.form.disciplinaId)) ?? null,
-    selectedTipo: (state) => findTipo(state.form.tipoDocumento),
-    codigoPreview() {
+    selectedProject: (state) =>
+      state.projects.find((p) => String(p.id) === String(state.form.projectId)) ?? null,
+    selectedDiscipline: (state) =>
+      state.disciplines.find((d) => String(d.id) === String(state.form.disciplineId)) ?? null,
+    selectedDocumentType: (state) => findDocumentType(state.form.documentType),
+    codePreview() {
       return buildDocumentCode({
-        projeto: this.selectedProjeto?.codigo,
-        disciplina: this.selectedDisciplina?.sigla,
-        tipo: this.selectedTipo?.sigla,
-        revisao: this.form.revisao,
+        project: this.selectedProject?.code,
+        discipline: this.selectedDiscipline?.acronym,
+        type: this.selectedDocumentType?.acronym,
+        revision: this.form.revision,
       })
     },
     errors: (state) => validateDocumentForm(state.form),
@@ -67,9 +67,9 @@ export const useDocumentFormStore = defineStore('documentForm', {
       this.catalogsLoading = true
       this.catalogsError = null
       try {
-        const [projetos, disciplinas] = await Promise.all([listProjetos(), listDisciplinas()])
-        this.projetos = Array.isArray(projetos) ? projetos : []
-        this.disciplinas = Array.isArray(disciplinas) ? disciplinas : []
+        const [projects, disciplines] = await Promise.all([listProjects(), listDisciplines()])
+        this.projects = Array.isArray(projects) ? projects : []
+        this.disciplines = Array.isArray(disciplines) ? disciplines : []
       } catch (error) {
         this.catalogsError = error.message || 'Não foi possível carregar as listas do formulário.'
       } finally {
@@ -78,12 +78,12 @@ export const useDocumentFormStore = defineStore('documentForm', {
     },
 
     /** Pre-fill "Responsável/Autor" with the logged-in user (still editable). */
-    setDefaultResponsavel(nome) {
-      if (!this.form.responsavel && nome) this.form.responsavel = nome
+    setDefaultAuthor(name) {
+      if (!this.form.author && name) this.form.author = name
     },
 
-    reset(responsavel = '') {
-      this.form = emptyForm(responsavel)
+    reset(author = '') {
+      this.form = emptyForm(author)
     },
   },
 })

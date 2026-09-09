@@ -1,11 +1,12 @@
-import { toSigla } from './documentCode'
+import { toAcronym } from './documentCode'
 
 /**
  * Static option lists for the metadata form. Projects and disciplines come
- * from the API (GET /projetos, GET /disciplinas); the lists below are the
+ * from the API (GET /projects, GET /disciplines); the lists below are the
  * defaults agreed for the form until dedicated endpoints exist.
+ * Labels are user-facing and stay in Portuguese.
  */
-const TIPO_NOMES = [
+const DOCUMENT_TYPE_NAMES = [
   'Norma',
   'Desenho',
   'Relatório',
@@ -15,7 +16,7 @@ const TIPO_NOMES = [
   'Especificação',
 ]
 
-export const TIPOS_DOCUMENTO = TIPO_NOMES.map((nome) => ({ sigla: toSigla(nome), nome }))
+export const DOCUMENT_TYPES = DOCUMENT_TYPE_NAMES.map((name) => ({ acronym: toAcronym(name), name }))
 
 export const AREAS = [
   'Petroquímica',
@@ -28,17 +29,13 @@ export const AREAS = [
   'Automotivo',
 ]
 
-export const CONFIDENCIALIDADES = [
-  { value: 'publico', label: 'Público' },
-  { value: 'interno', label: 'Interno' },
-  { value: 'confidencial', label: 'Confidencial' },
-  { value: 'sigiloso', label: 'Sigiloso' },
+export const CONFIDENTIALITY_LEVELS = [
+  { value: 'public', label: 'Público' },
+  { value: 'internal', label: 'Interno' },
+  { value: 'confidential', label: 'Confidencial' },
+  { value: 'secret', label: 'Sigiloso' },
 ]
 
-export function findTipo(sigla) {
-  return TIPOS_DOCUMENTO.find((t) => t.sigla === sigla) ?? null
-}
-
-export function confidencialidadeLabel(value) {
-  return CONFIDENCIALIDADES.find((c) => c.value === value)?.label ?? value
+export function findDocumentType(acronym) {
+  return DOCUMENT_TYPES.find((t) => t.acronym === acronym) ?? null
 }

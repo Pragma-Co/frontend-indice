@@ -14,8 +14,8 @@ const auth = useAuthStore()
 const store = useDocumentFormStore()
 
 onMounted(() => {
-  store.setDefaultResponsavel(auth.currentUser?.nome)
-  if (!store.projetos.length || !store.disciplinas.length) store.loadCatalogs()
+  store.setDefaultAuthor(auth.currentUser?.name)
+  if (!store.projects.length || !store.disciplines.length) store.loadCatalogs()
 })
 </script>
 

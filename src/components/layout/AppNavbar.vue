@@ -14,7 +14,7 @@ const auth = useAuthStore()
       </nav>
       <div v-if="auth.currentUser" class="navbar__user">
         <span class="navbar__avatar" aria-hidden="true">{{ auth.initials }}</span>
-        <span>{{ auth.currentUser.nome }}</span>
+        <span>{{ auth.currentUser.name }}</span>
       </div>
     </div>
   </header>

@@ -2,11 +2,12 @@ export function isBlank(value) {
   return value === null || value === undefined || String(value).trim() === ''
 }
 
+/** Required form fields → user-facing label (Portuguese). */
 export const REQUIRED_DOCUMENT_FIELDS = {
-  titulo: 'Título',
-  projetoId: 'Projeto',
-  disciplinaId: 'Disciplina',
-  tipoDocumento: 'Tipo de documento',
+  title: 'Título',
+  projectId: 'Projeto',
+  disciplineId: 'Disciplina',
+  documentType: 'Tipo de documento',
   areas: 'Área(s) relacionada(s)',
 }
 
