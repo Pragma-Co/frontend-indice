@@ -3,7 +3,7 @@ import { uploadDocument } from '../api/documents'
 import { getFileTypeLabel } from '../utils/formatters'
 import { isFileSizeValid, isFileTypeAccepted } from '../utils/validators'
 
-const ACCEPTED_EXTENSIONS = ['pdf', 'dwg', 'dxf', 'dgc', 'xls']
+const ACCEPTED_EXTENSIONS = ['pdf', 'doc', 'jpeg', 'png']
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024
 const MAX_CONCURRENT_UPLOADS = 2
 

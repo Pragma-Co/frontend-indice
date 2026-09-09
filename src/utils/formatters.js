@@ -13,11 +13,10 @@ export function formatFileSize(bytes) {
 }
 
 const FILE_TYPE_LABELS_BY_EXTENSION = {
-  dwg: 'Desenho',
-  dxf: 'Desenho',
-  dgc: 'Desenho',
   pdf: 'Memorial',
-  xls: 'Planilha',
+  doc: 'Documento',
+  jpeg: 'Imagem',
+  png: 'Imagem',
 }
 
 export function getFileTypeLabel(fileName) {

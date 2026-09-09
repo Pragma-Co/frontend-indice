@@ -89,7 +89,7 @@ onUnmounted(() => {
     </section>
 
     <footer class="page-footer">
-      <Button variant="outline" @click="handleCancel">Cancelar</Button>
+      <Button variant="outline" @click="handleCancel">Limpar</Button>
       <Button variant="primary" :disabled="!hasSucceededFile" @click="goToMetadataStep">
         Próximo Passo
       </Button>
