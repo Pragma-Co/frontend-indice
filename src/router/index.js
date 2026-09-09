@@ -2,9 +2,9 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
   { path: '/', redirect: { name: 'document-upload' } },
-  { path: '/documentos', redirect: { name: 'document-upload' } },
+  { path: '/documents', redirect: { name: 'document-upload' } },
   {
-    path: '/documentos/novo',
+    path: '/documents/new',
     name: 'document-upload',
     component: () => import('../views/DocumentUploadView.vue'),
   },

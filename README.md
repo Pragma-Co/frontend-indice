@@ -101,7 +101,7 @@ Open <http://localhost:5173/> — the app should load without errors and redirec
 
 | URL | Description |
 |-----|-------------|
-| <http://localhost:5173/> | Application (Vite dev server) — redirects to `/documentos/novo` |
+| <http://localhost:5173/> | Application (Vite dev server) — redirects to `/documents/new` |
 | <http://localhost:5173/api/health/> | Backend health endpoint, proxied by the Vite dev server |
 
 > These are dev-server URLs. The backend keeps answering on its own port (default 8000) — see the [backend README](https://github.com/Pragma-Co/backend-api-6#readme).
@@ -170,7 +170,7 @@ frontend/
 
 ## Document registration flow
 
-`/documentos/novo` is the "Fazer upload de arquivo" flow from the wireframe: **Upload → Metadados → Confirmação**.
+`/documents/new` is the "Fazer upload de arquivo" flow from the wireframe: **Upload → Metadados → Confirmação**.
 This repository currently implements step 2 (Metadados); steps 1 and 3 are separate tasks.
 The unique code follows `PROJETO-SUBGRUPO-TIPO-REV` (e.g. `PJT001-TUB-REV-REV01`) and is previewed
 read-only in the form; the backend generates the definitive value on submission. See
