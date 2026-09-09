@@ -13,12 +13,19 @@
   --color-warning-bg: #fef3d9;
   --color-warning-border: #fbdf9d;
 
+  --color-danger: #dc2626;
+  --color-danger-bg: #fdf2f2;
+  --color-danger-border: #f3c6c6;
+
+  --color-primary-bg: #e8ecfd;
+
   --color-text: #1f2937;
   --color-text-muted: #6b7280;
   --color-text-inverse: #ffffff;
 
   --color-border: #e5e7eb;
   --color-surface: #ffffff;
+  --color-surface-muted: #f3f4f6;
   --color-background: #f4f6f8;
 
   --radius-sm: 6px;
