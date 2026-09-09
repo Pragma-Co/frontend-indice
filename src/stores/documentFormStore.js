@@ -5,15 +5,6 @@ import { buildDocumentCode, INITIAL_REVISION } from '../utils/documentCode'
 import { findDocumentType } from '../utils/documentCatalog'
 import { validateDocumentForm } from '../utils/validators'
 
-/** Steps of the "Fazer upload de arquivo" flow, in the shape StepIndicator expects. This store covers step 2. */
-export const STEPS = [
-  { title: 'Upload', subtitle: 'Arquivos do projeto' },
-  { title: 'Metadados', subtitle: 'Definição de atributos' },
-  { title: 'Confirmação', subtitle: 'Revisão e envio final' },
-]
-
-export const METADATA_STEP = 2
-
 export function emptyForm(author = '') {
   return {
     title: '',

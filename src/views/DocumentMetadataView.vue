@@ -5,15 +5,14 @@ import StepIndicator from '../components/common/StepIndicator.vue'
 import PageLayout from '../components/layout/PageLayout.vue'
 import MetadataStep from '../components/document-upload/MetadataStep.vue'
 import { useAuthStore } from '../stores/authStore'
-import { STEPS, useDocumentFormStore } from '../stores/documentFormStore'
+import { useDocumentFormStore } from '../stores/documentFormStore'
 import { useUploadStore } from '../stores/uploadStore'
+import { METADATA_STEP, UPLOAD_FLOW_SUBTITLE, UPLOAD_FLOW_TITLE, UPLOAD_STEPS } from '../utils/uploadFlow'
 
 /**
  * Step 2 (Metadados) of the "Fazer upload de arquivo" flow. The upload step
  * (DocumentUploadView) redirects here; step 3 (Confirmação) is a separate task.
  */
-const METADATA_STEP = 2
-
 const router = useRouter()
 const auth = useAuthStore()
 const store = useDocumentFormStore()
@@ -32,12 +31,9 @@ function goBackToUpload() {
 </script>
 
 <template>
-  <PageLayout
-    title="Fazer upload de arquivo"
-    subtitle="Faça o carregamento de seus arquivos e siga as orientações para avançar."
-  >
+  <PageLayout :title="UPLOAD_FLOW_TITLE" :subtitle="UPLOAD_FLOW_SUBTITLE">
     <section class="card">
-      <StepIndicator :steps="STEPS" :current-step="METADATA_STEP" />
+      <StepIndicator :steps="UPLOAD_STEPS" :current-step="METADATA_STEP" />
     </section>
 
     <p v-if="uploadedFileNames.length" class="uploaded-files" data-testid="uploaded-files">

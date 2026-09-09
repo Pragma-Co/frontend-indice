@@ -9,12 +9,7 @@ import StepIndicator from '../components/common/StepIndicator.vue'
 import UploadQueueTable from '../components/common/UploadQueueTable.vue'
 import { useDocumentUpload } from '../composables/useDocumentUpload'
 import { useUploadStore } from '../stores/uploadStore'
-
-const STEPS = [
-  { title: 'Upload', subtitle: 'Arquivos do projeto' },
-  { title: 'Metadados', subtitle: 'Definição de atributos' },
-  { title: 'Confirmação', subtitle: 'Revisão e envio final' },
-]
+import { UPLOAD_FLOW_SUBTITLE, UPLOAD_FLOW_TITLE, UPLOAD_STEP, UPLOAD_STEPS } from '../utils/uploadFlow'
 
 const router = useRouter()
 const uploadStore = useUploadStore()
@@ -62,13 +57,10 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <PageLayout
-    title="Fazer upload de arquivo"
-    subtitle="Faça o carregamento de seus arquivos e siga as orientações para avançar."
-  >
+  <PageLayout :title="UPLOAD_FLOW_TITLE" :subtitle="UPLOAD_FLOW_SUBTITLE">
 
     <section class="card">
-      <StepIndicator :steps="STEPS" :current-step="1" />
+      <StepIndicator :steps="UPLOAD_STEPS" :current-step="UPLOAD_STEP" />
     </section>
 
     <section class="card">
