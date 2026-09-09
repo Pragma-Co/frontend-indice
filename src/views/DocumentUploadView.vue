@@ -25,6 +25,15 @@ const { queue, hasSucceededFile, allSettled, addFiles, resolveDuplicate, reset, 
 
 const activeDuplicate = computed(() => queue.value.find((item) => item.status === 'duplicate'))
 
+let autoAdvanceTimeoutId = null
+
+function clearAutoAdvance() {
+  if (autoAdvanceTimeoutId !== null) {
+    clearTimeout(autoAdvanceTimeoutId)
+    autoAdvanceTimeoutId = null
+  }
+}
+
 function goToMetadataStep() {
   const uploadedDocuments = queue.value
     .filter((item) => item.status === 'success')
@@ -35,12 +44,19 @@ function goToMetadataStep() {
 }
 
 function handleCancel() {
+  clearAutoAdvance()
   reset()
+}
+
+function handleFilesSelected(fileList) {
+  clearAutoAdvance()
+  addFiles(fileList)
 }
 
 watch(allSettled, (settled) => {
   if (settled && hasSucceededFile.value) {
-    setTimeout(goToMetadataStep, AUTO_ADVANCE_DELAY_MS)
+    clearAutoAdvance()
+    autoAdvanceTimeoutId = setTimeout(goToMetadataStep, AUTO_ADVANCE_DELAY_MS)
   }
 })
 
@@ -61,6 +77,7 @@ onMounted(() => {
 onUnmounted(() => {
   window.removeEventListener('dragover', preventStrayFileDrop)
   window.removeEventListener('drop', preventStrayFileDrop)
+  clearAutoAdvance()
 })
 </script>
 
@@ -79,7 +96,7 @@ onUnmounted(() => {
       <FileDropzone
         :accepted-extensions="ACCEPTED_EXTENSIONS"
         max-size-label="100MB"
-        @files-selected="addFiles"
+        @files-selected="handleFilesSelected"
       />
     </section>
 
