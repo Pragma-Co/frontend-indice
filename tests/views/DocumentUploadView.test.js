@@ -4,11 +4,14 @@ import { createPinia, setActivePinia } from 'pinia'
 import DocumentUploadView from '../../src/views/DocumentUploadView.vue'
 import { useDocumentFormStore } from '../../src/stores/documentFormStore'
 
-vi.mock('../../src/api/projetos', () => ({ listProjetos: vi.fn() }))
-vi.mock('../../src/api/disciplinas', () => ({ listDisciplinas: vi.fn() }))
+vi.mock('../../src/api/projects', () => ({ listProjects: vi.fn() }))
+vi.mock('../../src/api/disciplines', () => ({ listDisciplines: vi.fn() }))
 
-import { listProjetos } from '../../src/api/projetos'
-import { listDisciplinas } from '../../src/api/disciplinas'
+import { listProjects } from '../../src/api/projects'
+import { listDisciplines } from '../../src/api/disciplines'
+
+const PROJECTS = [{ id: 1, code: 'PJT001', name: 'Projeto Alfa' }]
+const DISCIPLINES = [{ id: 5, acronym: 'TUB', name: 'Tubulação' }]
 
 describe('DocumentUploadView', () => {
   let store
@@ -17,21 +20,21 @@ describe('DocumentUploadView', () => {
     setActivePinia(createPinia())
     store = useDocumentFormStore()
     vi.clearAllMocks()
-    listProjetos.mockResolvedValue([{ id: 1, codigo: 'PJT001', nome: 'Projeto Alfa' }])
-    listDisciplinas.mockResolvedValue([{ id: 2, sigla: 'TUB', nome: 'Tubulação' }])
+    listProjects.mockResolvedValue(PROJECTS)
+    listDisciplines.mockResolvedValue(DISCIPLINES)
   })
 
-  it('deve carregar as listas da API e preencher o responsável ao abrir', async () => {
+  it('should load the catalogs from the API and pre-fill the author on mount', async () => {
     // When
     mount(DocumentUploadView)
     await flushPromises()
     // Then
-    expect(listProjetos).toHaveBeenCalled()
-    expect(listDisciplinas).toHaveBeenCalled()
-    expect(store.form.responsavel).toBe('João Silva')
+    expect(listProjects).toHaveBeenCalled()
+    expect(listDisciplines).toHaveBeenCalled()
+    expect(store.form.author).toBe('João Silva')
   })
 
-  it('deve exibir a etapa de Metadados como a etapa atual', async () => {
+  it('should show Metadados as the current step', async () => {
     // When
     const wrapper = mount(DocumentUploadView)
     await flushPromises()
@@ -39,17 +42,17 @@ describe('DocumentUploadView', () => {
     const current = wrapper.find('[aria-current="step"]')
     expect(current.text()).toContain('Metadados')
     expect(wrapper.text()).toContain('Informações do Documento')
-    expect(wrapper.find('#projeto').text()).toContain('PJT001 - Projeto Alfa')
+    expect(wrapper.find('#project').text()).toContain('PJT001 - Projeto Alfa')
   })
 
-  it('não deve recarregar as listas quando já estiverem em memória', async () => {
+  it('should not reload the catalogs when they are already in memory', async () => {
     // Given
-    store.projetos = [{ id: 1, codigo: 'PJT001', nome: 'Projeto Alfa' }]
-    store.disciplinas = [{ id: 2, sigla: 'TUB', nome: 'Tubulação' }]
+    store.projects = PROJECTS
+    store.disciplines = DISCIPLINES
     // When
     mount(DocumentUploadView)
     await flushPromises()
     // Then
-    expect(listProjetos).not.toHaveBeenCalled()
+    expect(listProjects).not.toHaveBeenCalled()
   })
 })

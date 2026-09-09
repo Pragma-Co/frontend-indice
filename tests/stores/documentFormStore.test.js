@@ -3,20 +3,20 @@ import { createPinia, setActivePinia } from 'pinia'
 import { ApiError } from '../../src/api/client'
 import { useDocumentFormStore } from '../../src/stores/documentFormStore'
 
-vi.mock('../../src/api/projetos', () => ({ listProjetos: vi.fn() }))
-vi.mock('../../src/api/disciplinas', () => ({ listDisciplinas: vi.fn() }))
+vi.mock('../../src/api/projects', () => ({ listProjects: vi.fn() }))
+vi.mock('../../src/api/disciplines', () => ({ listDisciplines: vi.fn() }))
 
-import { listProjetos } from '../../src/api/projetos'
-import { listDisciplinas } from '../../src/api/disciplinas'
+import { listProjects } from '../../src/api/projects'
+import { listDisciplines } from '../../src/api/disciplines'
 
-const PROJETOS = [{ id: 1, codigo: 'PJT001', nome: 'Projeto Alfa' }]
-const DISCIPLINAS = [{ id: 2, sigla: 'TUB', nome: 'Tubulação' }]
+const PROJECTS = [{ id: 1, code: 'PJT001', name: 'Projeto Alfa' }]
+const DISCIPLINES = [{ id: 5, acronym: 'TUB', name: 'Tubulação' }]
 
 function fillValidForm(store) {
-  store.form.titulo = 'Relatório de ensaio'
-  store.form.projetoId = 1
-  store.form.disciplinaId = 2
-  store.form.tipoDocumento = 'REV'
+  store.form.title = 'Relatório de ensaio'
+  store.form.projectId = 1
+  store.form.disciplineId = 5
+  store.form.documentType = 'REV'
   store.form.areas = ['Petroquímica']
 }
 
@@ -27,32 +27,32 @@ describe('documentFormStore', () => {
     setActivePinia(createPinia())
     store = useDocumentFormStore()
     vi.clearAllMocks()
-    listProjetos.mockResolvedValue(PROJETOS)
-    listDisciplinas.mockResolvedValue(DISCIPLINAS)
+    listProjects.mockResolvedValue(PROJECTS)
+    listDisciplines.mockResolvedValue(DISCIPLINES)
   })
 
-  it('deve iniciar com revisão REV01 e formulário vazio', () => {
+  it('should start with revision REV01 and an empty form', () => {
     // Then
-    expect(store.form.revisao).toBe('REV01')
-    expect(store.form.titulo).toBe('')
+    expect(store.form.revision).toBe('REV01')
+    expect(store.form.title).toBe('')
     expect(store.form.areas).toEqual([])
     expect(store.isValid).toBe(false)
   })
 
-  it('deve carregar projetos e disciplinas da API', async () => {
+  it('should load projects and disciplines from the API', async () => {
     // When
     await store.loadCatalogs()
     // Then
-    expect(listProjetos).toHaveBeenCalled()
-    expect(listDisciplinas).toHaveBeenCalled()
-    expect(store.projetos).toEqual(PROJETOS)
-    expect(store.disciplinas).toEqual(DISCIPLINAS)
+    expect(listProjects).toHaveBeenCalled()
+    expect(listDisciplines).toHaveBeenCalled()
+    expect(store.projects).toEqual(PROJECTS)
+    expect(store.disciplines).toEqual(DISCIPLINES)
     expect(store.catalogsError).toBeNull()
   })
 
-  it('deve registrar erro amigável quando as listas não puderem ser carregadas', async () => {
+  it('should record a friendly error when the catalogs cannot be loaded', async () => {
     // Given
-    listProjetos.mockRejectedValue(new ApiError('Erro interno do servidor. Tente novamente mais tarde.', { status: 500 }))
+    listProjects.mockRejectedValue(new ApiError('Erro interno do servidor. Tente novamente mais tarde.', { status: 500 }))
     // When
     await store.loadCatalogs()
     // Then
@@ -60,37 +60,37 @@ describe('documentFormStore', () => {
     expect(store.catalogsLoading).toBe(false)
   })
 
-  it('deve gerar a prévia do código a partir de projeto, disciplina e tipo', async () => {
+  it('should preview the code from project code, discipline acronym and document type', async () => {
     // Given
     await store.loadCatalogs()
     // When
     fillValidForm(store)
     // Then
-    expect(store.codigoPreview).toBe('PJT001-TUB-REV-REV01')
+    expect(store.codePreview).toBe('PJT001-TUB-REV-REV01')
   })
 
-  it('deve manter o código vazio enquanto faltar projeto, disciplina ou tipo', async () => {
+  it('should keep the code preview empty while project, discipline or type is missing', async () => {
     // Given
     await store.loadCatalogs()
     // When
-    store.form.projetoId = 1
-    store.form.tipoDocumento = 'REV'
+    store.form.projectId = 1
+    store.form.documentType = 'REV'
     // Then
-    expect(store.codigoPreview).toBeNull()
+    expect(store.codePreview).toBeNull()
   })
 
-  it('deve preencher o responsável com o usuário logado sem sobrescrever edição manual', () => {
+  it('should pre-fill the author with the logged-in user without overriding manual edits', () => {
     // Given
-    store.setDefaultResponsavel('João Silva')
-    expect(store.form.responsavel).toBe('João Silva')
+    store.setDefaultAuthor('João Silva')
+    expect(store.form.author).toBe('João Silva')
     // When
-    store.form.responsavel = 'Maria Souza'
-    store.setDefaultResponsavel('João Silva')
+    store.form.author = 'Maria Souza'
+    store.setDefaultAuthor('João Silva')
     // Then
-    expect(store.form.responsavel).toBe('Maria Souza')
+    expect(store.form.author).toBe('Maria Souza')
   })
 
-  it('deve considerar o formulário válido somente com todos os obrigatórios preenchidos', () => {
+  it('should be valid only when every required field is filled', () => {
     // Given
     fillValidForm(store)
     expect(store.isValid).toBe(true)
@@ -101,14 +101,14 @@ describe('documentFormStore', () => {
     expect(store.errors).toEqual({ areas: 'Área(s) relacionada(s) é obrigatório.' })
   })
 
-  it('deve limpar o formulário ao resetar mantendo o responsável padrão', () => {
+  it('should clear the form on reset while keeping the default author', () => {
     // Given
     fillValidForm(store)
     // When
     store.reset('João Silva')
     // Then
-    expect(store.form.titulo).toBe('')
+    expect(store.form.title).toBe('')
     expect(store.form.areas).toEqual([])
-    expect(store.form.responsavel).toBe('João Silva')
+    expect(store.form.author).toBe('João Silva')
   })
 })

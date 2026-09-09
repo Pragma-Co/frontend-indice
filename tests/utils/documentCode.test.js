@@ -1,49 +1,49 @@
 import { describe, expect, it } from 'vitest'
-import { buildDocumentCode, INITIAL_REVISION, toSigla } from '../../src/utils/documentCode'
+import { buildDocumentCode, INITIAL_REVISION, toAcronym } from '../../src/utils/documentCode'
 
-describe('toSigla', () => {
-  it('deve usar as três primeiras letras do nome em maiúsculas', () => {
+describe('toAcronym', () => {
+  it('should use the first three letters of the name in uppercase', () => {
     // Given
-    const nome = 'Tubulação'
+    const name = 'Tubulação'
     // When
-    const sigla = toSigla(nome)
+    const acronym = toAcronym(name)
     // Then
-    expect(sigla).toBe('TUB')
+    expect(acronym).toBe('TUB')
   })
 
-  it('deve remover acentos e espaços antes de gerar a sigla', () => {
+  it('should strip accents and spaces before building the acronym', () => {
     // Given / When / Then
-    expect(toSigla('Memória de Cálculo')).toBe('MEM')
-    expect(toSigla('Óleo e Gás')).toBe('OLE')
-    expect(toSigla('Revisão Técnica')).toBe('REV')
+    expect(toAcronym('Memória de Cálculo')).toBe('MEM')
+    expect(toAcronym('Óleo e Gás')).toBe('OLE')
+    expect(toAcronym('Revisão Técnica')).toBe('REV')
   })
 
-  it('deve retornar vazio quando o nome não for informado', () => {
-    expect(toSigla('')).toBe('')
-    expect(toSigla(null)).toBe('')
+  it('should return an empty string when the name is missing', () => {
+    expect(toAcronym('')).toBe('')
+    expect(toAcronym(null)).toBe('')
   })
 })
 
 describe('buildDocumentCode', () => {
-  it('deve montar o código no padrão PROJETO-SUBGRUPO-TIPO-REV', () => {
+  it('should build the code in the PROJETO-SUBGRUPO-TIPO-REV pattern', () => {
     // Given
-    const partes = { projeto: 'PJT001', disciplina: 'TUB', tipo: 'REV' }
+    const parts = { project: 'PJT001', discipline: 'TUB', type: 'REV' }
     // When
-    const codigo = buildDocumentCode(partes)
+    const code = buildDocumentCode(parts)
     // Then
-    expect(codigo).toBe('PJT001-TUB-REV-REV01')
+    expect(code).toBe('PJT001-TUB-REV-REV01')
   })
 
-  it('deve iniciar a revisão em REV01 por padrão', () => {
+  it('should start the revision at REV01 by default', () => {
     expect(INITIAL_REVISION).toBe('REV01')
-    expect(buildDocumentCode({ projeto: 'PJT001', disciplina: 'EST', tipo: 'NOR' })).toMatch(/-REV01$/)
+    expect(buildDocumentCode({ project: 'PJT001', discipline: 'EST', type: 'NOR' })).toMatch(/-REV01$/)
   })
 
-  it('deve retornar null enquanto faltar alguma parte do código', () => {
+  it('should return null while any part of the code is missing', () => {
     // Given
-    const incompleto = { projeto: 'PJT001', disciplina: '', tipo: 'REV' }
+    const incomplete = { project: 'PJT001', discipline: '', type: 'REV' }
     // When / Then
-    expect(buildDocumentCode(incompleto)).toBeNull()
+    expect(buildDocumentCode(incomplete)).toBeNull()
     expect(buildDocumentCode({})).toBeNull()
   })
 })

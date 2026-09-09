@@ -18,34 +18,34 @@ describe('api client', () => {
     vi.unstubAllGlobals()
   })
 
-  it('deve chamar a API através do prefixo /api e devolver o JSON', async () => {
+  it('should call the API through the /api prefix and return the JSON body', async () => {
     // Given
     fetch.mockResolvedValue(mockResponse([{ id: 1 }]))
     // When
-    const data = await api.get('/projetos/')
+    const data = await api.get('/projects/')
     // Then
-    expect(fetch).toHaveBeenCalledWith('/api/projetos/', expect.objectContaining({ method: 'GET' }))
+    expect(fetch).toHaveBeenCalledWith('/api/projects/', expect.objectContaining({ method: 'GET' }))
     expect(data).toEqual([{ id: 1 }])
   })
 
-  it('deve enviar o corpo como JSON no POST', async () => {
+  it('should send the body as JSON on POST', async () => {
     // Given
     fetch.mockResolvedValue(mockResponse({ id: 7 }, { status: 201 }))
     // When
-    await api.post('/documentos/', { titulo: 'X' })
+    await api.post('/documents/', { title: 'X' })
     // Then
     const [, init] = fetch.mock.calls[0]
     expect(init.method).toBe('POST')
     expect(init.headers['Content-Type']).toBe('application/json')
-    expect(JSON.parse(init.body)).toEqual({ titulo: 'X' })
+    expect(JSON.parse(init.body)).toEqual({ title: 'X' })
   })
 
-  it('deve lançar ApiError com mensagem amigável e detalhes quando a resposta falhar', async () => {
+  it('should throw ApiError with a friendly message and details when the response fails', async () => {
     // Given
-    const details = { titulo: ['Este campo é obrigatório.'] }
+    const details = { title: ['Este campo é obrigatório.'] }
     fetch.mockResolvedValue(mockResponse(details, { status: 400 }))
     // When
-    const promise = request('/documentos/', { method: 'POST', body: {} })
+    const promise = request('/documents/', { method: 'POST', body: {} })
     // Then
     await expect(promise).rejects.toBeInstanceOf(ApiError)
     await promise.catch((error) => {
@@ -55,7 +55,7 @@ describe('api client', () => {
     })
   })
 
-  it('não deve expor detalhes internos quando o servidor estiver fora do ar', async () => {
+  it('should not expose internal details when the server is unreachable', async () => {
     // Given
     fetch.mockRejectedValue(new TypeError('Failed to fetch http://10.0.0.5:8000'))
     // When
@@ -64,13 +64,14 @@ describe('api client', () => {
     await expect(promise).rejects.toMatchObject({ status: 0, message: 'Não foi possível conectar ao servidor.' })
   })
 
-  it('deve tratar conflito de código como erro de duplicidade', async () => {
+  it('should map a 500 with {"error"} body to a generic server message', async () => {
     // Given
-    fetch.mockResolvedValue(mockResponse({ detail: 'duplicate' }, { status: 409 }))
+    fetch.mockResolvedValue(mockResponse({ error: 'DatabaseError' }, { status: 500 }))
     // When / Then
-    await expect(api.post('/documentos/', {})).rejects.toMatchObject({
-      status: 409,
-      message: 'Já existe um documento com este código.',
+    await expect(api.get('/disciplines/')).rejects.toMatchObject({
+      status: 500,
+      message: 'Erro interno do servidor. Tente novamente mais tarde.',
+      details: { error: 'DatabaseError' },
     })
   })
 })

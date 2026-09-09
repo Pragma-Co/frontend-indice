@@ -2,16 +2,16 @@ import { describe, expect, it } from 'vitest'
 import { isBlank, validateDocumentForm } from '../../src/utils/validators'
 
 const validForm = {
-  titulo: 'Relatório de ensaio',
-  projetoId: 1,
-  disciplinaId: 2,
-  tipoDocumento: 'REL',
+  title: 'Relatório de ensaio',
+  projectId: 1,
+  disciplineId: 2,
+  documentType: 'REL',
   areas: ['Petroquímica'],
-  responsavel: 'João Silva',
+  author: 'João Silva',
 }
 
 describe('validateDocumentForm', () => {
-  it('não deve retornar erros quando todos os campos obrigatórios estiverem preenchidos', () => {
+  it('should return no errors when every required field is filled', () => {
     // Given
     const form = { ...validForm }
     // When
@@ -20,17 +20,17 @@ describe('validateDocumentForm', () => {
     expect(errors).toEqual({})
   })
 
-  it('deve apontar cada campo obrigatório vazio', () => {
+  it('should flag every empty required field', () => {
     // Given
-    const form = { titulo: '  ', projetoId: '', disciplinaId: '', tipoDocumento: '', areas: [] }
+    const form = { title: '  ', projectId: '', disciplineId: '', documentType: '', areas: [] }
     // When
     const errors = validateDocumentForm(form)
     // Then
-    expect(Object.keys(errors).sort()).toEqual(['areas', 'disciplinaId', 'projetoId', 'tipoDocumento', 'titulo'])
-    expect(errors.titulo).toBe('Título é obrigatório.')
+    expect(Object.keys(errors).sort()).toEqual(['areas', 'disciplineId', 'documentType', 'projectId', 'title'])
+    expect(errors.title).toBe('Título é obrigatório.')
   })
 
-  it('deve exigir pelo menos uma área relacionada', () => {
+  it('should require at least one related area', () => {
     // Given
     const form = { ...validForm, areas: [] }
     // When
@@ -39,16 +39,16 @@ describe('validateDocumentForm', () => {
     expect(errors).toEqual({ areas: 'Área(s) relacionada(s) é obrigatório.' })
   })
 
-  it('não deve exigir descrição nem responsável', () => {
+  it('should not require description or author', () => {
     // Given
-    const form = { ...validForm, descricao: '', responsavel: '' }
+    const form = { ...validForm, description: '', author: '' }
     // When / Then
     expect(validateDocumentForm(form)).toEqual({})
   })
 })
 
 describe('isBlank', () => {
-  it('deve tratar null, undefined e espaços como vazio', () => {
+  it('should treat null, undefined and whitespace as blank', () => {
     expect(isBlank(null)).toBe(true)
     expect(isBlank(undefined)).toBe(true)
     expect(isBlank('   ')).toBe(true)

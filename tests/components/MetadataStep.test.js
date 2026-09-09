@@ -4,17 +4,25 @@ import { createPinia, setActivePinia } from 'pinia'
 import MetadataStep from '../../src/components/document-upload/MetadataStep.vue'
 import { useDocumentFormStore } from '../../src/stores/documentFormStore'
 
-vi.mock('../../src/api/projetos', () => ({ listProjetos: vi.fn() }))
-vi.mock('../../src/api/disciplinas', () => ({ listDisciplinas: vi.fn() }))
+vi.mock('../../src/api/projects', () => ({ listProjects: vi.fn() }))
+vi.mock('../../src/api/disciplines', () => ({ listDisciplines: vi.fn() }))
 
-import { listProjetos } from '../../src/api/projetos'
-import { listDisciplinas } from '../../src/api/disciplinas'
+import { listProjects } from '../../src/api/projects'
+import { listDisciplines } from '../../src/api/disciplines'
 
-const PROJETOS = [{ id: 1, codigo: 'PJT001', nome: 'Projeto Alfa' }]
-const DISCIPLINAS = [{ id: 2, sigla: 'TUB', nome: 'Tubulação' }]
+const PROJECTS = [{ id: 1, code: 'PJT001', name: 'Projeto Alfa' }]
+const DISCIPLINES = [{ id: 5, acronym: 'TUB', name: 'Tubulação' }]
 
 function nextButton(wrapper) {
   return wrapper.findAll('button').find((b) => b.text() === 'Próximo Passo')
+}
+
+async function fillRequiredFields(wrapper) {
+  await wrapper.find('#project').setValue(1)
+  await wrapper.find('#discipline').setValue(5)
+  await wrapper.find('#document-type').setValue('REV')
+  await wrapper.find('#title').setValue('Relatório de ensaio')
+  await wrapper.find('#areas').setValue('Petroquímica')
 }
 
 describe('MetadataStep', () => {
@@ -23,65 +31,57 @@ describe('MetadataStep', () => {
   beforeEach(async () => {
     setActivePinia(createPinia())
     store = useDocumentFormStore()
-    listProjetos.mockResolvedValue(PROJETOS)
-    listDisciplinas.mockResolvedValue(DISCIPLINAS)
+    listProjects.mockResolvedValue(PROJECTS)
+    listDisciplines.mockResolvedValue(DISCIPLINES)
     await store.loadCatalogs()
   })
 
-  it('deve popular os selects de projeto e disciplina com os dados da API', () => {
+  it('should populate the project and discipline selects with API data', () => {
     // When
     const wrapper = mount(MetadataStep)
     // Then
-    expect(wrapper.find('#projeto').text()).toContain('PJT001 - Projeto Alfa')
-    expect(wrapper.find('#disciplina').text()).toContain('TUB - Tubulação')
+    expect(wrapper.find('#project').text()).toContain('PJT001 - Projeto Alfa')
+    expect(wrapper.find('#discipline').text()).toContain('TUB - Tubulação')
   })
 
-  it('deve exibir código e revisão como somente leitura', () => {
+  it('should render code and revision as read-only', () => {
     // When
     const wrapper = mount(MetadataStep)
     // Then
-    expect(wrapper.find('#codigo').attributes('readonly')).toBeDefined()
-    expect(wrapper.find('#revisao').attributes('readonly')).toBeDefined()
-    expect(wrapper.find('#revisao').element.value).toBe('REV01')
+    expect(wrapper.find('#code').attributes('readonly')).toBeDefined()
+    expect(wrapper.find('#revision').attributes('readonly')).toBeDefined()
+    expect(wrapper.find('#revision').element.value).toBe('REV01')
   })
 
-  it('deve manter "Próximo Passo" bloqueado enquanto campos obrigatórios estiverem vazios', () => {
+  it('should keep "Próximo Passo" disabled while required fields are empty', () => {
     // When
     const wrapper = mount(MetadataStep)
     // Then
     expect(nextButton(wrapper).attributes('disabled')).toBeDefined()
   })
 
-  it('deve gerar o código e liberar o avanço quando o usuário preencher os campos obrigatórios', async () => {
+  it('should build the code and enable the next step once required fields are filled', async () => {
     // Given
     const wrapper = mount(MetadataStep)
     // When
-    await wrapper.find('#projeto').setValue(1)
-    await wrapper.find('#disciplina').setValue(2)
-    await wrapper.find('#tipo').setValue('REV')
-    await wrapper.find('#titulo').setValue('Relatório de ensaio')
-    await wrapper.find('#areas').setValue('Petroquímica')
+    await fillRequiredFields(wrapper)
     // Then
-    expect(wrapper.find('#codigo').element.value).toBe('PJT001-TUB-REV-REV01')
+    expect(wrapper.find('#code').element.value).toBe('PJT001-TUB-REV-REV01')
     expect(wrapper.text()).toContain('PETROQUÍMICA')
     expect(nextButton(wrapper).attributes('disabled')).toBeUndefined()
   })
 
-  it('deve emitir next ao submeter o formulário válido', async () => {
+  it('should emit next when submitting a valid form', async () => {
     // Given
     const wrapper = mount(MetadataStep)
-    await wrapper.find('#projeto').setValue(1)
-    await wrapper.find('#disciplina').setValue(2)
-    await wrapper.find('#tipo').setValue('REV')
-    await wrapper.find('#titulo').setValue('Relatório de ensaio')
-    await wrapper.find('#areas').setValue('Petroquímica')
+    await fillRequiredFields(wrapper)
     // When
     await wrapper.find('form').trigger('submit')
     // Then
     expect(wrapper.emitted('next')).toHaveLength(1)
   })
 
-  it('não deve emitir next ao submeter o formulário incompleto', async () => {
+  it('should not emit next when submitting an incomplete form', async () => {
     // Given
     const wrapper = mount(MetadataStep)
     // When
@@ -90,7 +90,7 @@ describe('MetadataStep', () => {
     expect(wrapper.emitted('next')).toBeUndefined()
   })
 
-  it('deve remover uma área ao clicar no × da tag', async () => {
+  it('should remove an area when clicking the × on its tag', async () => {
     // Given
     store.form.areas = ['Petroquímica', 'Naval']
     const wrapper = mount(MetadataStep)
@@ -100,18 +100,18 @@ describe('MetadataStep', () => {
     expect(store.form.areas).toEqual(['Petroquímica'])
   })
 
-  it('deve pré-preencher o responsável com o usuário logado e permitir edição', async () => {
+  it('should pre-fill the author with the logged-in user and allow editing', async () => {
     // Given
-    store.setDefaultResponsavel('João Silva')
+    store.setDefaultAuthor('João Silva')
     const wrapper = mount(MetadataStep)
-    expect(wrapper.find('#responsavel').element.value).toBe('João Silva')
+    expect(wrapper.find('#author').element.value).toBe('João Silva')
     // When
-    await wrapper.find('#responsavel').setValue('Maria Souza')
+    await wrapper.find('#author').setValue('Maria Souza')
     // Then
-    expect(store.form.responsavel).toBe('Maria Souza')
+    expect(store.form.author).toBe('Maria Souza')
   })
 
-  it('deve exibir mensagem de erro quando as listas não carregarem', async () => {
+  it('should show an error message when the catalogs fail to load', () => {
     // Given
     store.catalogsError = 'Não foi possível conectar ao servidor.'
     // When
