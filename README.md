@@ -139,6 +139,8 @@ npm install                  # (re)install dependencies after a git pull
 
 ## Project structure
 
+See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) for the full layout and conventions. Summary:
+
 ```
 frontend/
 ├── index.html          # HTML shell that loads the Vue app
@@ -147,6 +149,14 @@ frontend/
 ├── package.json        # Dependencies and npm scripts
 └── src/
     ├── main.js         # Application bootstrap
-    ├── style.css       # Global styles
-    └── App.vue         # Root component
+    ├── App.vue         # Root component (layout shell)
+    ├── api/            # Backend integration (HTTP client, per-domain modules)
+    ├── components/     # Reusable components (common/, layout/)
+    ├── composables/    # Reusable composition logic
+    ├── router/         # Route definitions
+    ├── stores/         # Pinia global state
+    ├── styles/         # Global CSS and design tokens
+    ├── utils/          # Pure helper functions
+    ├── views/          # Page-level components
+    └── assets/         # Static icons and images
 ```
