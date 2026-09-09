@@ -114,14 +114,16 @@ describe('documentFormStore', () => {
     expect(store.errors).toEqual({ author: 'Responsável/Autor é obrigatório.' })
   })
 
-  it('should clear the form on reset while keeping the default author', () => {
+  it('should clear the form and the publishing flag on reset while keeping the default author', () => {
     // Given
     fillValidForm(store)
+    store.publishing = true
     // When
     store.reset('João Silva')
     // Then
     expect(store.form.title).toBe('')
     expect(store.form.areas).toEqual([])
     expect(store.form.author).toBe('João Silva')
+    expect(store.publishing).toBe(false)
   })
 })

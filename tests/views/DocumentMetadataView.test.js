@@ -70,6 +70,22 @@ describe('DocumentMetadataView', () => {
     expect(store.form.title).toBe('Relatório de ensaio')
   })
 
+  it('should go to the confirmation step when the valid form is submitted', async () => {
+    // Given
+    const wrapper = mount(DocumentMetadataView)
+    await flushPromises()
+    await wrapper.find('#project').setValue(1)
+    await wrapper.find('#discipline').setValue(5)
+    await wrapper.find('#document-type').setValue('REV')
+    await wrapper.find('#title').setValue('Relatório de ensaio')
+    await wrapper.find('#areas').setValue('Petroquímica')
+    // When
+    await wrapper.find('form').trigger('submit')
+    // Then
+    expect(push).toHaveBeenCalledWith({ name: 'document-confirmation' })
+    expect(store.form.title).toBe('Relatório de ensaio')
+  })
+
   it('should not reload the catalogs when they are already in memory', async () => {
     // Given
     store.projects = PROJECTS
