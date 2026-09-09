@@ -2,6 +2,7 @@
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import StepIndicator from '../components/common/StepIndicator.vue'
+import PageLayout from '../components/layout/PageLayout.vue'
 import MetadataStep from '../components/document-upload/MetadataStep.vue'
 import { useAuthStore } from '../stores/authStore'
 import { STEPS, useDocumentFormStore } from '../stores/documentFormStore'
@@ -31,12 +32,10 @@ function goBackToUpload() {
 </script>
 
 <template>
-  <main class="page">
-    <div class="page-header">
-      <h1>Fazer upload de arquivo</h1>
-      <p class="page-subtitle">Faça o carregamento de seus arquivos e siga as orientações para avançar.</p>
-    </div>
-
+  <PageLayout
+    title="Fazer upload de arquivo"
+    subtitle="Faça o carregamento de seus arquivos e siga as orientações para avançar."
+  >
     <section class="card">
       <StepIndicator :steps="STEPS" :current-step="METADATA_STEP" />
     </section>
@@ -45,41 +44,14 @@ function goBackToUpload() {
       Arquivo(s) da etapa anterior: <strong>{{ uploadedFileNames.join(', ') }}</strong>
     </p>
 
-    <MetadataStep class="step" @back="goBackToUpload" />
-  </main>
+    <MetadataStep @back="goBackToUpload" />
+  </PageLayout>
 </template>
 
 <style scoped>
-.page {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 2.5rem 1.5rem;
-}
-
-.page-header h1 {
-  font-size: 1.5rem;
-}
-
-.page-subtitle {
-  color: var(--color-text-muted);
-  margin-top: 0.35rem;
-}
-
-.card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 1.5rem;
-  margin-top: 1.5rem;
-}
-
 .uploaded-files {
   margin-top: 1rem;
   font-size: 0.9rem;
   color: var(--color-text-muted);
-}
-
-.step {
-  margin-top: 1.5rem;
 }
 </style>

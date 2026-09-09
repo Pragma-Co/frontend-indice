@@ -25,7 +25,7 @@ function back(event) {
 </script>
 
 <template>
-  <form class="metadata" novalidate @submit.prevent="next">
+  <form class="card metadata" novalidate @submit.prevent="next">
     <h2 class="metadata__title">Informações do Documento</h2>
 
     <p v-if="store.catalogsError" class="metadata__alert" role="alert">
@@ -121,13 +121,6 @@ function back(event) {
 </template>
 
 <style scoped>
-.metadata {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 1.5rem;
-}
-
 .metadata__title {
   font-size: 1rem;
   margin-bottom: 1.25rem;
