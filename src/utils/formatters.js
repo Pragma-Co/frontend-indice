@@ -25,3 +25,10 @@ export function getFileTypeLabel(fileName) {
   const extension = getFileExtension(fileName)
   return FILE_TYPE_LABELS_BY_EXTENSION[extension] ?? 'Documento'
 }
+
+export function formatUpdatedAt(isoDate) {
+  const date = new Date(isoDate)
+  const datePart = date.toLocaleDateString('pt-BR')
+  const timePart = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  return `${datePart} ${timePart}`
+}

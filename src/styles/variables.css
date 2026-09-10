@@ -19,6 +19,10 @@
 
   --color-primary-bg: #e8ecfd;
 
+  --color-info: #2347c9;
+  --color-info-bg: #eaf1ff;
+  --color-info-border: #cfe0ff;
+
   --color-text: #1f2937;
   --color-text-muted: #6b7280;
   --color-text-inverse: #ffffff;
