@@ -164,12 +164,10 @@ frontend/
     ├── views/          # Page-level components
     └── assets/         # Static icons and images
 tests/                  # Vitest suites (Given/When/Then), mirroring src/
-docs/API_CONTRACT.md    # Endpoints and form fields consumed by the metadata step
 ```
 
 ## Document registration flow
 
 `/documentos/upload` (step 1, Upload) redirects to `/documentos/metadados` (step 2, Metadados) once the file is sent.
 The metadata form previews the unique code `PROJETO-SUBGRUPO-TIPO-REV` (e.g. `PJT001-TUB-REV-REV01`); the backend
-generates the definitive value on submission. Step 3 (Confirmação) is a separate task. See
-[docs/API_CONTRACT.md](docs/API_CONTRACT.md).
+generates the definitive value on submission. Step 3 (Confirmação) is a separate task.
