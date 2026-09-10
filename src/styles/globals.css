@@ -13,7 +13,10 @@ body {
   min-height: 100vh;
 }
 
-button {
+button,
+input,
+select,
+textarea {
   font-family: inherit;
 }
 
