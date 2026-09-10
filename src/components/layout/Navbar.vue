@@ -12,10 +12,15 @@ const auth = useAuthStore()
     </div>
 
     <nav class="navbar-links">
+<<<<<<< HEAD
       <RouterLink to="/documentos/upload" class="navbar-link">Início</RouterLink>
       <RouterLink to="/documentos/upload" class="navbar-link" active-class="active"
         >Documentos</RouterLink
       >
+=======
+      <RouterLink to="/documentos" class="navbar-link">Início</RouterLink>
+      <RouterLink to="/documentos" class="navbar-link" active-class="active">Documentos</RouterLink>
+>>>>>>> 593079a (feat(#32): create documents management interface with pagination and status badges)
     </nav>
 
     <div class="navbar-user">
