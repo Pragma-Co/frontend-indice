@@ -1,41 +1,46 @@
-import { toAcronym } from './documentCode'
-
 /**
  * Static option lists for the metadata form. Projects and disciplines come
- * from the API (GET /projects, GET /disciplines); the lists below are the
- * defaults agreed for the form until dedicated endpoints exist.
- * Labels are user-facing and stay in Portuguese.
+ * from the API (GET /projects, GET /disciplines). Document types and areas are
+ * tables in the database as well, but until they get endpoints the lists
+ * below mirror the seed data, code by code, so the document can be saved
+ * later. Labels are user-facing and stay in Portuguese.
  */
-const DOCUMENT_TYPE_NAMES = [
-  'Norma',
-  'Desenho',
-  'Relatório',
-  'Memória de Cálculo',
-  'Revisão Técnica',
-  'Procedimento',
-  'Especificação',
+export const DOCUMENT_TYPES = [
+  { code: 'DWG', name: 'Desenho Técnico' },
+  { code: 'MEM', name: 'Memorial de Cálculo' },
+  { code: 'ESP', name: 'Especificação Técnica' },
+  { code: 'NOR', name: 'Norma Interna' },
+  { code: 'REV', name: 'Relatório de Verificação' },
+  { code: 'PRO', name: 'Procedimento de Fabricação' },
+  { code: 'LDM', name: 'Lista de Materiais' },
 ]
-
-export const DOCUMENT_TYPES = DOCUMENT_TYPE_NAMES.map((name) => ({ acronym: toAcronym(name), name }))
 
 export const AREAS = [
-  'Petroquímica',
-  'Aeroespacial',
-  'Defesa',
-  'Industrial',
-  'Naval',
-  'Óleo e Gás',
-  'Energia',
-  'Automotivo',
+  { code: 'EST', name: 'Engenharia Estrutural' },
+  { code: 'SIS', name: 'Engenharia de Sistemas' },
+  { code: 'AER', name: 'Aerodinâmica e Desempenho' },
+  { code: 'MFG', name: 'Manufatura e Montagem' },
+  { code: 'QUA', name: 'Qualidade e Inspeção' },
+  { code: 'CER', name: 'Certificação e Aeronavegabilidade' },
 ]
 
+/** Values accepted by the database; the default is the one the backend applies. */
 export const CONFIDENTIALITY_LEVELS = [
-  { value: 'public', label: 'Público' },
-  { value: 'internal', label: 'Interno' },
-  { value: 'confidential', label: 'Confidencial' },
-  { value: 'secret', label: 'Sigiloso' },
+  { value: 'PUBLIC', label: 'Público' },
+  { value: 'CONFIDENTIAL', label: 'Confidencial' },
+  { value: 'SECRET', label: 'Sigiloso' },
 ]
 
-export function findDocumentType(acronym) {
-  return DOCUMENT_TYPES.find((t) => t.acronym === acronym) ?? null
+export const DEFAULT_CONFIDENTIALITY = 'CONFIDENTIAL'
+
+export function findDocumentType(code) {
+  return DOCUMENT_TYPES.find((t) => t.code === code) ?? null
+}
+
+export function findArea(code) {
+  return AREAS.find((a) => a.code === code) ?? null
+}
+
+export function findConfidentiality(value) {
+  return CONFIDENTIALITY_LEVELS.find((c) => c.value === value) ?? null
 }

@@ -3,14 +3,17 @@ import { computed } from 'vue'
 
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
-  options: { type: Array, default: () => [] }, // array of strings
+  options: { type: Array, default: () => [] }, // [{ value, label }]
   id: { type: String, default: undefined },
   placeholder: { type: String, default: 'Adicionar...' },
 })
 
 const emit = defineEmits(['update:modelValue'])
 
-const available = computed(() => props.options.filter((o) => !props.modelValue.includes(o)))
+const available = computed(() => props.options.filter((o) => !props.modelValue.includes(o.value)))
+const selected = computed(() =>
+  props.modelValue.map((value) => props.options.find((o) => o.value === value) ?? { value, label: value }),
+)
 
 function add(event) {
   const value = event.target.value
@@ -31,13 +34,13 @@ function remove(value) {
 <template>
   <div class="tags">
     <ul v-if="modelValue.length" class="tags__list" aria-label="Itens selecionados">
-      <li v-for="tag in modelValue" :key="tag" class="tags__chip">
-        {{ tag.toUpperCase() }}
+      <li v-for="tag in selected" :key="tag.value" class="tags__chip">
+        {{ tag.label.toUpperCase() }}
         <button
           type="button"
           class="tags__remove"
-          :aria-label="`Remover ${tag}`"
-          @click="remove(tag)"
+          :aria-label="`Remover ${tag.label}`"
+          @click="remove(tag.value)"
         >
           ×
         </button>
@@ -45,7 +48,7 @@ function remove(value) {
     </ul>
     <select :id="id" class="tags__select" :disabled="!available.length" @change="add">
       <option value="">{{ available.length ? placeholder : 'Todas as opções selecionadas' }}</option>
-      <option v-for="option in available" :key="option" :value="option">{{ option }}</option>
+      <option v-for="option in available" :key="option.value" :value="option.value">{{ option.label }}</option>
     </select>
   </div>
 </template>

@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia'
 import { listProjects } from '../api/projects'
 import { listDisciplines } from '../api/disciplines'
-import { buildDocumentCode, INITIAL_REVISION } from '../utils/documentCode'
-import { findDocumentType } from '../utils/documentCatalog'
+import { buildDocumentCode, INITIAL_VERSION, revisionLabel } from '../utils/documentCode'
+import { DEFAULT_CONFIDENTIALITY, findDocumentType } from '../utils/documentCatalog'
 import { validateDocumentForm } from '../utils/validators'
 
 export function emptyForm(author = '') {
@@ -13,9 +13,9 @@ export function emptyForm(author = '') {
     documentType: '',
     description: '',
     author,
-    areas: [],
-    confidentiality: 'public',
-    revision: INITIAL_REVISION,
+    areas: [], // area codes
+    confidentiality: DEFAULT_CONFIDENTIALITY,
+    version: INITIAL_VERSION, // shown as REV01; sent as an integer on submission
   }
 }
 
@@ -39,12 +39,13 @@ export const useDocumentFormStore = defineStore('documentForm', {
     selectedDiscipline: (state) =>
       state.disciplines.find((d) => String(d.id) === String(state.form.disciplineId)) ?? null,
     selectedDocumentType: (state) => findDocumentType(state.form.documentType),
+    revision: (state) => revisionLabel(state.form.version),
     codePreview() {
       return buildDocumentCode({
         project: this.selectedProject?.code,
-        discipline: this.selectedDiscipline?.acronym,
-        type: this.selectedDocumentType?.acronym,
-        revision: this.form.revision,
+        discipline: this.selectedDiscipline?.code,
+        type: this.selectedDocumentType?.code,
+        version: this.form.version,
       })
     },
     errors: (state) => validateDocumentForm(state.form),

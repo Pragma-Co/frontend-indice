@@ -10,6 +10,7 @@ const emit = defineEmits(['back', 'next'])
 const store = useDocumentFormStore()
 
 const code = computed(() => store.codePreview ?? '')
+const areaOptions = AREAS.map((area) => ({ value: area.code, label: area.name }))
 const canProceed = computed(() => store.isValid && !store.catalogsLoading)
 
 /** Navigation between steps belongs to the view; step 3 is a separate task. */
@@ -47,7 +48,7 @@ function back(event) {
         <select id="discipline" v-model="store.form.disciplineId" :disabled="store.catalogsLoading">
           <option value="">{{ store.catalogsLoading ? 'Carregando…' : 'Selecione a disciplina' }}</option>
           <option v-for="discipline in store.disciplines" :key="discipline.id" :value="discipline.id">
-            {{ discipline.acronym }} - {{ discipline.name }}
+            {{ discipline.code }} - {{ discipline.name }}
           </option>
         </select>
       </FormField>
@@ -55,14 +56,14 @@ function back(event) {
       <FormField label="Tipo de documento" html-for="document-type" required>
         <select id="document-type" v-model="store.form.documentType">
           <option value="">Selecione o tipo</option>
-          <option v-for="type in DOCUMENT_TYPES" :key="type.acronym" :value="type.acronym">
-            {{ type.acronym }} - {{ type.name }}
+          <option v-for="type in DOCUMENT_TYPES" :key="type.code" :value="type.code">
+            {{ type.code }} - {{ type.name }}
           </option>
         </select>
       </FormField>
 
       <FormField label="Revisão" html-for="revision">
-        <input id="revision" type="text" :value="store.form.revision" readonly />
+        <input id="revision" type="text" :value="store.revision" readonly />
       </FormField>
 
       <FormField label="Código/ID" html-for="code" class="metadata__full">
@@ -81,7 +82,7 @@ function back(event) {
           v-model="store.form.title"
           type="text"
           placeholder="Digite o título do documento…"
-          maxlength="200"
+          maxlength="255"
         />
       </FormField>
 
@@ -91,7 +92,7 @@ function back(event) {
           v-model="store.form.description"
           rows="3"
           placeholder="Descreva brevemente o conteúdo do documento…"
-          maxlength="1000"
+          maxlength="500"
         />
       </FormField>
 
@@ -105,7 +106,7 @@ function back(event) {
       </FormField>
 
       <FormField label="Área(s) relacionada(s)" html-for="areas" required>
-        <TagMultiSelect id="areas" v-model="store.form.areas" :options="AREAS" placeholder="Adicionar área…" />
+        <TagMultiSelect id="areas" v-model="store.form.areas" :options="areaOptions" placeholder="Adicionar área…" />
       </FormField>
 
       <FormField label="Responsável / Autor" html-for="author" required class="metadata__full">
