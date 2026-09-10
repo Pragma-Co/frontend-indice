@@ -1,6 +1,6 @@
 <script setup>
 defineProps({
-  /** neutral | public | internal | confidential | secret */
+  /** neutral | public | confidential | secret */
   variant: { type: String, default: 'neutral' },
 })
 </script>
@@ -28,12 +28,6 @@ defineProps({
   background: var(--color-success-bg);
   border-color: var(--color-success-border);
   color: var(--color-success);
-}
-
-.badge-internal {
-  background: var(--color-primary-bg);
-  border-color: var(--color-primary);
-  color: var(--color-primary);
 }
 
 .badge-confidential {
