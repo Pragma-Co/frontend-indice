@@ -14,7 +14,7 @@ import { UPLOAD_FLOW_SUBTITLE, UPLOAD_FLOW_TITLE, UPLOAD_STEP, UPLOAD_STEPS } fr
 const router = useRouter()
 const uploadStore = useUploadStore()
 
-const { queue, hasSucceededFile, addFiles, resolveDuplicate, reset, ACCEPTED_EXTENSIONS } =
+const { queue, hasSucceededFile, addFiles, resolveDuplicate, reset, restore, ACCEPTED_EXTENSIONS } =
   useDocumentUpload()
 
 const activeDuplicate = computed(() => queue.value.find((item) => item.status === 'duplicate'))
@@ -30,6 +30,7 @@ function goToMetadataStep() {
 
 function handleCancel() {
   reset()
+  uploadStore.reset()
 }
 
 function handleFilesSelected(fileList) {
@@ -46,6 +47,8 @@ function preventStrayFileDrop(event) {
 }
 
 onMounted(() => {
+  // Coming back from the metadata step: show the files already sent
+  if (uploadStore.uploadedDocuments.length) restore(uploadStore.uploadedDocuments)
   window.addEventListener('dragover', preventStrayFileDrop)
   window.addEventListener('drop', preventStrayFileDrop)
 })
