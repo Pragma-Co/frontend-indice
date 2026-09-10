@@ -9,16 +9,16 @@ vi.mock('../../src/api/disciplines', () => ({ listDisciplines: vi.fn() }))
 import { listProjects } from '../../src/api/projects'
 import { listDisciplines } from '../../src/api/disciplines'
 
-const PROJECTS = [{ id: 1, code: 'PJT001', name: 'Projeto Alfa' }]
-const DISCIPLINES = [{ id: 5, acronym: 'TUB', name: 'Tubulação' }]
+const PROJECTS = [{ id: 1, code: 'AK-2100', name: 'Aeroestrutura de Fuselagem Central' }]
+const DISCIPLINES = [{ id: 1, code: 'EST', name: 'Estruturas' }]
 
 function fillValidForm(store) {
-  store.form.title = 'Relatório de ensaio'
+  store.form.title = 'Desenho da fuselagem central'
   store.form.projectId = 1
-  store.form.disciplineId = 5
-  store.form.documentType = 'REV'
+  store.form.disciplineId = 1
+  store.form.documentType = 'DWG'
   store.form.author = 'João Silva'
-  store.form.areas = ['Petroquímica']
+  store.form.areas = ['EST']
 }
 
 describe('documentFormStore', () => {
@@ -32,9 +32,11 @@ describe('documentFormStore', () => {
     listDisciplines.mockResolvedValue(DISCIPLINES)
   })
 
-  it('should start with revision REV01 and an empty form', () => {
+  it('should start at version 1 shown as REV01, confidential by default, with an empty form', () => {
     // Then
-    expect(store.form.revision).toBe('REV01')
+    expect(store.form.version).toBe(1)
+    expect(store.revision).toBe('REV01')
+    expect(store.form.confidentiality).toBe('CONFIDENTIAL')
     expect(store.form.title).toBe('')
     expect(store.form.areas).toEqual([])
     expect(store.isValid).toBe(false)
@@ -61,13 +63,13 @@ describe('documentFormStore', () => {
     expect(store.catalogsLoading).toBe(false)
   })
 
-  it('should preview the code from project code, discipline acronym and document type', async () => {
+  it('should preview the code from the project, discipline and document type codes', async () => {
     // Given
     await store.loadCatalogs()
     // When
     fillValidForm(store)
     // Then
-    expect(store.codePreview).toBe('PJT001-TUB-REV-REV01')
+    expect(store.codePreview).toBe('AK-2100-EST-DWG-REV01')
   })
 
   it('should keep the code preview empty while project, discipline or type is missing', async () => {
@@ -75,7 +77,7 @@ describe('documentFormStore', () => {
     await store.loadCatalogs()
     // When
     store.form.projectId = 1
-    store.form.documentType = 'REV'
+    store.form.documentType = 'DWG'
     // Then
     expect(store.codePreview).toBeNull()
   })

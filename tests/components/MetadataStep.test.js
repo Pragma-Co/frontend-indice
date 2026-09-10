@@ -10,8 +10,8 @@ vi.mock('../../src/api/disciplines', () => ({ listDisciplines: vi.fn() }))
 import { listProjects } from '../../src/api/projects'
 import { listDisciplines } from '../../src/api/disciplines'
 
-const PROJECTS = [{ id: 1, code: 'PJT001', name: 'Projeto Alfa' }]
-const DISCIPLINES = [{ id: 5, acronym: 'TUB', name: 'Tubulação' }]
+const PROJECTS = [{ id: 1, code: 'AK-2100', name: 'Aeroestrutura de Fuselagem Central' }]
+const DISCIPLINES = [{ id: 1, code: 'EST', name: 'Estruturas' }]
 
 function nextButton(wrapper) {
   return wrapper.findAll('button').find((b) => b.text() === 'Próximo Passo')
@@ -19,11 +19,11 @@ function nextButton(wrapper) {
 
 async function fillRequiredFields(wrapper) {
   await wrapper.find('#project').setValue(1)
-  await wrapper.find('#discipline').setValue(5)
-  await wrapper.find('#document-type').setValue('REV')
-  await wrapper.find('#title').setValue('Relatório de ensaio')
+  await wrapper.find('#discipline').setValue(1)
+  await wrapper.find('#document-type').setValue('DWG')
+  await wrapper.find('#title').setValue('Desenho da fuselagem central')
   await wrapper.find('#author').setValue('João Silva')
-  await wrapper.find('#areas').setValue('Petroquímica')
+  await wrapper.find('#areas').setValue('EST')
 }
 
 describe('MetadataStep', () => {
@@ -41,8 +41,8 @@ describe('MetadataStep', () => {
     // When
     const wrapper = mount(MetadataStep)
     // Then
-    expect(wrapper.find('#project').text()).toContain('PJT001 - Projeto Alfa')
-    expect(wrapper.find('#discipline').text()).toContain('TUB - Tubulação')
+    expect(wrapper.find('#project').text()).toContain('AK-2100 - Aeroestrutura de Fuselagem Central')
+    expect(wrapper.find('#discipline').text()).toContain('EST - Estruturas')
   })
 
   it('should render code and revision as read-only', () => {
@@ -67,8 +67,8 @@ describe('MetadataStep', () => {
     // When
     await fillRequiredFields(wrapper)
     // Then
-    expect(wrapper.find('#code').element.value).toBe('PJT001-TUB-REV-REV01')
-    expect(wrapper.text()).toContain('PETROQUÍMICA')
+    expect(wrapper.find('#code').element.value).toBe('AK-2100-EST-DWG-REV01')
+    expect(wrapper.text()).toContain('ENGENHARIA ESTRUTURAL')
     expect(nextButton(wrapper).attributes('disabled')).toBeUndefined()
   })
 
@@ -93,12 +93,12 @@ describe('MetadataStep', () => {
 
   it('should remove an area when clicking the × on its tag', async () => {
     // Given
-    store.form.areas = ['Petroquímica', 'Naval']
+    store.form.areas = ['EST', 'QUA']
     const wrapper = mount(MetadataStep)
     // When
-    await wrapper.find('button[aria-label="Remover Naval"]').trigger('click')
+    await wrapper.find('button[aria-label="Remover Qualidade e Inspeção"]').trigger('click')
     // Then
-    expect(store.form.areas).toEqual(['Petroquímica'])
+    expect(store.form.areas).toEqual(['EST'])
   })
 
   it('should pre-fill the author with the logged-in user and allow editing', async () => {

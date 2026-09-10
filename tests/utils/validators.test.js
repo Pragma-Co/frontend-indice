@@ -5,9 +5,9 @@ const validForm = {
   title: 'Relatório de ensaio',
   projectId: 1,
   disciplineId: 2,
-  documentType: 'REL',
-  confidentiality: 'public',
-  areas: ['Petroquímica'],
+  documentType: 'MEM',
+  confidentiality: 'PUBLIC',
+  areas: ['EST'],
   author: 'João Silva',
 }
 

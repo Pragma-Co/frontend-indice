@@ -13,8 +13,8 @@ vi.mock('../../src/api/disciplines', () => ({ listDisciplines: vi.fn() }))
 import { listProjects } from '../../src/api/projects'
 import { listDisciplines } from '../../src/api/disciplines'
 
-const PROJECTS = [{ id: 1, code: 'PJT001', name: 'Projeto Alfa' }]
-const DISCIPLINES = [{ id: 5, acronym: 'TUB', name: 'Tubulação' }]
+const PROJECTS = [{ id: 1, code: 'AK-2100', name: 'Aeroestrutura de Fuselagem Central' }]
+const DISCIPLINES = [{ id: 1, code: 'EST', name: 'Estruturas' }]
 
 describe('DocumentMetadataView', () => {
   let store
@@ -45,7 +45,7 @@ describe('DocumentMetadataView', () => {
     const active = wrapper.find('.step-circle.active')
     expect(active.text()).toBe('2')
     expect(wrapper.text()).toContain('Informações do Documento')
-    expect(wrapper.find('#project').text()).toContain('PJT001 - Projeto Alfa')
+    expect(wrapper.find('#project').text()).toContain('AK-2100 - Aeroestrutura de Fuselagem Central')
   })
 
   it('should list the files received from the upload step', async () => {
