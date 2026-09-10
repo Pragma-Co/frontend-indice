@@ -12,14 +12,14 @@ function publishButton(wrapper) {
 }
 
 function fillValidForm(store) {
-  store.form.title = 'Relatório de ensaio'
+  store.form.title = 'Desenho da fuselagem central'
   store.form.projectId = 1
-  store.form.disciplineId = 6
-  store.form.documentType = 'REV'
-  store.form.description = 'Ensaio hidrostático das linhas principais'
+  store.form.disciplineId = 1
+  store.form.documentType = 'DWG'
+  store.form.description = 'Desenho de conjunto da fuselagem central'
   store.form.author = 'João Silva'
-  store.form.areas = ['Petroquímica', 'Naval']
-  store.form.confidentiality = 'internal'
+  store.form.areas = ['EST', 'QUA']
+  store.form.confidentiality = 'SECRET'
 }
 
 describe('ConfirmationStep', () => {
@@ -28,8 +28,8 @@ describe('ConfirmationStep', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     store = useDocumentFormStore()
-    store.projects = [{ id: 1, code: 'PJT001', name: 'Projeto Alfa' }]
-    store.disciplines = [{ id: 6, acronym: 'EST', name: 'Estrutura' }]
+    store.projects = [{ id: 1, code: 'AK-2100', name: 'Aeroestrutura de Fuselagem Central' }]
+    store.disciplines = [{ id: 1, code: 'EST', name: 'Estruturas' }]
     vi.useFakeTimers()
     vi.setSystemTime(new Date(2026, 8, 15))
   })
@@ -45,16 +45,16 @@ describe('ConfirmationStep', () => {
     const wrapper = mount(ConfirmationStep)
     const text = wrapper.text()
     // Then
-    expect(wrapper.find('[data-testid="document-code"]').text()).toBe('PJT001-EST-REV-REV01')
+    expect(wrapper.find('[data-testid="document-code"]').text()).toBe('AK-2100-EST-DWG-REV01')
     expect(text).toContain('REV01')
     expect(text).toContain('15/09/2026')
     expect(text).toContain('João Silva')
-    expect(text).toContain('REV - Revisão Técnica')
-    expect(text).toContain('EST - Estrutura')
-    expect(text).toContain('Interno')
-    expect(text).toContain('Petroquímica')
-    expect(text).toContain('Naval')
-    expect(text).toContain('Ensaio hidrostático das linhas principais')
+    expect(text).toContain('DWG - Desenho Técnico')
+    expect(text).toContain('EST - Estruturas')
+    expect(text).toContain('Sigiloso')
+    expect(text).toContain('Engenharia Estrutural')
+    expect(text).toContain('Qualidade e Inspeção')
+    expect(text).toContain('Desenho de conjunto da fuselagem central')
   })
 
   it('should render tags and confidentiality as badges', () => {
@@ -64,10 +64,10 @@ describe('ConfirmationStep', () => {
     const wrapper = mount(ConfirmationStep)
     const badges = wrapper.findAll('.badge').map((b) => b.text())
     // Then
-    expect(badges).toContain('Interno')
-    expect(badges).toContain('Petroquímica')
-    expect(badges).toContain('Naval')
-    expect(wrapper.find('.badge-internal').exists()).toBe(true)
+    expect(badges).toContain('Sigiloso')
+    expect(badges).toContain('Engenharia Estrutural')
+    expect(badges).toContain('Qualidade e Inspeção')
+    expect(wrapper.find('.badge-secret').exists()).toBe(true)
   })
 
   it('should show dashes for empty fields and list the missing required ones', () => {
@@ -126,7 +126,7 @@ describe('ConfirmationStep', () => {
     await wrapper.findAll('button').find((b) => b.text() === 'Anterior').trigger('click')
     // Then
     expect(wrapper.emitted('back')).toHaveLength(1)
-    expect(store.form.title).toBe('Relatório de ensaio')
-    expect(store.form.areas).toEqual(['Petroquímica', 'Naval'])
+    expect(store.form.title).toBe('Desenho da fuselagem central')
+    expect(store.form.areas).toEqual(['EST', 'QUA'])
   })
 })
