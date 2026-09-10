@@ -169,5 +169,5 @@ tests/                  # Vitest suites (Given/When/Then), mirroring src/
 ## Document registration flow
 
 `/documentos/upload` (step 1, Upload) redirects to `/documentos/metadados` (step 2, Metadados) once the file is sent.
-The metadata form previews the unique code `PROJETO-SUBGRUPO-TIPO-REV` (e.g. `PJT001-TUB-REV-REV01`); the backend
+The metadata form previews the unique code `PROJECT-DISCIPLINE-TYPE-REV` (e.g. `AK-2100-EST-DWG-REV01`); the backend
 generates the definitive value on submission. Step 3 (Confirmação) is a separate task.
