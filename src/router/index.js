@@ -3,9 +3,9 @@ import { createRouter, createWebHistory } from 'vue-router'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', redirect: '/inicio' },
+    { path: '/', redirect: '/home' },
     {
-      path: '/inicio',
+      path: '/home',
       name: 'home',
       component: () => import('../views/home/HomeView.vue'),
       meta: { title: 'Colaborador - Início' },
