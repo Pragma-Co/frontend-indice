@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, reactive } from 'vue'
 import { getInitials } from '../../utils/formatters'
 import { useDocumentFormStore } from '../../stores/documentFormStore'
 import { AREAS, CONFIDENTIALITY_LEVELS, DOCUMENT_TYPES } from '../../utils/documentCatalog'
@@ -14,6 +14,17 @@ const code = computed(() => store.codePreview ?? '')
 const areaOptions = AREAS.map((area) => ({ value: area.code, label: area.name }))
 const canProceed = computed(() => store.isValid && !store.catalogsLoading)
 const authorInitials = computed(() => getInitials(store.form.author))
+
+// Inline errors appear once the user leaves a required field, never before.
+const touched = reactive({})
+
+function touch(field) {
+  touched[field] = true
+}
+
+function fieldError(field) {
+  return touched[field] ? (store.errors[field] ?? '') : ''
+}
 
 /** Navigation between steps belongs to the view; step 3 is a separate task. */
 function next() {
@@ -37,7 +48,14 @@ function back(event) {
     </p>
 
     <div class="metadata__grid">
-      <FormField label="Projeto Associado" html-for="project" required icon="search">
+      <FormField
+        label="Projeto Associado"
+        html-for="project"
+        required
+        icon="search"
+        :error="fieldError('projectId')"
+        @focusout="touch('projectId')"
+      >
         <select id="project" v-model="store.form.projectId" :disabled="store.catalogsLoading">
           <option value="">{{ store.catalogsLoading ? 'Carregando…' : 'Buscar projeto…' }}</option>
           <option v-for="project in store.projects" :key="project.id" :value="project.id">
@@ -46,7 +64,14 @@ function back(event) {
         </select>
       </FormField>
 
-      <FormField label="Disciplina" html-for="discipline" required icon="document">
+      <FormField
+        label="Disciplina"
+        html-for="discipline"
+        required
+        icon="document"
+        :error="fieldError('disciplineId')"
+        @focusout="touch('disciplineId')"
+      >
         <select id="discipline" v-model="store.form.disciplineId" :disabled="store.catalogsLoading">
           <option value="">{{ store.catalogsLoading ? 'Carregando…' : 'Selecione a disciplina' }}</option>
           <option v-for="discipline in store.disciplines" :key="discipline.id" :value="discipline.id">
@@ -55,7 +80,14 @@ function back(event) {
         </select>
       </FormField>
 
-      <FormField label="Tipo de documento" html-for="document-type" required icon="document">
+      <FormField
+        label="Tipo de documento"
+        html-for="document-type"
+        required
+        icon="document"
+        :error="fieldError('documentType')"
+        @focusout="touch('documentType')"
+      >
         <select id="document-type" v-model="store.form.documentType">
           <option value="">Selecione o tipo</option>
           <option v-for="type in DOCUMENT_TYPES" :key="type.code" :value="type.code">
@@ -78,7 +110,14 @@ function back(event) {
         />
       </FormField>
 
-      <FormField label="Título do Documento" html-for="title" required class="metadata__full">
+      <FormField
+        label="Título do Documento"
+        html-for="title"
+        required
+        class="metadata__full"
+        :error="fieldError('title')"
+        @focusout="touch('title')"
+      >
         <input
           id="title"
           v-model="store.form.title"
@@ -107,13 +146,19 @@ function back(event) {
         </div>
       </FormField>
 
-      <FormField label="Área(s) relacionada(s)" html-for="areas" required>
+      <FormField
+        label="Área(s) relacionada(s)"
+        html-for="areas"
+        required
+        :error="fieldError('areas')"
+        @focusout="touch('areas')"
+      >
         <TagMultiSelect id="areas" v-model="store.form.areas" :options="areaOptions" placeholder="Adicionar área…" />
       </FormField>
 
     </div>
 
-    <div class="metadata__author">
+    <div class="metadata__author" :class="{ 'metadata__author--invalid': fieldError('author') }">
       <span class="metadata__author-avatar" data-testid="author-initials" aria-hidden="true">{{ authorInitials }}</span>
       <input
         id="author"
@@ -122,8 +167,10 @@ function back(event) {
         placeholder="Responsável / Autor"
         aria-label="Responsável / Autor"
         required
+        @blur="touch('author')"
       />
     </div>
+    <p v-if="fieldError('author')" class="metadata__author-error" role="alert">{{ fieldError('author') }}</p>
 
     <footer class="metadata__actions">
       <Button variant="outline" @click="back">Anterior</Button>
@@ -223,6 +270,16 @@ function back(event) {
 
 .metadata__author:focus-within {
   border-color: var(--color-primary);
+}
+
+.metadata__author--invalid {
+  border-color: var(--color-danger);
+}
+
+.metadata__author-error {
+  margin-top: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--color-danger);
 }
 
 .metadata__actions {

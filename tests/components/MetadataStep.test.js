@@ -112,6 +112,38 @@ describe('MetadataStep', () => {
     expect(store.form.author).toBe('Maria Souza')
   })
 
+  it('should show an inline error only after a required field is left empty', async () => {
+    // Given
+    const wrapper = mount(MetadataStep)
+    expect(wrapper.text()).not.toContain('Título é obrigatório.')
+    // When
+    await wrapper.find('#title').trigger('focusout')
+    // Then
+    expect(wrapper.text()).toContain('Título é obrigatório.')
+    expect(wrapper.find('#title').element.closest('.field').classList).toContain('field--invalid')
+  })
+
+  it('should clear the inline error once the field is filled', async () => {
+    // Given
+    const wrapper = mount(MetadataStep)
+    await wrapper.find('#title').trigger('focusout')
+    // When
+    await wrapper.find('#title').setValue('Desenho da fuselagem central')
+    // Then
+    expect(wrapper.text()).not.toContain('Título é obrigatório.')
+  })
+
+  it('should show the author error under the author block when it is cleared', async () => {
+    // Given
+    store.setDefaultAuthor('João Silva')
+    const wrapper = mount(MetadataStep)
+    // When
+    await wrapper.find('#author').setValue('')
+    await wrapper.find('#author').trigger('blur')
+    // Then
+    expect(wrapper.find('.metadata__author-error').text()).toBe('Responsável/Autor é obrigatório.')
+  })
+
   it('should show the author initials in the author block', async () => {
     // Given
     const wrapper = mount(MetadataStep)
