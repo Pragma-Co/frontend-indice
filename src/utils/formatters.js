@@ -15,9 +15,7 @@ export function formatFileSize(bytes) {
 const FILE_TYPE_LABELS_BY_EXTENSION = {
   pdf: 'Memorial',
   doc: 'Documento',
-  docx: 'Documento',
   jpeg: 'Imagem',
-  jpg: 'Imagem',
   png: 'Imagem',
 }
 
