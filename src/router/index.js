@@ -4,6 +4,9 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', redirect: '/documentos/upload' },
+    // Navbar targets. Placeholders until the home screen and the documents list (SCRUM-32) exist.
+    { path: '/home', redirect: '/documentos/upload' },
+    { path: '/documentos', redirect: '/documentos/upload' },
     {
       path: '/documentos/upload',
       name: 'document-upload',
