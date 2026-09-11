@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { getInitials } from '../../utils/formatters'
 import { useDocumentFormStore } from '../../stores/documentFormStore'
 import { AREAS, CONFIDENTIALITY_LEVELS, DOCUMENT_TYPES } from '../../utils/documentCatalog'
 import Button from '../common/Button.vue'
@@ -12,6 +13,7 @@ const store = useDocumentFormStore()
 const code = computed(() => store.codePreview ?? '')
 const areaOptions = AREAS.map((area) => ({ value: area.code, label: area.name }))
 const canProceed = computed(() => store.isValid && !store.catalogsLoading)
+const authorInitials = computed(() => getInitials(store.form.author))
 
 /** Navigation between steps belongs to the view; step 3 is a separate task. */
 function next() {
@@ -35,7 +37,7 @@ function back(event) {
     </p>
 
     <div class="metadata__grid">
-      <FormField label="Projeto Associado" html-for="project" required>
+      <FormField label="Projeto Associado" html-for="project" required icon="search">
         <select id="project" v-model="store.form.projectId" :disabled="store.catalogsLoading">
           <option value="">{{ store.catalogsLoading ? 'Carregando…' : 'Buscar projeto…' }}</option>
           <option v-for="project in store.projects" :key="project.id" :value="project.id">
@@ -44,7 +46,7 @@ function back(event) {
         </select>
       </FormField>
 
-      <FormField label="Disciplina" html-for="discipline" required>
+      <FormField label="Disciplina" html-for="discipline" required icon="document">
         <select id="discipline" v-model="store.form.disciplineId" :disabled="store.catalogsLoading">
           <option value="">{{ store.catalogsLoading ? 'Carregando…' : 'Selecione a disciplina' }}</option>
           <option v-for="discipline in store.disciplines" :key="discipline.id" :value="discipline.id">
@@ -53,7 +55,7 @@ function back(event) {
         </select>
       </FormField>
 
-      <FormField label="Tipo de documento" html-for="document-type" required>
+      <FormField label="Tipo de documento" html-for="document-type" required icon="document">
         <select id="document-type" v-model="store.form.documentType">
           <option value="">Selecione o tipo</option>
           <option v-for="type in DOCUMENT_TYPES" :key="type.code" :value="type.code">
@@ -62,7 +64,7 @@ function back(event) {
         </select>
       </FormField>
 
-      <FormField label="Revisão" html-for="revision">
+      <FormField label="Revisão" html-for="revision" icon="document">
         <input id="revision" type="text" :value="store.revision" readonly />
       </FormField>
 
@@ -109,9 +111,18 @@ function back(event) {
         <TagMultiSelect id="areas" v-model="store.form.areas" :options="areaOptions" placeholder="Adicionar área…" />
       </FormField>
 
-      <FormField label="Responsável / Autor" html-for="author" required class="metadata__full">
-        <input id="author" v-model="store.form.author" type="text" placeholder="Nome do responsável" />
-      </FormField>
+    </div>
+
+    <div class="metadata__author">
+      <span class="metadata__author-avatar" data-testid="author-initials" aria-hidden="true">{{ authorInitials }}</span>
+      <input
+        id="author"
+        v-model="store.form.author"
+        type="text"
+        placeholder="Responsável / Autor"
+        aria-label="Responsável / Autor"
+        required
+      />
     </div>
 
     <footer class="metadata__actions">
@@ -172,6 +183,46 @@ function back(event) {
 
 .metadata__radio input {
   width: auto;
+}
+
+.metadata__author {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  padding: 0.6rem 1rem;
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+.metadata__author-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.metadata__author input {
+  flex: 1;
+  padding: 0.4rem 0;
+  border: none;
+  background: transparent;
+}
+
+.metadata__author input:focus {
+  outline: none;
+}
+
+.metadata__author:focus-within {
+  border-color: var(--color-primary);
 }
 
 .metadata__actions {
