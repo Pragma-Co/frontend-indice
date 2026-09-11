@@ -90,26 +90,31 @@ function isActive(to) {
 
 .navbar-links {
   display: flex;
-  gap: 2rem;
+  gap: 0.5rem;
 }
 
 .navbar-link {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.85);
   text-decoration: none;
   font-size: 0.92rem;
-  padding: 0.35rem 0;
-  border-bottom: 2px solid transparent;
-  transition: color 0.15s ease;
+  font-weight: 500;
+  padding: 0.4rem 0.9rem;
+  border-radius: var(--radius-sm);
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .navbar-link:hover {
   color: var(--color-text-inverse);
+  background: rgba(255, 255, 255, 0.1);
 }
 
+/* Active route: rounded container with a translucent fill around the label. */
 .navbar-link.active {
   color: var(--color-text-inverse);
   font-weight: 600;
-  border-bottom-color: var(--color-text-inverse);
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .navbar-user {
@@ -156,6 +161,7 @@ function isActive(to) {
 
 .navbar-user-name {
   font-size: 0.9rem;
+  font-weight: 500;
   white-space: nowrap;
 }
 
@@ -176,8 +182,8 @@ function isActive(to) {
     height: 24px;
   }
 
-  .navbar-links {
-    gap: 1.25rem;
+  .navbar-link {
+    padding: 0.35rem 0.6rem;
   }
 
   .navbar-user-name {
