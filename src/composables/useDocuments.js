@@ -203,10 +203,11 @@ const MOCK_DOCUMENTS = [
 ]
 
 export const ITEMS_PER_PAGE_OPTIONS = [5, 10, 20, 50]
+const DEFAULT_ITEMS_PER_PAGE = 20
 
 export function useDocuments() {
   const currentPage = ref(1)
-  const itemsPerPage = ref(ITEMS_PER_PAGE_OPTIONS[0])
+  const itemsPerPage = ref(DEFAULT_ITEMS_PER_PAGE)
 
   const documents = computed(() =>
     [...MOCK_DOCUMENTS].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)),

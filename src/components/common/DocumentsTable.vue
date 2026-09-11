@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { formatUpdatedAt } from '../../utils/formatters'
+import Badge from './Badge.vue'
 import StatusBadge from './StatusBadge.vue'
 
 defineProps({
@@ -19,7 +20,6 @@ const ACTION_LABELS = {
 }
 
 const MENU_ITEMS = [
-  { key: 'download', label: 'Baixar documento' },
   { key: 'history', label: 'Ver histórico de revisões' },
   { key: 'delete', label: 'Excluir documento' },
 ]
@@ -57,6 +57,7 @@ function handleMenuItem(document, itemKey) {
     </thead>
     <tbody>
       <tr v-for="document in documents" :key="document.id">
+        <!-- TODO: map this icon by file extension once documents carry one. -->
         <td class="cell-icon">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path
@@ -72,7 +73,7 @@ function handleMenuItem(document, itemKey) {
         <td class="cell-title">{{ document.title }}</td>
         <td class="cell-type">{{ document.type }}</td>
         <td>
-          <span class="revision-badge">{{ document.revision }}</span>
+          <Badge>{{ document.revision }}</Badge>
         </td>
         <td>
           <StatusBadge :status="document.status" />
@@ -160,7 +161,6 @@ function handleMenuItem(document, itemKey) {
 }
 
 .cell-code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   color: var(--color-text-muted);
   white-space: nowrap;
 }
@@ -189,16 +189,6 @@ function handleMenuItem(document, itemKey) {
   color: var(--color-text-muted);
   font-size: 0.78rem;
   margin-top: 0.1rem;
-}
-
-.revision-badge {
-  display: inline-block;
-  padding: 0.25rem 0.6rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  color: var(--color-text-muted);
-  font-size: 0.78rem;
-  font-weight: 600;
 }
 
 .cell-actions {
