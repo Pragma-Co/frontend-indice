@@ -3,6 +3,7 @@ import { useRouter } from 'vue-router'
 import Button from '../components/common/Button.vue'
 import DocumentsTable from '../components/common/DocumentsTable.vue'
 import Pagination from '../components/common/Pagination.vue'
+import PageLayout from '../components/layout/PageLayout.vue'
 import { useDocuments, ITEMS_PER_PAGE_OPTIONS } from '../composables/useDocuments'
 
 const router = useRouter()
@@ -23,14 +24,14 @@ function handleDocumentAction({ action }) {
 </script>
 
 <template>
-  <main class="page">
-    <div class="page-header">
-      <div>
-        <h1>Documentos</h1>
-        <p class="page-subtitle">Visualize e gerencie os documentos que você fez upload no sistema.</p>
-      </div>
+  <PageLayout
+    wide
+    title="Documentos"
+    subtitle="Visualize e gerencie os documentos que você fez upload no sistema."
+  >
+    <template #actions>
       <Button variant="primary" @click="goToUpload">+ Novo documento</Button>
-    </div>
+    </template>
 
     <section class="card">
       <h2 class="section-title">Meus documentos</h2>
@@ -64,40 +65,10 @@ function handleDocumentAction({ action }) {
       </p>
       <a href="#" class="info-link">Saiba mais sobre revisões</a>
     </aside>
-  </main>
+  </PageLayout>
 </template>
 
 <style scoped>
-.page {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2.5rem 1.5rem;
-}
-
-.page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.page-header h1 {
-  font-size: 1.5rem;
-}
-
-.page-subtitle {
-  color: var(--color-text-muted);
-  margin-top: 0.35rem;
-}
-
-.card {
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: 1.5rem;
-  margin-top: 1.5rem;
-}
-
 .section-title {
   font-size: 1.1rem;
   margin-bottom: 1rem;
