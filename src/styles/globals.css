@@ -13,11 +13,28 @@ body {
   min-height: 100vh;
 }
 
+h1 {
+  font-weight: 700;
+}
+
+h2,
+h3,
+strong {
+  font-weight: 600;
+}
+
 button,
 input,
 select,
 textarea {
   font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
 }
 
 /* Surface block used by every page section (stepper, dropzone, queue, forms). */
