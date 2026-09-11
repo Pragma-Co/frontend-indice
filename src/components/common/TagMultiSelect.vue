@@ -54,16 +54,28 @@ function remove(value) {
 </template>
 
 <style scoped>
+/* Looks like a single input: chips flow inline and the select fills the remaining space. */
 .tags {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.5rem;
+  max-height: 6.5rem;
+  overflow-y: auto;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+
+.tags:focus-within {
+  outline: 2px solid var(--color-primary-bg);
+  border-color: var(--color-primary);
 }
 
 .tags__list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  display: contents;
   list-style: none;
 }
 
@@ -71,9 +83,9 @@ function remove(value) {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  padding: 0.25rem 0.5rem;
+  padding: 0.2rem 0.45rem;
   border-radius: var(--radius-sm);
   background: var(--color-surface-muted);
   border: 1px solid var(--color-border);
@@ -86,5 +98,18 @@ function remove(value) {
   line-height: 1;
   font-size: 0.9rem;
   color: var(--color-text-muted);
+}
+
+.tags__select {
+  flex: 1;
+  width: auto;
+  min-width: 9rem;
+  padding: 0.3rem 0.25rem;
+  border: none;
+  background: transparent;
+}
+
+.tags__select:focus {
+  outline: none;
 }
 </style>
