@@ -3,6 +3,7 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import ConfirmationStep from '../../src/components/document-upload/ConfirmationStep.vue'
 import { useDocumentFormStore } from '../../src/stores/documentFormStore'
+import { useUploadStore } from '../../src/stores/uploadStore'
 
 vi.mock('../../src/api/projects', () => ({ listProjects: vi.fn() }))
 vi.mock('../../src/api/disciplines', () => ({ listDisciplines: vi.fn() }))
@@ -79,11 +80,28 @@ describe('ConfirmationStep', () => {
     expect(wrapper.text()).not.toContain('obrigatório')
   })
 
-  it('should render the reserved preview container', () => {
+  it('should list the files attached in the upload step with type icon and size', () => {
+    // Given
+    useUploadStore().setUploadedDocuments([
+      { id: 'up-1', name: 'relatorio.pdf', size: 1536, typeLabel: 'Memorial' },
+      { id: 'up-2', name: 'foto.png', size: 500, typeLabel: 'Imagem' },
+    ])
     // When
     const wrapper = mount(ConfirmationStep)
     // Then
-    expect(wrapper.find('[data-testid="preview-container"]').exists()).toBe(true)
+    const rows = wrapper.findAll('.preview-file')
+    expect(rows).toHaveLength(2)
+    expect(rows[0].text()).toContain('relatorio.pdf')
+    expect(rows[0].text()).toContain('1.5 KB')
+    expect(rows[0].find('.file-icon').attributes('data-kind')).toBe('pdf')
+    expect(rows[1].find('.file-icon').attributes('data-kind')).toBe('image')
+  })
+
+  it('should show a placeholder in the preview container when no file was attached', () => {
+    // When
+    const wrapper = mount(ConfirmationStep)
+    // Then
+    expect(wrapper.find('[data-testid="preview-container"]').text()).toContain('Nenhum arquivo anexado')
     expect(wrapper.text()).toContain('Pré-visualização')
   })
 

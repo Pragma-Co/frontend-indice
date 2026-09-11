@@ -1,10 +1,12 @@
 <script setup>
 import { computed } from 'vue'
 import { useDocumentFormStore } from '../../stores/documentFormStore'
+import { useUploadStore } from '../../stores/uploadStore'
 import { findArea, findConfidentiality } from '../../utils/documentCatalog'
-import { formatDate } from '../../utils/formatters'
+import { formatDate, formatFileSize } from '../../utils/formatters'
 import Badge from '../common/Badge.vue'
 import Button from '../common/Button.vue'
+import FileTypeIcon from '../common/FileTypeIcon.vue'
 import KeyValue from '../common/KeyValue.vue'
 
 /**
@@ -15,6 +17,7 @@ import KeyValue from '../common/KeyValue.vue'
  */
 const emit = defineEmits(['back', 'publish'])
 const store = useDocumentFormStore()
+const uploadStore = useUploadStore()
 
 const EMPTY = '—'
 const issuedAt = new Date()
@@ -32,6 +35,7 @@ const discipline = computed(() => {
 const confidentiality = computed(() => findConfidentiality(store.form.confidentiality))
 const areas = computed(() => store.form.areas.map((code) => ({ code, name: findArea(code)?.name ?? code })))
 const canPublish = computed(() => store.isValid && !store.publishing)
+const files = computed(() => uploadStore.uploadedDocuments)
 </script>
 
 <template>
@@ -84,7 +88,14 @@ const canPublish = computed(() => store.isValid && !store.publishing)
     <section class="preview" aria-labelledby="preview-title">
       <h3 id="preview-title" class="preview-title">Pré-visualização</h3>
       <div class="preview-body" data-testid="preview-container">
-        <p class="preview-placeholder">A pré-visualização do arquivo será exibida aqui.</p>
+        <ul v-if="files.length" class="preview-files" aria-label="Arquivos anexados">
+          <li v-for="file in files" :key="file.id ?? file.name" class="preview-file">
+            <FileTypeIcon :file-name="file.name" />
+            <span class="preview-file-name">{{ file.name }}</span>
+            <span class="preview-file-size">{{ formatFileSize(file.size) }}</span>
+          </li>
+        </ul>
+        <p v-else class="preview-placeholder">Nenhum arquivo anexado na etapa de upload.</p>
       </div>
     </section>
 
@@ -180,12 +191,47 @@ const canPublish = computed(() => store.isValid && !store.publishing)
 
 .preview-body {
   min-height: 6rem;
+  max-height: 14rem;
+  overflow-y: auto;
+}
+
+.preview-files {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  list-style: none;
+}
+
+.preview-file {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+  font-size: 0.85rem;
+}
+
+.preview-file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.preview-file-size {
+  color: var(--color-text-muted);
+  white-space: nowrap;
 }
 
 .preview-placeholder {
+  min-height: 6rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--color-text-muted);
   font-size: 0.85rem;
 }
