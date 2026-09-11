@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { getInitials } from '../utils/formatters'
 
 /**
  * Logged-in user. Authentication (RF4) is not implemented yet, so the store
@@ -12,14 +13,6 @@ export const useAuthStore = defineStore('auth', {
   }),
   getters: {
     isAuthenticated: (state) => Boolean(state.currentUser),
-    initials: (state) => {
-      const name = state.currentUser?.name ?? ''
-      return name
-        .split(/\s+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((part) => part[0].toUpperCase())
-        .join('')
-    },
+    initials: (state) => getInitials(state.currentUser?.name),
   },
 })
