@@ -117,6 +117,10 @@ npm run dev -- --port 5174   # use another port if 5173 is busy
 npm run build                # build the static bundle into dist/
 npm run preview              # serve the dist/ build locally for a final check
 
+# Tests (Vitest + Vue Test Utils)
+npm test                     # run the test suite once
+npm run test:watch           # re-run tests on file changes
+
 # Maintenance
 npm install                  # (re)install dependencies after a git pull
 ```
@@ -159,4 +163,12 @@ frontend/
     ├── utils/          # Pure helper functions
     ├── views/          # Page-level components
     └── assets/         # Static icons and images
+tests/                  # Vitest suites (Given/When/Then), mirroring src/
 ```
+
+## Document registration flow
+
+`/documentos/upload` (step 1, Upload) leads to `/documentos/metadados` (step 2, Metadados) and then to
+`/documentos/confirmacao` (step 3, Confirmação), where the user reviews the summary before publishing.
+The metadata form previews the unique code `PROJECT-DISCIPLINE-TYPE-REV` (e.g. `AK-2100-EST-DWG-REV01`); the backend
+generates the definitive value on submission, which is a separate task.

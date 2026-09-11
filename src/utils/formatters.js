@@ -15,13 +15,29 @@ export function formatFileSize(bytes) {
 const FILE_TYPE_LABELS_BY_EXTENSION = {
   pdf: 'Memorial',
   doc: 'Documento',
-  docx: 'Documento',
   jpeg: 'Imagem',
-  jpg: 'Imagem',
   png: 'Imagem',
 }
 
 export function getFileTypeLabel(fileName) {
   const extension = getFileExtension(fileName)
   return FILE_TYPE_LABELS_BY_EXTENSION[extension] ?? 'Documento'
+}
+
+/** "Ana Beatriz Costa" -> "AB"; empty or blank names yield "". */
+export function getInitials(name = '') {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toUpperCase())
+    .join('')
+}
+
+/** Formats a Date (or ISO string) as dd/mm/yyyy in pt-BR. Returns '—' for empty or invalid input. */
+export function formatDate(value) {
+  if (value === null || value === undefined || value === '') return '—'
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' }).format(date)
 }
