@@ -85,7 +85,7 @@ export function useDocumentUpload() {
       }
 
       item.status = 'success'
-      item.documentId = response?.id ?? null
+      item.documentId = response?.temp_file_id ?? null
     } catch (err) {
       item.status = 'error'
       item.error = err.message
