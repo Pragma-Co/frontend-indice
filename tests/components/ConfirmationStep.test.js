@@ -70,12 +70,13 @@ describe('ConfirmationStep', () => {
     expect(wrapper.find('.badge-secret').exists()).toBe(true)
   })
 
-  it('should show dashes for empty fields and list the missing required ones', () => {
+  it('should show dashes for empty fields without listing validation messages', () => {
     // When
     const wrapper = mount(ConfirmationStep)
     // Then
     expect(wrapper.find('[data-testid="document-code"]').text()).toBe('—')
-    expect(wrapper.find('[role="alert"]').text()).toContain('Título é obrigatório.')
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(wrapper.text()).not.toContain('obrigatório')
   })
 
   it('should render the reserved preview container', () => {

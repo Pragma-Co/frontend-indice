@@ -31,7 +31,6 @@ const discipline = computed(() => {
 })
 const confidentiality = computed(() => findConfidentiality(store.form.confidentiality))
 const areas = computed(() => store.form.areas.map((code) => ({ code, name: findArea(code)?.name ?? code })))
-const missing = computed(() => Object.values(store.errors))
 const canPublish = computed(() => store.isValid && !store.publishing)
 </script>
 
@@ -88,10 +87,6 @@ const canPublish = computed(() => store.isValid && !store.publishing)
         <p class="preview-placeholder">A pré-visualização do arquivo será exibida aqui.</p>
       </div>
     </section>
-
-    <ul v-if="missing.length" class="confirmation-missing" role="alert">
-      <li v-for="message in missing" :key="message">{{ message }}</li>
-    </ul>
 
     <footer class="confirmation-actions">
       <Button variant="outline" :disabled="store.publishing" @click="emit('back')">Anterior</Button>
@@ -193,16 +188,6 @@ const canPublish = computed(() => store.isValid && !store.publishing)
 .preview-placeholder {
   color: var(--color-text-muted);
   font-size: 0.85rem;
-}
-
-.confirmation-missing {
-  margin-top: 1rem;
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius-sm);
-  background: var(--color-danger-bg);
-  color: var(--color-danger);
-  font-size: 0.85rem;
-  list-style: disc inside;
 }
 
 .confirmation-actions {
