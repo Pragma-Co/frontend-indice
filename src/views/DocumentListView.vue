@@ -29,7 +29,7 @@ function formatDate(value) {
 }
 
 function goHome() {
-  router.push({ name: 'home' })
+  router.push({ name: 'home', query: route.query })
 }
 
 onMounted(loadDocuments)

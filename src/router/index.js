@@ -7,7 +7,7 @@ const router = createRouter({
     {
       path: '/inicio',
       name: 'home',
-      component: () => import('../views/HomeView.vue'),
+      component: () => import('../views/home/HomeView.vue'),
       meta: { title: 'Colaborador - Início' },
     },
     {
