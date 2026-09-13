@@ -51,7 +51,9 @@ watch(() => buildDocumentQueryKey(route.query), loadDocuments)
           <span>{{ formatDate(document.updated_at) }}</span>
         </div>
         <h2>{{ document.title }}</h2>
-        <p>{{ document.code }}<span v-if="document.description"> • {{ document.description }}</span></p>
+        <p>
+          {{ document.code }}<span v-if="document.description"> • {{ document.description }}</span>
+        </p>
         <div class="document-areas">
           <span v-for="area in document.areas" :key="area.acronym">{{ area.acronym }}</span>
         </div>
@@ -62,18 +64,74 @@ watch(() => buildDocumentQueryKey(route.query), loadDocuments)
 </template>
 
 <style scoped>
-.list-page { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
-h1 { margin: .75rem 0; }
-p { color: var(--color-text-muted); }
-.status-message { margin-top: 2rem; }
-.error-message { color: var(--color-warning); }
-.document-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-top: 1.5rem; }
-.document-card { padding: 1.15rem; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); }
-.document-card-header { display: flex; justify-content: space-between; gap: 1rem; color: var(--color-text-muted); font-size: .75rem; }
-.document-type { color: var(--color-primary); font-weight: 700; }
-.document-card h2 { margin: 1rem 0 .45rem; font-size: 1rem; }
-.document-card p { font-size: .85rem; line-height: 1.45; }
-.document-areas { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: 1rem; }
-.document-areas span { padding: .2rem .45rem; border-radius: 4px; background: var(--color-background); color: var(--color-text-muted); font-size: .72rem; }
-button { margin-top: 1.5rem; padding: .7rem 1rem; border: 0; border-radius: var(--radius-sm); background: var(--color-primary); color: white; cursor: pointer; }
+.list-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+h1 {
+  margin: 0.75rem 0;
+}
+p {
+  color: var(--color-text-muted);
+}
+.status-message {
+  margin-top: 2rem;
+}
+.error-message {
+  color: var(--color-warning);
+}
+.document-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.document-card {
+  padding: 1.15rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.document-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+.document-type {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+.document-card h2 {
+  margin: 1rem 0 0.45rem;
+  font-size: 1rem;
+}
+.document-card p {
+  font-size: 0.85rem;
+  line-height: 1.45;
+}
+.document-areas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 1rem;
+}
+.document-areas span {
+  padding: 0.2rem 0.45rem;
+  border-radius: 4px;
+  background: var(--color-background);
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+}
+button {
+  margin-top: 1.5rem;
+  padding: 0.7rem 1rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: white;
+  cursor: pointer;
+}
 </style>

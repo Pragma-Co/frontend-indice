@@ -1,4 +1,11 @@
-export function buildDocumentSearchQuery({ query = '', date = '', dateFrom = '', dateTo = '', area = '', type = '' } = {}) {
+export function buildDocumentSearchQuery({
+  query = '',
+  date = '',
+  dateFrom = '',
+  dateTo = '',
+  area = '',
+  type = '',
+} = {}) {
   return Object.fromEntries(
     Object.entries({ q: query, data: date, date_from: dateFrom, date_to: dateTo, area, tipo: type })
       .map(([key, value]) => [key, String(value).trim()])

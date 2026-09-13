@@ -5,7 +5,12 @@ import { fetchSimpleFilters } from '../../api/documents'
 import SearchPanel from './components/SearchPanel.vue'
 
 const router = useRouter()
-const user = { name: 'João Silva', role: 'Engenheiro', department: 'Departamento de Engenharia', area: 'Área Operacional Geral' }
+const user = {
+  name: 'João Silva',
+  role: 'Engenheiro',
+  department: 'Departamento de Engenharia',
+  area: 'Área Operacional Geral',
+}
 const fallbackFilters = {
   datas: [
     { value: 'last_7_days', label: 'Últimos 7 dias' },
@@ -54,8 +59,19 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.home-page { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
-.welcome { margin-bottom: 1.5rem; }
-.welcome h1 { font-size: clamp(1.6rem, 3vw, 2.2rem); margin-bottom: .45rem; }
-.welcome p:last-child { color: var(--color-text-muted); }
+.home-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+.welcome {
+  margin-bottom: 1.5rem;
+}
+.welcome h1 {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+  margin-bottom: 0.45rem;
+}
+.welcome p:last-child {
+  color: var(--color-text-muted);
+}
 </style>
