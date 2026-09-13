@@ -12,7 +12,7 @@ export function uploadWithProgress(path, formData, { onProgress, signal } = {}) 
     })
 
     xhr.addEventListener('load', () => {
-      let body = null
+      let body
       try {
         body = JSON.parse(xhr.responseText)
       } catch {
@@ -22,7 +22,12 @@ export function uploadWithProgress(path, formData, { onProgress, signal } = {}) 
       if (xhr.status >= 200 && xhr.status < 300) {
         resolve(body)
       } else {
-        reject(Object.assign(new Error(`Upload failed with status ${xhr.status}`), { status: xhr.status, body }))
+        reject(
+          Object.assign(new Error(`Upload failed with status ${xhr.status}`), {
+            status: xhr.status,
+            body,
+          }),
+        )
       }
     })
 

@@ -10,7 +10,6 @@ dist/
 .env.*.local
 
 # Editor and OS files
-.vscode/
 .idea/
 .claude/
 *.swp

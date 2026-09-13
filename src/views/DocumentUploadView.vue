@@ -20,8 +20,15 @@ const AUTO_ADVANCE_DELAY_MS = 1200
 const router = useRouter()
 const uploadStore = useUploadStore()
 
-const { queue, hasSucceededFile, allSettled, addFiles, resolveDuplicate, reset, ACCEPTED_EXTENSIONS } =
-  useDocumentUpload()
+const {
+  queue,
+  hasSucceededFile,
+  allSettled,
+  addFiles,
+  resolveDuplicate,
+  reset,
+  ACCEPTED_EXTENSIONS,
+} = useDocumentUpload()
 
 const activeDuplicate = computed(() => queue.value.find((item) => item.status === 'duplicate'))
 
@@ -37,7 +44,12 @@ function clearAutoAdvance() {
 function goToMetadataStep() {
   const uploadedDocuments = queue.value
     .filter((item) => item.status === 'success')
-    .map((item) => ({ id: item.documentId, name: item.name, size: item.size, typeLabel: item.typeLabel }))
+    .map((item) => ({
+      id: item.documentId,
+      name: item.name,
+      size: item.size,
+      typeLabel: item.typeLabel,
+    }))
 
   uploadStore.setUploadedDocuments(uploadedDocuments)
   router.push({ name: 'document-metadata' })
@@ -85,7 +97,9 @@ onUnmounted(() => {
   <main class="page">
     <div class="page-header">
       <h1>Fazer upload de arquivo</h1>
-      <p class="page-subtitle">Faça o carregamento de seus arquivos e siga as orientações para avançar.</p>
+      <p class="page-subtitle">
+        Faça o carregamento de seus arquivos e siga as orientações para avançar.
+      </p>
     </div>
 
     <section class="card">

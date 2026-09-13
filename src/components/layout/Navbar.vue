@@ -13,7 +13,9 @@ const user = {
 
     <nav class="navbar-links">
       <RouterLink to="/documentos/upload" class="navbar-link">Início</RouterLink>
-      <RouterLink to="/documentos/upload" class="navbar-link" active-class="active">Documentos</RouterLink>
+      <RouterLink to="/documentos/upload" class="navbar-link" active-class="active"
+        >Documentos</RouterLink
+      >
     </nav>
 
     <div class="navbar-user">
@@ -25,7 +27,12 @@ const user = {
             stroke-width="1.6"
             stroke-linejoin="round"
           />
-          <path d="M10 18a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          <path
+            d="M10 18a2 2 0 0 0 4 0"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+          />
         </svg>
       </button>
       <span class="avatar" aria-hidden="true">{{ user.name.charAt(0) }}</span>
