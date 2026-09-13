@@ -19,9 +19,12 @@ export function uploadWithProgress(path, formData, { onProgress, signal } = {}) 
         body = null
       }
 
-      if (xhr.status >= 200 && xhr.status < 300) {
+      const isSuccessOrDuplicate = (xhr.status >= 200 && xhr.status < 300) || xhr.status === 409
+
+      if (isSuccessOrDuplicate) {
         resolve(body)
       } else {
+<<<<<<< HEAD
         reject(
           Object.assign(new Error(`Upload failed with status ${xhr.status}`), {
             status: xhr.status,
@@ -30,6 +33,10 @@ export function uploadWithProgress(path, formData, { onProgress, signal } = {}) 
         )
       }
     })
+=======
+        reject(Object.assign(new Error(`Upload failed with status ${xhr.status}`), { status: xhr.status, body }))
+      } })
+>>>>>>> f8e7d6e (fix(#9): treat HTTP 409 as a resolved upload response)
 
     xhr.addEventListener('error', () => {
       reject(new Error('Network error while uploading file'))
