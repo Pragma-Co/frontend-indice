@@ -25,7 +25,12 @@ describe('DocumentUploadView', () => {
     // Then
     expect(wrapper.text()).toContain('relatorio.pdf')
     expect(wrapper.text()).toContain('Concluído')
-    expect(wrapper.findAll('button').find((b) => b.text() === 'Próximo Passo').attributes('disabled')).toBeUndefined()
+    expect(
+      wrapper
+        .findAll('button')
+        .find((b) => b.text() === 'Próximo Passo')
+        .attributes('disabled'),
+    ).toBeUndefined()
   })
 
   it('should start with an empty queue when nothing was sent before', () => {
@@ -33,7 +38,12 @@ describe('DocumentUploadView', () => {
     const wrapper = mount(DocumentUploadView)
     // Then
     expect(wrapper.text()).not.toContain('Fila de Carregamento')
-    expect(wrapper.findAll('button').find((b) => b.text() === 'Próximo Passo').attributes('disabled')).toBeDefined()
+    expect(
+      wrapper
+        .findAll('button')
+        .find((b) => b.text() === 'Próximo Passo')
+        .attributes('disabled'),
+    ).toBeDefined()
   })
 
   it('should clear the queue and the store when clicking Limpar', async () => {
@@ -43,7 +53,10 @@ describe('DocumentUploadView', () => {
     const wrapper = mount(DocumentUploadView)
     await flushPromises()
     // When
-    await wrapper.findAll('button').find((b) => b.text() === 'Limpar').trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Limpar')
+      .trigger('click')
     // Then
     expect(wrapper.text()).not.toContain('relatorio.pdf')
     expect(store.uploadedDocuments).toEqual([])
@@ -55,7 +68,10 @@ describe('DocumentUploadView', () => {
     const wrapper = mount(DocumentUploadView)
     await flushPromises()
     // When
-    await wrapper.findAll('button').find((b) => b.text() === 'Próximo Passo').trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Próximo Passo')
+      .trigger('click')
     // Then
     expect(push).toHaveBeenCalledWith({ name: 'document-metadata' })
     expect(useUploadStore().uploadedDocuments).toEqual(SENT)

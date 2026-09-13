@@ -21,7 +21,9 @@ defineEmits(['discard', 'save-as-revision'])
       </p>
       <div class="dialog-actions">
         <Button variant="outline" @click="$emit('discard')">Cancelar</Button>
-        <Button variant="primary" @click="$emit('save-as-revision')">Salvar como nova revisão</Button>
+        <Button variant="primary" @click="$emit('save-as-revision')"
+          >Salvar como nova revisão</Button
+        >
       </div>
     </div>
   </div>

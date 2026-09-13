@@ -9,7 +9,12 @@ import StepIndicator from '../components/common/StepIndicator.vue'
 import UploadQueueTable from '../components/common/UploadQueueTable.vue'
 import { useDocumentUpload } from '../composables/useDocumentUpload'
 import { useUploadStore } from '../stores/uploadStore'
-import { UPLOAD_FLOW_SUBTITLE, UPLOAD_FLOW_TITLE, UPLOAD_STEP, UPLOAD_STEPS } from '../utils/uploadFlow'
+import {
+  UPLOAD_FLOW_SUBTITLE,
+  UPLOAD_FLOW_TITLE,
+  UPLOAD_STEP,
+  UPLOAD_STEPS,
+} from '../utils/uploadFlow'
 
 const router = useRouter()
 const uploadStore = useUploadStore()
@@ -22,7 +27,12 @@ const activeDuplicate = computed(() => queue.value.find((item) => item.status ==
 function goToMetadataStep() {
   const uploadedDocuments = queue.value
     .filter((item) => item.status === 'success')
-    .map((item) => ({ id: item.documentId, name: item.name, size: item.size, typeLabel: item.typeLabel }))
+    .map((item) => ({
+      id: item.documentId,
+      name: item.name,
+      size: item.size,
+      typeLabel: item.typeLabel,
+    }))
 
   uploadStore.setUploadedDocuments(uploadedDocuments)
   router.push({ name: 'document-metadata' })
@@ -61,7 +71,6 @@ onUnmounted(() => {
 
 <template>
   <PageLayout :title="UPLOAD_FLOW_TITLE" :subtitle="UPLOAD_FLOW_SUBTITLE">
-
     <section class="card">
       <StepIndicator :steps="UPLOAD_STEPS" :current-step="UPLOAD_STEP" />
     </section>

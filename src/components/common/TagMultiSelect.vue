@@ -12,7 +12,9 @@ const emit = defineEmits(['update:modelValue'])
 
 const available = computed(() => props.options.filter((o) => !props.modelValue.includes(o.value)))
 const selected = computed(() =>
-  props.modelValue.map((value) => props.options.find((o) => o.value === value) ?? { value, label: value }),
+  props.modelValue.map(
+    (value) => props.options.find((o) => o.value === value) ?? { value, label: value },
+  ),
 )
 
 function add(event) {
@@ -47,8 +49,12 @@ function remove(value) {
       </li>
     </ul>
     <select :id="id" class="tags__select" :disabled="!available.length" @change="add">
-      <option value="">{{ available.length ? placeholder : 'Todas as opções selecionadas' }}</option>
-      <option v-for="option in available" :key="option.value" :value="option.value">{{ option.label }}</option>
+      <option value="">
+        {{ available.length ? placeholder : 'Todas as opções selecionadas' }}
+      </option>
+      <option v-for="option in available" :key="option.value" :value="option.value">
+        {{ option.label }}
+      </option>
     </select>
   </div>
 </template>

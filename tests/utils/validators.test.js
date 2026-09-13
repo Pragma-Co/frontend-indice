@@ -23,7 +23,15 @@ describe('validateDocumentForm', () => {
 
   it('should flag every empty required field', () => {
     // Given
-    const form = { title: '  ', projectId: '', disciplineId: '', documentType: '', confidentiality: '', author: '', areas: [] }
+    const form = {
+      title: '  ',
+      projectId: '',
+      disciplineId: '',
+      documentType: '',
+      confidentiality: '',
+      author: '',
+      areas: [],
+    }
     // When
     const errors = validateDocumentForm(form)
     // Then

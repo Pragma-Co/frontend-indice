@@ -3,7 +3,8 @@
  * three steps rendered by StepIndicator. Every step view imports from here.
  */
 export const UPLOAD_FLOW_TITLE = 'Fazer upload de arquivo'
-export const UPLOAD_FLOW_SUBTITLE = 'Faça o carregamento de seus arquivos e siga as orientações para avançar.'
+export const UPLOAD_FLOW_SUBTITLE =
+  'Faça o carregamento de seus arquivos e siga as orientações para avançar.'
 
 export const UPLOAD_STEP = 1
 export const METADATA_STEP = 2

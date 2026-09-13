@@ -7,7 +7,12 @@ import MetadataStep from '../components/document-upload/MetadataStep.vue'
 import { useAuthStore } from '../stores/authStore'
 import { useDocumentFormStore } from '../stores/documentFormStore'
 import { useUploadStore } from '../stores/uploadStore'
-import { METADATA_STEP, UPLOAD_FLOW_SUBTITLE, UPLOAD_FLOW_TITLE, UPLOAD_STEPS } from '../utils/uploadFlow'
+import {
+  METADATA_STEP,
+  UPLOAD_FLOW_SUBTITLE,
+  UPLOAD_FLOW_TITLE,
+  UPLOAD_STEPS,
+} from '../utils/uploadFlow'
 
 /**
  * Step 2 (Metadados) of the "Fazer upload de arquivo" flow. The upload step
@@ -18,7 +23,9 @@ const auth = useAuthStore()
 const store = useDocumentFormStore()
 const uploadStore = useUploadStore()
 
-const uploadedFileNames = computed(() => uploadStore.uploadedDocuments.map((document) => document.name))
+const uploadedFileNames = computed(() =>
+  uploadStore.uploadedDocuments.map((document) => document.name),
+)
 
 onMounted(() => {
   store.setDefaultAuthor(auth.currentUser?.name)

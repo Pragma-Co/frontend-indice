@@ -41,7 +41,9 @@ describe('MetadataStep', () => {
     // When
     const wrapper = mount(MetadataStep)
     // Then
-    expect(wrapper.find('#project').text()).toContain('AK-2100 - Aeroestrutura de Fuselagem Central')
+    expect(wrapper.find('#project').text()).toContain(
+      'AK-2100 - Aeroestrutura de Fuselagem Central',
+    )
     expect(wrapper.find('#discipline').text()).toContain('EST - Estruturas')
   })
 
@@ -138,6 +140,8 @@ describe('MetadataStep', () => {
     // When
     const wrapper = mount(MetadataStep)
     // Then
-    expect(wrapper.find('[role="alert"]').text()).toContain('Não foi possível conectar ao servidor.')
+    expect(wrapper.find('[role="alert"]').text()).toContain(
+      'Não foi possível conectar ao servidor.',
+    )
   })
 })
