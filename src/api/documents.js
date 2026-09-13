@@ -7,6 +7,7 @@ export function uploadDocument(file, { onProgress, forceNewRevision = false, sig
     formData.append('force_new_revision', 'true')
   }
 
-  // Expected backend payload: { id, duplicate, existingDocument?: { id, name, version } }
-  return uploadWithProgress('/documents/', formData, { onProgress, signal })
+  // Backend payload: { temp_file_id, original_name, file_size, inferred_type }.
+  // Duplicate detection ({ duplicate, existingDocument }) is not implemented by the backend yet.
+  return uploadWithProgress('/documents/upload', formData, { onProgress, signal })
 }

@@ -3,7 +3,7 @@ import { uploadDocument } from '../api/documents'
 import { getFileTypeLabel } from '../utils/formatters'
 import { isFileSizeValid, isFileTypeAccepted } from '../utils/validators'
 
-const ACCEPTED_EXTENSIONS = ['pdf', 'doc', 'docx', 'jpeg', 'jpg', 'png']
+const ACCEPTED_EXTENSIONS = ['pdf', 'doc', 'jpeg', 'png']
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024
 const MAX_CONCURRENT_UPLOADS = 2
 
@@ -85,7 +85,7 @@ export function useDocumentUpload() {
       }
 
       item.status = 'success'
-      item.documentId = response?.id ?? null
+      item.documentId = response?.temp_file_id ?? null
     } catch (err) {
       item.status = 'error'
       item.error = err.message
@@ -111,6 +111,26 @@ export function useDocumentUpload() {
     queue.value = []
   }
 
+  /**
+   * Rebuilds the queue from documents already uploaded in a previous visit
+   * to the step (kept in uploadStore), so the user sees them again when
+   * coming back from the metadata step.
+   */
+  function restore(documents) {
+    queue.value = documents.map((document) => ({
+      id: nextId++,
+      file: null,
+      name: document.name,
+      size: document.size,
+      typeLabel: document.typeLabel,
+      status: 'success',
+      progress: 100,
+      error: null,
+      duplicateInfo: null,
+      documentId: document.id,
+    }))
+  }
+
   return {
     queue,
     hasSucceededFile,
@@ -119,6 +139,7 @@ export function useDocumentUpload() {
     removeFile,
     resolveDuplicate,
     reset,
+    restore,
     ACCEPTED_EXTENSIONS,
     MAX_FILE_SIZE_BYTES,
   }
