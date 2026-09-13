@@ -1,7 +1,7 @@
 <script setup>
-const user = {
-  name: 'João Silva',
-}
+import { useAuthStore } from '../../stores/authStore'
+
+const auth = useAuthStore()
 </script>
 
 <template>
@@ -24,11 +24,16 @@ const user = {
             stroke-width="1.6"
             stroke-linejoin="round"
           />
-          <path d="M10 18a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+          <path
+            d="M10 18a2 2 0 0 0 4 0"
+            stroke="currentColor"
+            stroke-width="1.6"
+            stroke-linecap="round"
+          />
         </svg>
       </button>
-      <span class="avatar" aria-hidden="true">{{ user.name.charAt(0) }}</span>
-      <span class="user-name">{{ user.name }}</span>
+      <span class="avatar" aria-hidden="true">{{ auth.currentUser?.name.charAt(0) }}</span>
+      <span class="user-name">{{ auth.currentUser?.name }}</span>
     </div>
   </header>
 </template>

@@ -13,7 +13,7 @@ export function uploadDocument(file, { onProgress, forceNewRevision = false, sig
     formData.append('force_new_revision', 'true')
   }
 
-  return uploadWithProgress('/documents/', formData, { onProgress, signal })
+  return uploadWithProgress('/documents/upload', formData, { onProgress, signal })
 }
 
 export async function fetchSimpleFilters() {

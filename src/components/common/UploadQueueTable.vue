@@ -45,7 +45,8 @@ const STATUS_LABELS = {
             class="badge"
             :class="{
               'badge-success': item.status === 'ready' || item.status === 'success',
-              'badge-warning': item.status === 'invalid' || item.status === 'duplicate' || item.status === 'error',
+              'badge-warning':
+                item.status === 'invalid' || item.status === 'duplicate' || item.status === 'error',
               'badge-neutral': item.status === 'validating',
             }"
           >

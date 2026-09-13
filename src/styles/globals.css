@@ -13,6 +13,35 @@ body {
   min-height: 100vh;
 }
 
-button {
+h1 {
+  font-weight: 700;
+}
+
+h2,
+h3,
+strong {
+  font-weight: 600;
+}
+
+button,
+input,
+select,
+textarea {
   font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
+/* Surface block used by every page section (stepper, dropzone, queue, forms). */
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  margin-top: 1.5rem;
 }

@@ -65,17 +65,32 @@ function onDrop(event) {
     @dragleave.prevent="onDragLeave"
     @drop.prevent="onDrop"
   >
-    <svg class="dropzone-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg
+      class="dropzone-icon"
+      width="40"
+      height="40"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
       <path
         d="M7 18a4 4 0 0 1-.6-7.96A5.5 5.5 0 0 1 17.4 8.02 4.5 4.5 0 0 1 17 17H7Z"
         stroke="currentColor"
         stroke-width="1.6"
         stroke-linejoin="round"
       />
-      <path d="M12 11v6m0-6-2.2 2.2M12 11l2.2 2.2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+      <path
+        d="M12 11v6m0-6-2.2 2.2M12 11l2.2 2.2"
+        stroke="currentColor"
+        stroke-width="1.6"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
     </svg>
     <p class="dropzone-title">Arraste arquivos ou clique para selecionar</p>
-    <p class="dropzone-subtitle">Formatos aceitos: {{ formatsLabel }} (máximo de {{ maxSizeLabel }} por arquivo)</p>
+    <p class="dropzone-subtitle">
+      Formatos aceitos: {{ formatsLabel }} (máximo de {{ maxSizeLabel }} por arquivo)
+    </p>
 
     <input
       ref="fileInput"
