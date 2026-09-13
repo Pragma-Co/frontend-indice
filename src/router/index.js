@@ -3,6 +3,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
+<<<<<<< HEAD
     { path: '/', redirect: '/home' },
     {
       path: '/home',
@@ -11,31 +12,31 @@ const router = createRouter({
       meta: { title: 'Colaborador - Início' },
     },
     {
-      path: '/documentos',
+      path: '/documents',
       name: 'document-list',
       component: () => import('../views/document/DocumentsListView.vue'),
       meta: { title: 'Colaborador - Documentos' },
     },
     {
-      path: '/documentos/:documentId',
+      path: '/documents/:documentId',
       name: 'document-details',
       component: () => import('../views/document/DocumentDetailsView.vue'),
       meta: { title: 'Colaborador - Visualizar documento' },
     },
     {
-      path: '/documentos/upload',
+      path: '/documents/upload',
       name: 'document-upload',
       component: () => import('../views/document/components/DocumentUpload.vue'),
       meta: { title: 'Colaborador - InserirDocumento' },
     },
     {
-      path: '/documentos/metadados',
+      path: '/documents/metadados',
       name: 'document-metadata',
       component: () => import('../views/document/components/DocumentMetadata.vue'),
       meta: { title: 'Colaborador - Metadados' },
     },
     {
-      path: '/documentos/confirmacao',
+      path: '/documents/confirmacao',
       name: 'document-confirmation',
       component: () => import('../views/document/components/DocumentConfirmation.vue'),
       meta: { title: 'Colaborador - Confirmação' },
