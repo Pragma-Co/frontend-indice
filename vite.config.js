@@ -9,8 +9,6 @@ export default defineConfig(({ mode }) => {
     plugins: [vue()],
     server: {
       proxy: {
-        // The backend does not send CORS headers, so every API call goes
-        // through this proxy: the browser only ever talks to the dev server.
         '/api': {
           target: `http://localhost:${apiPort}`,
           changeOrigin: true,

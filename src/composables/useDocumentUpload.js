@@ -13,9 +13,10 @@ export function useDocumentUpload() {
   const queue = ref([])
 
   const hasSucceededFile = computed(() => queue.value.some((item) => item.status === 'success'))
-  const allSettled = computed(() =>
-    queue.value.length > 0 &&
-    queue.value.every((item) => item.status === 'success' || item.status === 'invalid'),
+  const allSettled = computed(
+    () =>
+      queue.value.length > 0 &&
+      queue.value.every((item) => item.status === 'success' || item.status === 'invalid'),
   )
 
   function addFiles(fileList) {

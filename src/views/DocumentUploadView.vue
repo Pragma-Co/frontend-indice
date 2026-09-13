@@ -14,15 +14,27 @@ import { UPLOAD_FLOW_SUBTITLE, UPLOAD_FLOW_TITLE, UPLOAD_STEP, UPLOAD_STEPS } fr
 const router = useRouter()
 const uploadStore = useUploadStore()
 
-const { queue, hasSucceededFile, addFiles, resolveDuplicate, reset, restore, ACCEPTED_EXTENSIONS } =
-  useDocumentUpload()
+const {
+  queue,
+  hasSucceededFile,
+  addFiles,
+  resolveDuplicate,
+  reset,
+  restore,
+  ACCEPTED_EXTENSIONS,
+} = useDocumentUpload()
 
 const activeDuplicate = computed(() => queue.value.find((item) => item.status === 'duplicate'))
 
 function goToMetadataStep() {
   const uploadedDocuments = queue.value
     .filter((item) => item.status === 'success')
-    .map((item) => ({ id: item.documentId, name: item.name, size: item.size, typeLabel: item.typeLabel }))
+    .map((item) => ({
+      id: item.documentId,
+      name: item.name,
+      size: item.size,
+      typeLabel: item.typeLabel,
+    }))
 
   uploadStore.setUploadedDocuments(uploadedDocuments)
   router.push({ name: 'document-metadata' })
