@@ -16,6 +16,14 @@ import {
   UPLOAD_STEPS,
 } from '@/utils/uploadFlow.js'
 
+const STEPS = [
+  { title: 'Upload', subtitle: 'Arquivos do projeto' },
+  { title: 'Metadados', subtitle: 'Definição de atributos' },
+  { title: 'Confirmação', subtitle: 'Revisão e envio final' },
+]
+
+// const AUTO_ADVANCE_DELAY_MS = 1200
+
 const router = useRouter()
 const uploadStore = useUploadStore()
 
@@ -46,6 +54,13 @@ function handleCancel() {
 function handleFilesSelected(fileList) {
   addFiles(fileList)
 }
+
+// watch(allSettled, (settled) => {
+//  if (settled && hasSucceededFile.value) {
+//    clearAutoAdvance()
+//    autoAdvanceTimeoutId = setTimeout(goToMetadataStep, AUTO_ADVANCE_DELAY_MS)
+//  }
+// })
 
 // A drop that lands even slightly outside the dashed dropzone would
 // otherwise fall through to the browser's default action (opening the
@@ -98,6 +113,7 @@ onUnmounted(() => {
     <DuplicateFileDialog
       v-if="activeDuplicate"
       :file-name="activeDuplicate.name"
+      :existing-document="activeDuplicate.duplicateInfo"
       @discard="resolveDuplicate(activeDuplicate, false)"
       @save-as-revision="resolveDuplicate(activeDuplicate, true)"
     />
