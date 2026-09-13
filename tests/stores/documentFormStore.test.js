@@ -55,7 +55,9 @@ describe('documentFormStore', () => {
 
   it('should record a friendly error when the catalogs cannot be loaded', async () => {
     // Given
-    listProjects.mockRejectedValue(new ApiError('Erro interno do servidor. Tente novamente mais tarde.', { status: 500 }))
+    listProjects.mockRejectedValue(
+      new ApiError('Erro interno do servidor. Tente novamente mais tarde.', { status: 500 }),
+    )
     // When
     await store.loadCatalogs()
     // Then

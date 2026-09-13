@@ -33,7 +33,9 @@ function back(event) {
 
     <p v-if="store.catalogsError" class="metadata__alert" role="alert">
       {{ store.catalogsError }}
-      <button type="button" class="metadata__retry" @click="store.loadCatalogs()">Tentar novamente</button>
+      <button type="button" class="metadata__retry" @click="store.loadCatalogs()">
+        Tentar novamente
+      </button>
     </p>
 
     <div class="metadata__grid">
@@ -48,8 +50,14 @@ function back(event) {
 
       <FormField label="Disciplina" html-for="discipline" required icon="document">
         <select id="discipline" v-model="store.form.disciplineId" :disabled="store.catalogsLoading">
-          <option value="">{{ store.catalogsLoading ? 'Carregando…' : 'Selecione a disciplina' }}</option>
-          <option v-for="discipline in store.disciplines" :key="discipline.id" :value="discipline.id">
+          <option value="">
+            {{ store.catalogsLoading ? 'Carregando…' : 'Selecione a disciplina' }}
+          </option>
+          <option
+            v-for="discipline in store.disciplines"
+            :key="discipline.id"
+            :value="discipline.id"
+          >
             {{ discipline.code }} - {{ discipline.name }}
           </option>
         </select>
@@ -101,20 +109,31 @@ function back(event) {
       <FormField label="Grau de Confidencialidade" required>
         <div class="metadata__radios" role="radiogroup" aria-label="Grau de Confidencialidade">
           <label v-for="level in CONFIDENTIALITY_LEVELS" :key="level.value" class="metadata__radio">
-            <input v-model="store.form.confidentiality" type="radio" name="confidentiality" :value="level.value" />
+            <input
+              v-model="store.form.confidentiality"
+              type="radio"
+              name="confidentiality"
+              :value="level.value"
+            />
             {{ level.label }}
           </label>
         </div>
       </FormField>
 
       <FormField label="Área(s) relacionada(s)" html-for="areas" required>
-        <TagMultiSelect id="areas" v-model="store.form.areas" :options="areaOptions" placeholder="Adicionar área…" />
+        <TagMultiSelect
+          id="areas"
+          v-model="store.form.areas"
+          :options="areaOptions"
+          placeholder="Adicionar área…"
+        />
       </FormField>
-
     </div>
 
     <div class="metadata__author">
-      <span class="metadata__author-avatar" data-testid="author-initials" aria-hidden="true">{{ authorInitials }}</span>
+      <span class="metadata__author-avatar" data-testid="author-initials" aria-hidden="true">{{
+        authorInitials
+      }}</span>
       <input
         id="author"
         v-model="store.form.author"

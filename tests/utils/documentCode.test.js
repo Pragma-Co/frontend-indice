@@ -25,7 +25,9 @@ describe('buildDocumentCode', () => {
   })
 
   it('should use the given version in the revision part', () => {
-    expect(buildDocumentCode({ project: 'AK-2100', discipline: 'HID', type: 'MEM', version: 3 })).toBe('AK-2100-HID-MEM-REV03')
+    expect(
+      buildDocumentCode({ project: 'AK-2100', discipline: 'HID', type: 'MEM', version: 3 }),
+    ).toBe('AK-2100-HID-MEM-REV03')
   })
 
   it('should return null while any part of the code is missing', () => {

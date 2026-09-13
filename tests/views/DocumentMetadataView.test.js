@@ -45,12 +45,16 @@ describe('DocumentMetadataView', () => {
     const active = wrapper.find('.step-circle.active')
     expect(active.text()).toBe('2')
     expect(wrapper.text()).toContain('Informações do Documento')
-    expect(wrapper.find('#project').text()).toContain('AK-2100 - Aeroestrutura de Fuselagem Central')
+    expect(wrapper.find('#project').text()).toContain(
+      'AK-2100 - Aeroestrutura de Fuselagem Central',
+    )
   })
 
   it('should list the files received from the upload step', async () => {
     // Given
-    useUploadStore().setUploadedDocuments([{ id: 'up-1', name: 'relatorio.pdf', size: 10, typeLabel: 'Memorial' }])
+    useUploadStore().setUploadedDocuments([
+      { id: 'up-1', name: 'relatorio.pdf', size: 10, typeLabel: 'Memorial' },
+    ])
     // When
     const wrapper = mount(DocumentMetadataView)
     await flushPromises()
@@ -64,7 +68,10 @@ describe('DocumentMetadataView', () => {
     await flushPromises()
     await wrapper.find('#title').setValue('Relatório de ensaio')
     // When
-    await wrapper.findAll('button').find((b) => b.text() === 'Anterior').trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Anterior')
+      .trigger('click')
     // Then
     expect(push).toHaveBeenCalledWith({ name: 'document-upload' })
     expect(store.form.title).toBe('Relatório de ensaio')
