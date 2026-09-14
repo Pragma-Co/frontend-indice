@@ -16,7 +16,10 @@ defineProps({
   <ol class="steps">
     <template v-for="(step, index) in steps" :key="step.title">
       <li class="step">
-        <span class="step-circle" :class="{ active: index + 1 === currentStep, done: index + 1 < currentStep }">
+        <span
+          class="step-circle"
+          :class="{ active: index + 1 === currentStep, done: index + 1 < currentStep }"
+        >
           {{ index + 1 }}
         </span>
         <span class="step-text">

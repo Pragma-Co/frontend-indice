@@ -9,7 +9,9 @@ vi.mock('../../src/api/projects', () => ({ listProjects: vi.fn() }))
 vi.mock('../../src/api/disciplines', () => ({ listDisciplines: vi.fn() }))
 
 function publishButton(wrapper) {
-  return wrapper.findAll('button').find((b) => b.text().startsWith('Publicar') || b.text().startsWith('Publicando'))
+  return wrapper
+    .findAll('button')
+    .find((b) => b.text().startsWith('Publicar') || b.text().startsWith('Publicando'))
 }
 
 function fillValidForm(store) {
@@ -101,7 +103,9 @@ describe('ConfirmationStep', () => {
     // When
     const wrapper = mount(ConfirmationStep)
     // Then
-    expect(wrapper.find('[data-testid="preview-container"]').text()).toContain('Nenhum arquivo anexado')
+    expect(wrapper.find('[data-testid="preview-container"]').text()).toContain(
+      'Nenhum arquivo anexado',
+    )
     expect(wrapper.text()).toContain('Pré-visualização')
   })
 
@@ -142,7 +146,10 @@ describe('ConfirmationStep', () => {
     fillValidForm(store)
     const wrapper = mount(ConfirmationStep)
     // When
-    await wrapper.findAll('button').find((b) => b.text() === 'Anterior').trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Anterior')
+      .trigger('click')
     // Then
     expect(wrapper.emitted('back')).toHaveLength(1)
     expect(store.form.title).toBe('Desenho da fuselagem central')

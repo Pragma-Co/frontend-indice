@@ -15,16 +15,28 @@ const KINDS = {
   png: { label: 'IMG', kind: 'image' },
 }
 
-const type = computed(() => KINDS[getFileExtension(props.fileName)] ?? { label: 'FILE', kind: 'file' })
+const type = computed(
+  () => KINDS[getFileExtension(props.fileName)] ?? { label: 'FILE', kind: 'file' },
+)
 </script>
 
 <template>
-  <span class="file-icon" :class="`file-icon-${type.kind}`" :data-kind="type.kind" aria-hidden="true">
+  <span
+    class="file-icon"
+    :class="`file-icon-${type.kind}`"
+    :data-kind="type.kind"
+    aria-hidden="true"
+  >
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-      <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z" stroke-linejoin="round" />
+      <path
+        d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5Z"
+        stroke-linejoin="round"
+      />
       <path d="M14 3v5h5" stroke-linejoin="round" />
     </svg>
-    <span class="file-icon-label"><span class="file-icon-text">{{ type.label }}</span></span>
+    <span class="file-icon-label"
+      ><span class="file-icon-text">{{ type.label }}</span></span
+    >
   </span>
 </template>
 

@@ -71,7 +71,10 @@ describe('DocumentConfirmationView', () => {
     store.form.title = 'Mantido'
     const wrapper = mount(DocumentConfirmationView)
     // When
-    await wrapper.findAll('button').find((b) => b.text() === 'Anterior').trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Anterior')
+      .trigger('click')
     // Then
     expect(push).toHaveBeenCalledWith({ name: 'document-metadata' })
     expect(store.form.title).toBe('Mantido')

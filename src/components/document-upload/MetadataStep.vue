@@ -166,12 +166,19 @@ function back(event) {
         :error="fieldError('areas')"
         @focusout="touch('areas')"
       >
-        <TagMultiSelect id="areas" v-model="store.form.areas" :options="areaOptions" placeholder="Adicionar área…" />
+        <TagMultiSelect
+          id="areas"
+          v-model="store.form.areas"
+          :options="areaOptions"
+          placeholder="Adicionar área…"
+        />
       </FormField>
     </div>
 
     <div class="metadata__author" :class="{ 'metadata__author--invalid': fieldError('author') }">
-      <span class="metadata__author-avatar" data-testid="author-initials" aria-hidden="true">{{ authorInitials }}</span>
+      <span class="metadata__author-avatar" data-testid="author-initials" aria-hidden="true">{{
+        authorInitials
+      }}</span>
       <input
         id="author"
         v-model="store.form.author"
@@ -182,7 +189,9 @@ function back(event) {
         @blur="touch('author')"
       />
     </div>
-    <p v-if="fieldError('author')" class="metadata__author-error" role="alert">{{ fieldError('author') }}</p>
+    <p v-if="fieldError('author')" class="metadata__author-error" role="alert">
+      {{ fieldError('author') }}
+    </p>
 
     <footer class="metadata__actions">
       <Button variant="outline" @click="back">Anterior</Button>

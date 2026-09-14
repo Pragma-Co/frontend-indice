@@ -33,7 +33,9 @@ const discipline = computed(() => {
   return d ? `${d.code} - ${d.name}` : EMPTY
 })
 const confidentiality = computed(() => findConfidentiality(store.form.confidentiality))
-const areas = computed(() => store.form.areas.map((code) => ({ code, name: findArea(code)?.name ?? code })))
+const areas = computed(() =>
+  store.form.areas.map((code) => ({ code, name: findArea(code)?.name ?? code })),
+)
 const canPublish = computed(() => store.isValid && !store.publishing)
 const files = computed(() => uploadStore.uploadedDocuments)
 </script>
@@ -64,7 +66,9 @@ const files = computed(() => uploadStore.uploadedDocuments)
         </div>
         <div class="summary-cell">
           <KeyValue label="Confidencialidade">
-            <Badge v-if="confidentiality" :variant="confidentiality.value.toLowerCase()">{{ confidentiality.label }}</Badge>
+            <Badge v-if="confidentiality" :variant="confidentiality.value.toLowerCase()">{{
+              confidentiality.label
+            }}</Badge>
             <template v-else>{{ EMPTY }}</template>
           </KeyValue>
         </div>
@@ -101,7 +105,12 @@ const files = computed(() => uploadStore.uploadedDocuments)
 
     <footer class="confirmation-actions">
       <Button variant="outline" :disabled="store.publishing" @click="emit('back')">Anterior</Button>
-      <Button variant="primary" :disabled="!canPublish" :loading="store.publishing" @click="emit('publish')">
+      <Button
+        variant="primary"
+        :disabled="!canPublish"
+        :loading="store.publishing"
+        @click="emit('publish')"
+      >
         {{ store.publishing ? 'Publicando…' : 'Publicar' }}
       </Button>
     </footer>
