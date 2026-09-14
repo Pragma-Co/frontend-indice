@@ -74,7 +74,9 @@ function onItemsPerPageChange(event) {
     <label class="items-per-page">
       Itens por página:
       <select :value="itemsPerPage" @change="onItemsPerPageChange">
-        <option v-for="option in itemsPerPageOptions" :key="option" :value="option">{{ option }}</option>
+        <option v-for="option in itemsPerPageOptions" :key="option" :value="option">
+          {{ option }}
+        </option>
       </select>
     </label>
   </div>

@@ -213,7 +213,9 @@ export function useDocuments() {
     [...MOCK_DOCUMENTS].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)),
   )
 
-  const totalPages = computed(() => Math.max(1, Math.ceil(documents.value.length / itemsPerPage.value)))
+  const totalPages = computed(() =>
+    Math.max(1, Math.ceil(documents.value.length / itemsPerPage.value)),
+  )
 
   const paginatedDocuments = computed(() => {
     const start = (currentPage.value - 1) * itemsPerPage.value

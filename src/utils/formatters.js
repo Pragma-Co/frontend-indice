@@ -39,6 +39,9 @@ export function formatDate(isoDate) {
 }
 
 export function formatUpdatedAt(isoDate) {
-  const timePart = new Date(isoDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+  const timePart = new Date(isoDate).toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  })
   return `${formatDate(isoDate)} ${timePart}`
 }

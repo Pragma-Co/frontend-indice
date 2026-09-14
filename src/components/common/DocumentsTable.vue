@@ -43,83 +43,92 @@ function handleMenuItem(document, itemKey) {
 
 <template>
   <div class="table-scroll">
-  <table class="documents-table">
-    <thead>
-      <tr>
-        <th></th>
-        <th>Código do documento</th>
-        <th>Título</th>
-        <th>Tipo</th>
-        <th>Revisão atual</th>
-        <th>Status</th>
-        <th>Última atualização</th>
-        <th class="col-actions">Ações</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr v-for="document in documents" :key="document.id">
-        <!-- TODO: map this icon by file extension once documents carry one. -->
-        <td class="cell-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5A1.5 1.5 0 0 1 7 3.5Z"
-              stroke="currentColor"
-              stroke-width="1.4"
-              stroke-linejoin="round"
-            />
-            <path d="M14 3.5V7a1 1 0 0 0 1 1h3.5" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
-          </svg>
-        </td>
-        <td class="cell-code">{{ document.code }}</td>
-        <td class="cell-title">{{ document.title }}</td>
-        <td class="cell-type">{{ document.type }}</td>
-        <td>
-          <Badge>{{ document.revision }}</Badge>
-        </td>
-        <td>
-          <StatusBadge :status="document.status" />
-        </td>
-        <td class="cell-updated">
-          <span class="updated-date">{{ formatUpdatedAt(document.updatedAt) }}</span>
-          <span class="updated-by">por {{ document.updatedBy }}</span>
-        </td>
-        <td class="cell-actions">
-          <div class="actions-inner">
-            <button type="button" class="action-button" @click="emit('action', { document, action: document.action })">
-              {{ ACTION_LABELS[document.action] }}
-            </button>
-
-            <div class="menu-wrapper">
+    <table class="documents-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Código do documento</th>
+          <th>Título</th>
+          <th>Tipo</th>
+          <th>Revisão atual</th>
+          <th>Status</th>
+          <th>Última atualização</th>
+          <th class="col-actions">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr v-for="document in documents" :key="document.id">
+          <!-- TODO: map this icon by file extension once documents carry one. -->
+          <td class="cell-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5A1.5 1.5 0 0 1 7 3.5Z"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linejoin="round"
+              />
+              <path
+                d="M14 3.5V7a1 1 0 0 0 1 1h3.5"
+                stroke="currentColor"
+                stroke-width="1.4"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </td>
+          <td class="cell-code">{{ document.code }}</td>
+          <td class="cell-title">{{ document.title }}</td>
+          <td class="cell-type">{{ document.type }}</td>
+          <td>
+            <Badge>{{ document.revision }}</Badge>
+          </td>
+          <td>
+            <StatusBadge :status="document.status" />
+          </td>
+          <td class="cell-updated">
+            <span class="updated-date">{{ formatUpdatedAt(document.updatedAt) }}</span>
+            <span class="updated-by">por {{ document.updatedBy }}</span>
+          </td>
+          <td class="cell-actions">
+            <div class="actions-inner">
               <button
                 type="button"
-                class="menu-trigger"
-                aria-label="Mais ações"
-                @click="toggleMenu(document.id)"
+                class="action-button"
+                @click="emit('action', { document, action: document.action })"
               >
-                ⋯
+                {{ ACTION_LABELS[document.action] }}
               </button>
 
-              <template v-if="openMenuId === document.id">
-                <div class="menu-overlay" @click="closeMenu" />
-                <div class="menu-dropdown" role="menu">
-                  <button
-                    v-for="item in MENU_ITEMS"
-                    :key="item.key"
-                    type="button"
-                    role="menuitem"
-                    class="menu-item"
-                    @click="handleMenuItem(document, item.key)"
-                  >
-                    {{ item.label }}
-                  </button>
-                </div>
-              </template>
+              <div class="menu-wrapper">
+                <button
+                  type="button"
+                  class="menu-trigger"
+                  aria-label="Mais ações"
+                  @click="toggleMenu(document.id)"
+                >
+                  ⋯
+                </button>
+
+                <template v-if="openMenuId === document.id">
+                  <div class="menu-overlay" @click="closeMenu" />
+                  <div class="menu-dropdown" role="menu">
+                    <button
+                      v-for="item in MENU_ITEMS"
+                      :key="item.key"
+                      type="button"
+                      role="menuitem"
+                      class="menu-item"
+                      @click="handleMenuItem(document, item.key)"
+                    >
+                      {{ item.label }}
+                    </button>
+                  </div>
+                </template>
+              </div>
             </div>
-          </div>
-        </td>
-      </tr>
-    </tbody>
-  </table>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
 </template>
 

@@ -13,7 +13,9 @@ const auth = useAuthStore()
 
     <nav class="navbar-links">
       <RouterLink to="/documentos/upload" class="navbar-link">Início</RouterLink>
-      <RouterLink to="/documentos/upload" class="navbar-link" active-class="active">Documentos</RouterLink>
+      <RouterLink to="/documentos/upload" class="navbar-link" active-class="active"
+        >Documentos</RouterLink
+      >
     </nav>
 
     <div class="navbar-user">

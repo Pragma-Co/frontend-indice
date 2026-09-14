@@ -8,8 +8,15 @@ import { useDocuments, ITEMS_PER_PAGE_OPTIONS } from '../composables/useDocument
 
 const router = useRouter()
 
-const { documents, paginatedDocuments, currentPage, itemsPerPage, totalPages, goToPage, setItemsPerPage } =
-  useDocuments()
+const {
+  documents,
+  paginatedDocuments,
+  currentPage,
+  itemsPerPage,
+  totalPages,
+  goToPage,
+  setItemsPerPage,
+} = useDocuments()
 
 function goToUpload() {
   router.push({ name: 'document-upload' })
@@ -57,11 +64,16 @@ function handleDocumentAction({ action }) {
           stroke-width="1.4"
           stroke-linejoin="round"
         />
-        <path d="M10 19h4M10.5 21h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+        <path
+          d="M10 19h4M10.5 21h3"
+          stroke="currentColor"
+          stroke-width="1.4"
+          stroke-linecap="round"
+        />
       </svg>
       <p class="info-text">
-        <strong>Dica:</strong> Para editar um documento vigente, crie uma nova revisão. A revisão atual será mantida
-        apenas para histórico.
+        <strong>Dica:</strong> Para editar um documento vigente, crie uma nova revisão. A revisão
+        atual será mantida apenas para histórico.
       </p>
       <a href="#" class="info-link">Saiba mais sobre revisões</a>
     </aside>
