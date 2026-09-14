@@ -19,17 +19,12 @@
 
   --color-primary-bg: #e7e9f6;
 
-<<<<<<< HEAD
-  --color-text: #111111;
-  --color-text-muted: #666666;
-=======
   --color-info: #2347c9;
   --color-info-bg: #eaf1ff;
   --color-info-border: #cfe0ff;
 
   --color-text: #1f2937;
   --color-text-muted: #6b7280;
->>>>>>> 593079a (feat(#32): create documents management interface with pagination and status badges)
   --color-text-inverse: #ffffff;
 
   --color-border: #e5e7eb;

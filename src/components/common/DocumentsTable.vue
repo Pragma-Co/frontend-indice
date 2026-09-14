@@ -22,6 +22,7 @@ const ACTION_LABELS = {
 const MENU_ITEMS = [
   { key: 'history', label: 'Ver histórico de revisões' },
   { key: 'delete', label: 'Excluir documento' },
+  // { key: 'download', label: 'Baixar documento' }, // Download removed: access is view-only in product
 ]
 
 const openMenuId = ref(null)
@@ -163,6 +164,8 @@ function handleMenuItem(document, itemKey) {
 .cell-code {
   color: var(--color-text-muted);
   white-space: nowrap;
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
+  font-size: 0.8rem;
 }
 
 .cell-title {
