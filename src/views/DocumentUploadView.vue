@@ -16,12 +16,6 @@ import {
   UPLOAD_STEPS,
 } from '../utils/uploadFlow'
 
-const STEPS = [
-  { title: 'Upload', subtitle: 'Arquivos do projeto' },
-  { title: 'Metadados', subtitle: 'Definição de atributos' },
-  { title: 'Confirmação', subtitle: 'Revisão e envio final' },
-]
-
 // const AUTO_ADVANCE_DELAY_MS = 1200
 
 const router = useRouter()

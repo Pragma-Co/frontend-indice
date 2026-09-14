@@ -20,8 +20,10 @@ defineEmits(['discard', 'save-as-revision'])
     <div class="dialog" role="dialog" aria-modal="true">
       <h2 class="dialog-title">Arquivo já existe</h2>
       <p class="dialog-text">
-        O arquivo <strong>{{ fileName }}</strong> já existe no sistema<span v-if="existingDocument">, cadastrado como <strong>{{ existingDocument.codigo_ra }}</strong> — {{ existingDocument.titulo }}</span>.
-        Deseja salvá-lo como uma nova revisão?
+        O arquivo <strong>{{ fileName }}</strong> já existe no sistema<span v-if="existingDocument"
+          >, cadastrado como <strong>{{ existingDocument.codigo_ra }}</strong> —
+          {{ existingDocument.titulo }}</span
+        >. Deseja salvá-lo como uma nova revisão?
       </p>
       <div class="dialog-actions">
         <Button variant="outline" @click="$emit('discard')">Cancelar</Button>
