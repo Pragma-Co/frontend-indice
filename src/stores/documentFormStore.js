@@ -20,9 +20,9 @@ export function emptyForm(author = '') {
 }
 
 /**
- * State of the metadata form (step 2). Keeping it in a store lets the other
- * steps of the flow (upload and confirmation, separate tasks) read and keep
- * what the user filled in without losing progress.
+ * State of the metadata form (step 2), also read by the confirmation (step 3).
+ * Keeping it in a store lets the user move between the steps without losing
+ * what was filled in. The submission fired by "Publicar" is a separate task.
  */
 export const useDocumentFormStore = defineStore('documentForm', {
   state: () => ({
@@ -31,6 +31,7 @@ export const useDocumentFormStore = defineStore('documentForm', {
     disciplines: [],
     catalogsLoading: false,
     catalogsError: null,
+    publishing: false, // drives the loading state of "Publicar"; set by the submission task
   }),
 
   getters: {
@@ -76,6 +77,7 @@ export const useDocumentFormStore = defineStore('documentForm', {
 
     reset(author = '') {
       this.form = emptyForm(author)
+      this.publishing = false
     },
   },
 })
