@@ -146,15 +146,6 @@ describe('MetadataStep', () => {
     expect(wrapper.find('.metadata__author-error').text()).toBe('Responsável/Autor é obrigatório.')
   })
 
-  it('should show the author initials in the author block', async () => {
-    // Given
-    const wrapper = mount(MetadataStep)
-    // When
-    await wrapper.find('#author').setValue('Maria Souza')
-    // Then
-    expect(wrapper.find('[data-testid="author-initials"]').text()).toBe('MS')
-  })
-
   it('should block the next step when the pre-filled author is cleared', async () => {
     // Given
     const wrapper = mount(MetadataStep)

@@ -1,6 +1,5 @@
 <script setup>
 import { computed, reactive } from 'vue'
-import { getInitials } from '../../utils/formatters'
 import { useDocumentFormStore } from '../../stores/documentFormStore'
 import { AREAS, CONFIDENTIALITY_LEVELS, DOCUMENT_TYPES } from '../../utils/documentCatalog'
 import Button from '../common/Button.vue'
@@ -13,7 +12,6 @@ const store = useDocumentFormStore()
 const code = computed(() => store.codePreview ?? '')
 const areaOptions = AREAS.map((area) => ({ value: area.code, label: area.name }))
 const canProceed = computed(() => store.isValid && !store.catalogsLoading)
-const authorInitials = computed(() => getInitials(store.form.author))
 
 // Inline errors appear once the user leaves a required field, never before.
 const touched = reactive({})
@@ -176,9 +174,6 @@ function back(event) {
     </div>
 
     <div class="metadata__author" :class="{ 'metadata__author--invalid': fieldError('author') }">
-      <span class="metadata__author-avatar" data-testid="author-initials" aria-hidden="true">{{
-        authorInitials
-      }}</span>
       <input
         id="author"
         v-model="store.form.author"
@@ -262,20 +257,6 @@ function back(event) {
   background: var(--color-surface-muted);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-}
-
-.metadata__author-avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: var(--color-border);
-  color: var(--color-text-muted);
-  font-size: 0.72rem;
-  font-weight: 700;
 }
 
 .metadata__author input {
