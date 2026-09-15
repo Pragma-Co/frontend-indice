@@ -3,11 +3,17 @@ import { createRouter, createWebHistory } from 'vue-router'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', redirect: '/documentos' },
+    { path: '/', redirect: '/inicio' },
+    {
+      path: '/inicio',
+      name: 'home',
+      component: () => import('../views/home/HomeView.vue'),
+      meta: { title: 'Colaborador - Início' },
+    },
     {
       path: '/documentos',
       name: 'document-list',
-      component: () => import('../views/DocumentsListView.vue'),
+      component: () => import('../views/DocumentListView.vue'),
       meta: { title: 'Colaborador - Documentos' },
     },
     {

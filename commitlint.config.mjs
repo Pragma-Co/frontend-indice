@@ -27,6 +27,7 @@ const TIPOS = [
   'refactor',
   'style',
   'test',
+  'build'
 ];
 
 // Tipos de manutencao que podem vir sem escopo, como ja acontece no historico

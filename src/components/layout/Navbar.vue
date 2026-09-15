@@ -7,15 +7,12 @@ const auth = useAuthStore()
 <template>
   <header class="navbar">
     <div class="navbar-brand">
-      <span class="brand-icon" aria-hidden="true" />
-      <span class="brand-name">Índice</span>
+      <img src="/assets/logo/white.svg" alt="Índice" height="28px" />
     </div>
 
     <nav class="navbar-links">
-      <RouterLink to="/documentos/upload" class="navbar-link">Início</RouterLink>
-      <RouterLink to="/documentos/upload" class="navbar-link" active-class="active"
-        >Documentos</RouterLink
-      >
+      <RouterLink to="/inicio" class="navbar-link" active-class="active">Início</RouterLink>
+      <RouterLink to="/documentos" class="navbar-link" active-class="active">Documentos</RouterLink>
     </nav>
 
     <div class="navbar-user">
