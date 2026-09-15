@@ -119,8 +119,7 @@ defineProps({
 
 .field--invalid :deep(input),
 .field--invalid :deep(select),
-.field--invalid :deep(textarea),
-.field--invalid :deep(.tags) {
+.field--invalid :deep(textarea) {
   border-color: var(--color-danger);
 }
 </style>
