@@ -157,10 +157,34 @@ function back(event) {
         </div>
       </FormField>
 
+      <div class="metadata__author-field">
+        <label class="metadata__label" for="author">
+          Responsável / Autor
+          <span class="metadata__required" aria-hidden="true">*</span>
+        </label>
+        <div
+          class="metadata__author"
+          :class="{ 'metadata__author--invalid': fieldError('author') }"
+        >
+          <input
+            id="author"
+            v-model="store.form.author"
+            type="text"
+            placeholder="Responsável / Autor"
+            required
+            @blur="touch('author')"
+          />
+        </div>
+        <p v-if="fieldError('author')" class="metadata__author-error" role="alert">
+          {{ fieldError('author') }}
+        </p>
+      </div>
+
       <FormField
         label="Área(s) relacionada(s)"
         html-for="areas"
         required
+        class="metadata__full"
         :error="fieldError('areas')"
         @focusout="touch('areas')"
       >
@@ -172,21 +196,6 @@ function back(event) {
         />
       </FormField>
     </div>
-
-    <div class="metadata__author" :class="{ 'metadata__author--invalid': fieldError('author') }">
-      <input
-        id="author"
-        v-model="store.form.author"
-        type="text"
-        placeholder="Responsável / Autor"
-        aria-label="Responsável / Autor"
-        required
-        @blur="touch('author')"
-      />
-    </div>
-    <p v-if="fieldError('author')" class="metadata__author-error" role="alert">
-      {{ fieldError('author') }}
-    </p>
 
     <footer class="metadata__actions">
       <Button variant="outline" @click="back">Anterior</Button>
@@ -248,11 +257,26 @@ function back(event) {
   width: auto;
 }
 
+.metadata__author-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.metadata__label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.metadata__required {
+  color: var(--color-danger);
+  margin-left: 0.15rem;
+}
+
 .metadata__author {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-top: 1rem;
   padding: 0.6rem 1rem;
   background: var(--color-surface-muted);
   border: 1px solid var(--color-border);
@@ -279,7 +303,6 @@ function back(event) {
 }
 
 .metadata__author-error {
-  margin-top: 0.4rem;
   font-size: 0.8rem;
   color: var(--color-danger);
 }
