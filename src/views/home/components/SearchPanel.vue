@@ -65,7 +65,7 @@ const dateLabel = computed(() => {
   if (form.dateFrom) return `A partir de ${formatDateForDisplay(form.dateFrom)}`
   if (form.dateTo) return `Até ${formatDateForDisplay(form.dateTo)}`
   if (form.date)
-    return props.filters.datas.find((option) => option.value === form.date)?.label ?? form.date
+    return props.filters.dates.find((option) => option.value === form.date)?.label ?? form.date
   return 'Qualquer data'
 })
 
@@ -159,7 +159,7 @@ onMounted(restoreFiltersFromRoute)
             <select :value="form.date" @change="selectDatePreset">
               <option value="">Personalizado</option>
               <option
-                v-for="option in props.filters.datas"
+                v-for="option in props.filters.dates"
                 :key="option.value"
                 :value="option.value"
               >
@@ -269,7 +269,7 @@ onMounted(restoreFiltersFromRoute)
             Todos os tipos
           </button>
           <button
-            v-for="option in props.filters.tipos"
+            v-for="option in props.filters.types"
             :key="option.code"
             type="button"
             :class="{ selected: form.type === option.code }"

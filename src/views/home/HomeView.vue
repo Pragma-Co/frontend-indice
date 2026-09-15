@@ -12,13 +12,13 @@ const user = {
   area: 'Área Operacional Geral',
 }
 const fallbackFilters = {
-  datas: [
+  dates: [
     { value: 'last_7_days', label: 'Últimos 7 dias' },
     { value: 'last_month', label: 'Último mês' },
     { value: 'last_year', label: 'Último ano' },
   ],
   areas: [],
-  tipos: [],
+  types: [],
 }
 const filters = reactive({ ...fallbackFilters })
 const filtersLoading = ref(true)
