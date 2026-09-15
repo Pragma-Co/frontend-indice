@@ -13,17 +13,12 @@ export function emptyForm(author = '') {
     documentType: '',
     description: '',
     author,
-    areas: [], // area codes
+    areas: [],
     confidentiality: DEFAULT_CONFIDENTIALITY,
-    version: INITIAL_VERSION, // shown as REV01; sent as an integer on submission
+    version: INITIAL_VERSION,
   }
 }
 
-/**
- * State of the metadata form (step 2). Keeping it in a store lets the other
- * steps of the flow (upload and confirmation, separate tasks) read and keep
- * what the user filled in without losing progress.
- */
 export const useDocumentFormStore = defineStore('documentForm', {
   state: () => ({
     form: emptyForm(),
@@ -69,7 +64,6 @@ export const useDocumentFormStore = defineStore('documentForm', {
       }
     },
 
-    /** Pre-fill "Responsável/Autor" with the logged-in user (required, still editable). */
     setDefaultAuthor(name) {
       if (!this.form.author && name) this.form.author = name
     },

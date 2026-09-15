@@ -3,7 +3,7 @@ import { computed } from 'vue'
 
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
-  options: { type: Array, default: () => [] }, // [{ value, label }]
+  options: { type: Array, default: () => [] },
   id: { type: String, default: undefined },
   placeholder: { type: String, default: 'Adicionar...' },
 })
@@ -60,7 +60,6 @@ function remove(value) {
 </template>
 
 <style scoped>
-/* Looks like a single input: chips flow inline and the select fills the remaining space. */
 .tags {
   display: flex;
   flex-wrap: wrap;

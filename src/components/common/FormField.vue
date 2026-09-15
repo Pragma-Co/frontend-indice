@@ -4,7 +4,6 @@ defineProps({
   htmlFor: { type: String, default: undefined },
   required: { type: Boolean, default: false },
   error: { type: String, default: '' },
-  /** Icon drawn inside the control, at the left: 'search' | 'document'. */
   icon: {
     type: String,
     default: '',

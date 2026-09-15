@@ -112,11 +112,6 @@ export function useDocumentUpload() {
     queue.value = []
   }
 
-  /**
-   * Rebuilds the queue from documents already uploaded in a previous visit
-   * to the step (kept in uploadStore), so the user sees them again when
-   * coming back from the metadata step.
-   */
   function restore(documents) {
     queue.value = documents.map((document) => ({
       id: nextId++,

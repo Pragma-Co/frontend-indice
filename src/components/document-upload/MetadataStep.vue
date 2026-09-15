@@ -15,12 +15,10 @@ const areaOptions = AREAS.map((area) => ({ value: area.code, label: area.name })
 const canProceed = computed(() => store.isValid && !store.catalogsLoading)
 const authorInitials = computed(() => getInitials(store.form.author))
 
-/** Navigation between steps belongs to the view; step 3 is a separate task. */
 function next() {
   if (canProceed.value) emit('next')
 }
 
-// Button renders a plain <button>, which submits the form by default.
 function back(event) {
   event?.preventDefault?.()
   emit('back')

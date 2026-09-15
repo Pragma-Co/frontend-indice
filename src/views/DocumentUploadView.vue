@@ -57,7 +57,6 @@ function preventStrayFileDrop(event) {
 }
 
 onMounted(() => {
-  // Coming back from the metadata step: show the files already sent
   if (uploadStore.uploadedDocuments.length) restore(uploadStore.uploadedDocuments)
   window.addEventListener('dragover', preventStrayFileDrop)
   window.addEventListener('drop', preventStrayFileDrop)

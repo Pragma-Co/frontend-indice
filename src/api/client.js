@@ -47,11 +47,6 @@ export function uploadWithProgress(path, formData, { onProgress, signal } = {}) 
   })
 }
 
-// ---------------------------------------------------------------------------
-// JSON requests (catalog endpoints and, later, document creation). The upload
-// itself uses uploadWithProgress above because fetch has no upload progress.
-// ---------------------------------------------------------------------------
-
 export class ApiError extends Error {
   constructor(message, { status = 0, details = null } = {}) {
     super(message)
@@ -61,8 +56,6 @@ export class ApiError extends Error {
   }
 }
 
-// User-facing messages only: never expose hosts, stack traces or raw backend
-// error strings in the UI (LGPD / security rule from the README).
 function messageFor(status) {
   if (status === 400) return 'Dados inválidos. Verifique os campos e tente novamente.'
   if (status === 401 || status === 403) return 'Você não tem permissão para esta ação.'
