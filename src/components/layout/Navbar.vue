@@ -12,7 +12,6 @@ const links = [
   { label: 'Documentos', to: '/documentos' },
 ]
 
-// A link is active on its own path and on every path below it (e.g. /documentos/upload).
 function isActive(to) {
   return route.path === to || route.path.startsWith(`${to}/`)
 }
@@ -71,7 +70,6 @@ function isActive(to) {
 .navbar-logo {
   display: block;
   height: 28px;
-  /* the brand asset is blue; render it white on the navy bar */
   filter: brightness(0) invert(1);
 }
 
@@ -97,7 +95,6 @@ function isActive(to) {
   background: rgba(255, 255, 255, 0.1);
 }
 
-/* Active route: rounded container with a translucent fill around the label. */
 .navbar-link.active {
   color: var(--color-text-inverse);
   font-weight: 600;
