@@ -16,7 +16,8 @@ export default [
   ...pluginVue.configs['flat/recommended'],
 
   {
-    files: ['src/**/*.{js,vue}'],
+    // Tests run in jsdom (see vite.config.js), so they see the same globals as the app
+    files: ['src/**/*.{js,vue}', 'tests/**/*.js'],
     languageOptions: {
       ecmaVersion: 'latest',
       sourceType: 'module',
