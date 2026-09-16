@@ -40,6 +40,13 @@ export const useDocumentFormStore = defineStore('documentForm', {
       state.projects.find((p) => String(p.id) === String(state.form.projectId)) ?? null,
     selectedDiscipline: (state) =>
       state.disciplines.find((d) => String(d.id) === String(state.form.disciplineId)) ?? null,
+    projectsCarryDisciplines: (state) =>
+      state.projects.some((project) => Array.isArray(project.discipline_ids)),
+    availableDisciplines() {
+      if (!this.projectsCarryDisciplines) return this.disciplines
+      const ids = this.selectedProject?.discipline_ids ?? []
+      return this.disciplines.filter((d) => ids.includes(d.id))
+    },
     selectedDocumentType: (state) => findDocumentType(state.form.documentType),
     revision: (state) => revisionLabel(state.form.version),
     codePreview() {
@@ -68,6 +75,14 @@ export const useDocumentFormStore = defineStore('documentForm', {
       } finally {
         this.catalogsLoading = false
       }
+    },
+
+    selectProject(projectId) {
+      this.form.projectId = projectId
+      const stillValid = this.availableDisciplines.some(
+        (d) => String(d.id) === String(this.form.disciplineId),
+      )
+      if (!stillValid) this.form.disciplineId = ''
     },
 
     setDefaultAuthor(name) {

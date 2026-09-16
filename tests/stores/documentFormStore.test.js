@@ -141,6 +141,78 @@ describe('documentFormStore', () => {
     expect(store.publishing).toBe(false)
   })
 
+  describe('disciplines by project', () => {
+    const LINKED_PROJECTS = [
+      { id: 1, code: 'AK-2100', name: 'Aeroestrutura', discipline_ids: [1] },
+      { id: 2, code: 'BR-300', name: 'Trem de pouso', discipline_ids: [2] },
+    ]
+    const TWO_DISCIPLINES = [
+      { id: 1, code: 'EST', name: 'Estruturas' },
+      { id: 2, code: 'HID', name: 'Hidráulica' },
+    ]
+
+    it('should list only the disciplines linked to the selected project', async () => {
+      // Given
+      listProjects.mockResolvedValue(LINKED_PROJECTS)
+      listDisciplines.mockResolvedValue(TWO_DISCIPLINES)
+      await store.loadCatalogs()
+      // When
+      store.selectProject(2)
+      // Then
+      expect(store.availableDisciplines.map((d) => d.code)).toEqual(['HID'])
+    })
+
+    it('should clear the discipline when the new project does not include it', async () => {
+      // Given
+      listProjects.mockResolvedValue(LINKED_PROJECTS)
+      listDisciplines.mockResolvedValue(TWO_DISCIPLINES)
+      await store.loadCatalogs()
+      store.selectProject(1)
+      store.form.disciplineId = 1
+      // When
+      store.selectProject('2')
+      // Then
+      expect(store.form.projectId).toBe('2')
+      expect(store.form.disciplineId).toBe('')
+    })
+
+    it('should keep the discipline when the new project also includes it', async () => {
+      // Given
+      listProjects.mockResolvedValue([
+        { id: 1, code: 'AK-2100', name: 'A', discipline_ids: [1, 2] },
+        { id: 2, code: 'BR-300', name: 'B', discipline_ids: [2] },
+      ])
+      listDisciplines.mockResolvedValue(TWO_DISCIPLINES)
+      await store.loadCatalogs()
+      store.selectProject(1)
+      store.form.disciplineId = 2
+      // When
+      store.selectProject(2)
+      // Then
+      expect(store.form.disciplineId).toBe(2)
+    })
+
+    it('should list no discipline until a project is chosen when projects carry discipline_ids', async () => {
+      // Given
+      listProjects.mockResolvedValue(LINKED_PROJECTS)
+      listDisciplines.mockResolvedValue(TWO_DISCIPLINES)
+      // When
+      await store.loadCatalogs()
+      // Then
+      expect(store.projectsCarryDisciplines).toBe(true)
+      expect(store.availableDisciplines).toEqual([])
+    })
+
+    it('should list every discipline while projects do not carry discipline_ids', async () => {
+      // Given
+      await store.loadCatalogs()
+      // When
+      store.selectProject(1)
+      // Then
+      expect(store.availableDisciplines).toEqual(DISCIPLINES)
+    })
+  })
+
   describe('publish', () => {
     it('should post the mapped payload with the seeded responsible and keep the created document', async () => {
       // Given

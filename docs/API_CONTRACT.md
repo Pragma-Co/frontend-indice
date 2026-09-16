@@ -9,7 +9,7 @@ in `ApiError.details` for the callers that need it.
 
 | Endpoint | Response |
 | --- | --- |
-| `GET /projects/` | `[{ "id", "code", "name" }]`, active only, ordered by name |
+| `GET /projects/` | `[{ "id", "code", "name", "discipline_ids" }]`, active only, ordered by name. `discipline_ids` drives the dependent Disciplina select; all disciplines are listed while the field is absent |
 | `GET /disciplines/` | `[{ "id", "code", "name" }]`, active only, ordered by name |
 
 Document types and areas are static lists in `src/utils/documentCatalog.js`, mirroring the seed.

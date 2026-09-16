@@ -114,6 +114,49 @@ describe('MetadataStep', () => {
     expect(store.form.author).toBe('Maria Souza')
   })
 
+  it('should lock the discipline until a project is chosen when projects carry discipline_ids', async () => {
+    // Given
+    store.projects = [
+      { id: 1, code: 'AK-2100', name: 'Aeroestrutura', discipline_ids: [1] },
+      { id: 2, code: 'BR-300', name: 'Trem de pouso', discipline_ids: [] },
+    ]
+    store.disciplines = [
+      { id: 1, code: 'EST', name: 'Estruturas' },
+      { id: 2, code: 'HID', name: 'Hidráulica' },
+    ]
+    const wrapper = mount(MetadataStep)
+    expect(wrapper.find('#discipline').attributes('disabled')).toBeDefined()
+    expect(wrapper.findAll('#discipline option').map((o) => o.text().trim())).toEqual([
+      'Selecione o projeto primeiro',
+    ])
+    // When
+    await wrapper.find('#project').setValue(1)
+    // Then
+    const options = wrapper.findAll('#discipline option').map((o) => o.text().trim())
+    expect(wrapper.find('#discipline').attributes('disabled')).toBeUndefined()
+    expect(options).toEqual(['Selecione a disciplina', 'EST - Estruturas'])
+  })
+
+  it('should reset the discipline when the project changes to one that does not include it', async () => {
+    // Given
+    store.projects = [
+      { id: 1, code: 'AK-2100', name: 'Aeroestrutura', discipline_ids: [1] },
+      { id: 2, code: 'BR-300', name: 'Trem de pouso', discipline_ids: [2] },
+    ]
+    store.disciplines = [
+      { id: 1, code: 'EST', name: 'Estruturas' },
+      { id: 2, code: 'HID', name: 'Hidráulica' },
+    ]
+    const wrapper = mount(MetadataStep)
+    await wrapper.find('#project').setValue(1)
+    await wrapper.find('#discipline').setValue(1)
+    // When
+    await wrapper.find('#project').setValue(2)
+    // Then
+    expect(store.form.disciplineId).toBe('')
+    expect(wrapper.find('#discipline').element.value).toBe('')
+  })
+
   it('should show an inline error only after a required field is left empty', async () => {
     // Given
     const wrapper = mount(MetadataStep)
