@@ -71,7 +71,7 @@ describe('documentFormStore', () => {
     // When
     fillValidForm(store)
     // Then
-    expect(store.codePreview).toBe('AK-2100-EST-DWG-REV01')
+    expect(store.codePreview).toBe('AK-2100-EST-DWG-####')
   })
 
   it('should keep the code preview empty while project, discipline or type is missing', async () => {

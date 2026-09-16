@@ -46,7 +46,6 @@ export const useDocumentFormStore = defineStore('documentForm', {
         project: this.selectedProject?.code,
         discipline: this.selectedDiscipline?.code,
         type: this.selectedDocumentType?.code,
-        version: this.form.version,
       })
     },
     errors: (state) => validateDocumentForm(state.form),

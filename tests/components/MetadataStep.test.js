@@ -69,7 +69,7 @@ describe('MetadataStep', () => {
     // When
     await fillRequiredFields(wrapper)
     // Then
-    expect(wrapper.find('#code').element.value).toBe('AK-2100-EST-DWG-REV01')
+    expect(wrapper.find('#code').element.value).toBe('AK-2100-EST-DWG-####')
     expect(wrapper.text()).toContain('ENGENHARIA ESTRUTURAL')
     expect(nextButton(wrapper).attributes('disabled')).toBeUndefined()
   })

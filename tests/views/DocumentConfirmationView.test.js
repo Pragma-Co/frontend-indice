@@ -63,7 +63,7 @@ describe('DocumentConfirmationView', () => {
     // When
     const wrapper = mount(DocumentConfirmationView)
     // Then
-    expect(wrapper.find('[data-testid="document-code"]').text()).toBe('AK-2100-EST-DWG-REV01')
+    expect(wrapper.find('[data-testid="document-code"]').text()).toBe('AK-2100-EST-DWG-####')
   })
 
   it('should go back to the metadata step keeping the form', async () => {
