@@ -69,20 +69,19 @@ Responses and how the frontend reacts (`documentFormStore.publish` + `DocumentCo
 
 The frontend never shows the backend `message` of a `400`: it translates `field + code` into a
 Portuguese message (`src/utils/publishErrors.js`) and falls back to "Valor inválido para o campo
-<label>." when the entry is a plain string or the code is unknown. For that to work the backend
-should send each entry as `{ "code": "<code>", "message": "<developer text>" }` with these codes:
+<label>." when the entry is a plain string or the code is unknown. The backend sends each entry as `{ "code": "<code>", "message": "<developer text>" }` with these codes:
 
 | Payload field | Codes |
 | --- | --- |
-| `title` | `required`, `max_length` |
-| `description` | `max_length` |
+| `title` | `required`, `too_long` |
+| `description` | `too_long` |
 | `project_id` | `required`, `not_found` |
 | `discipline_id` | `required`, `not_found`, `not_in_project` |
 | `document_type` | `required`, `not_found` |
 | `confidentiality` | `required`, `invalid_choice` |
 | `responsible_id` | `required`, `not_found` |
-| `areas` | `required`, `invalid_list`, `not_found` |
-| `temp_file_id` | `required`, `invalid_uuid`, `not_found` (the last one as `404`) |
+| `areas` | `required`, `invalid`, `not_found` |
+| `temp_file_id` | `required`, `invalid`, `not_found` (the last one as `404`) |
 
 ### Document code
 

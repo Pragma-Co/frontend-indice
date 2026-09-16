@@ -17,6 +17,19 @@ describe('translateFieldError', () => {
     expect(message).toBe('A disciplina não pertence ao projeto selecionado.')
   })
 
+  it('should translate the length and format codes', () => {
+    // When / Then
+    expect(translateFieldError('title', { code: 'too_long' })).toBe(
+      'Título deve ter no máximo 255 caracteres.',
+    )
+    expect(translateFieldError('areas', { code: 'invalid' })).toBe(
+      'Informe as áreas como uma lista de siglas.',
+    )
+    expect(translateFieldError('tempFileId', { code: 'not_found' })).toBe(
+      'O arquivo enviado expirou. Faça o upload novamente.',
+    )
+  })
+
   it('should fall back to a generic message when the backend sends only a string', () => {
     // When / Then
     expect(translateFieldError('title', 'Title is required.')).toBe(

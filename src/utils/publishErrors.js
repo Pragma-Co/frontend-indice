@@ -25,15 +25,15 @@ const FIELD_LABELS = {
 export const FIELD_ERROR_MESSAGES = {
   tempFileId: {
     required: 'Nenhum arquivo foi enviado. Faça o upload novamente.',
-    invalid_uuid: 'O arquivo enviado é inválido. Faça o upload novamente.',
+    invalid: 'O arquivo enviado é inválido. Faça o upload novamente.',
     not_found: 'O arquivo enviado expirou. Faça o upload novamente.',
   },
   title: {
     required: 'Título é obrigatório.',
-    max_length: 'Título deve ter no máximo 255 caracteres.',
+    too_long: 'Título deve ter no máximo 255 caracteres.',
   },
   description: {
-    max_length: 'Descrição deve ter no máximo 500 caracteres.',
+    too_long: 'Descrição deve ter no máximo 500 caracteres.',
   },
   projectId: {
     required: 'Projeto é obrigatório.',
@@ -58,7 +58,7 @@ export const FIELD_ERROR_MESSAGES = {
   },
   areas: {
     required: 'Selecione ao menos uma área.',
-    invalid_list: 'Informe as áreas como uma lista de siglas.',
+    invalid: 'Informe as áreas como uma lista de siglas.',
     not_found: 'Uma ou mais áreas não existem ou estão inativas.',
   },
 }
