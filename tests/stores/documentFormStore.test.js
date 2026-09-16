@@ -128,4 +128,42 @@ describe('documentFormStore', () => {
     expect(store.form.author).toBe('João Silva')
     expect(store.publishing).toBe(false)
   })
+
+  it('should apply AI suggestions to the form and flag the suggested fields', () => {
+    // When
+    store.applySuggestions({ title: 'Desenho da fuselagem central', documentType: 'DWG' })
+    // Then
+    expect(store.form.title).toBe('Desenho da fuselagem central')
+    expect(store.form.documentType).toBe('DWG')
+    expect(store.isFieldSuggested('title')).toBe(true)
+    expect(store.isFieldSuggested('documentType')).toBe(true)
+    expect(store.isFieldSuggested('description')).toBe(false)
+  })
+
+  it('should ignore suggestions for fields the AI cannot fill, such as author', () => {
+    // When
+    store.applySuggestions({ author: 'Alguém' })
+    // Then
+    expect(store.form.author).toBe('')
+    expect(store.isFieldSuggested('author')).toBe(false)
+  })
+
+  it('should drop the suggested flag once the field is cleared', () => {
+    // Given
+    store.applySuggestions({ title: 'Desenho da fuselagem central' })
+    // When
+    store.clearSuggestion('title')
+    // Then
+    expect(store.isFieldSuggested('title')).toBe(false)
+    expect(store.form.title).toBe('Desenho da fuselagem central')
+  })
+
+  it('should clear suggested flags on reset', () => {
+    // Given
+    store.applySuggestions({ title: 'Desenho da fuselagem central' })
+    // When
+    store.reset()
+    // Then
+    expect(store.isFieldSuggested('title')).toBe(false)
+  })
 })

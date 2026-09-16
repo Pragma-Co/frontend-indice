@@ -167,4 +167,29 @@ describe('MetadataStep', () => {
       'Não foi possível conectar ao servidor.',
     )
   })
+
+  it('should show the "Sugerido por IA" badge only next to fields filled by the AI', () => {
+    // Given
+    store.applySuggestions({ title: 'Desenho da fuselagem central' })
+    // When
+    const wrapper = mount(MetadataStep)
+    // Then
+    const titleField = wrapper.find('#title').element.closest('.field')
+    expect(titleField.textContent).toContain('Sugerido por IA')
+    const descriptionField = wrapper.find('#description').element.closest('.field')
+    expect(descriptionField.textContent).not.toContain('Sugerido por IA')
+  })
+
+  it('should hide the "Sugerido por IA" badge once the user edits the suggested field', async () => {
+    // Given
+    store.applySuggestions({ title: 'Desenho da fuselagem central' })
+    const wrapper = mount(MetadataStep)
+    // When
+    await wrapper.find('#title').setValue('Título revisado pelo usuário')
+    // Then
+    expect(wrapper.find('#title').element.closest('.field').textContent).not.toContain(
+      'Sugerido por IA',
+    )
+    expect(store.form.title).toBe('Título revisado pelo usuário')
+  })
 })

@@ -24,6 +24,25 @@ function fieldError(field) {
   return touched[field] ? (store.errors[field] ?? '') : ''
 }
 
+/** Two-way binding that also drops a field's "suggested by AI" flag once the user edits it. */
+function fieldModel(field) {
+  return computed({
+    get: () => store.form[field],
+    set: (value) => {
+      store.form[field] = value
+      store.clearSuggestion(field)
+    },
+  })
+}
+
+const projectId = fieldModel('projectId')
+const disciplineId = fieldModel('disciplineId')
+const documentType = fieldModel('documentType')
+const title = fieldModel('title')
+const description = fieldModel('description')
+const confidentiality = fieldModel('confidentiality')
+const areas = fieldModel('areas')
+
 /** Navigation between steps belongs to the view; step 3 is a separate task. */
 function next() {
   if (canProceed.value) emit('next')
@@ -53,10 +72,16 @@ function back(event) {
         html-for="project"
         required
         icon="search"
+<<<<<<< HEAD
         :error="fieldError('projectId')"
         @focusout="touch('projectId')"
       >
         <select id="project" v-model="store.form.projectId" :disabled="store.catalogsLoading">
+=======
+        :suggested="store.isFieldSuggested('projectId')"
+      >
+        <select id="project" v-model="projectId" :disabled="store.catalogsLoading">
+>>>>>>> 59a83e9 (feat(#46): implement AI suggestion feature for document metadata; add badge and update form handling)
           <option value="">{{ store.catalogsLoading ? 'Carregando…' : 'Buscar projeto…' }}</option>
           <option v-for="project in store.projects" :key="project.id" :value="project.id">
             {{ project.code }} - {{ project.name }}
@@ -69,10 +94,16 @@ function back(event) {
         html-for="discipline"
         required
         icon="document"
+<<<<<<< HEAD
         :error="fieldError('disciplineId')"
         @focusout="touch('disciplineId')"
       >
         <select id="discipline" v-model="store.form.disciplineId" :disabled="store.catalogsLoading">
+=======
+        :suggested="store.isFieldSuggested('disciplineId')"
+      >
+        <select id="discipline" v-model="disciplineId" :disabled="store.catalogsLoading">
+>>>>>>> 59a83e9 (feat(#46): implement AI suggestion feature for document metadata; add badge and update form handling)
           <option value="">
             {{ store.catalogsLoading ? 'Carregando…' : 'Selecione a disciplina' }}
           </option>
@@ -91,10 +122,16 @@ function back(event) {
         html-for="document-type"
         required
         icon="document"
+<<<<<<< HEAD
         :error="fieldError('documentType')"
         @focusout="touch('documentType')"
       >
         <select id="document-type" v-model="store.form.documentType">
+=======
+        :suggested="store.isFieldSuggested('documentType')"
+      >
+        <select id="document-type" v-model="documentType">
+>>>>>>> 59a83e9 (feat(#46): implement AI suggestion feature for document metadata; add badge and update form handling)
           <option value="">Selecione o tipo</option>
           <option v-for="type in DOCUMENT_TYPES" :key="type.code" :value="type.code">
             {{ type.code }} - {{ type.name }}
@@ -121,33 +158,46 @@ function back(event) {
         html-for="title"
         required
         class="metadata__full"
+<<<<<<< HEAD
         :error="fieldError('title')"
         @focusout="touch('title')"
+=======
+        :suggested="store.isFieldSuggested('title')"
+>>>>>>> 59a83e9 (feat(#46): implement AI suggestion feature for document metadata; add badge and update form handling)
       >
         <input
           id="title"
-          v-model="store.form.title"
+          v-model="title"
           type="text"
           placeholder="Digite o título do documento…"
           maxlength="255"
         />
       </FormField>
 
-      <FormField label="Descrição Breve" html-for="description" class="metadata__full">
+      <FormField
+        label="Descrição Breve"
+        html-for="description"
+        class="metadata__full"
+        :suggested="store.isFieldSuggested('description')"
+      >
         <textarea
           id="description"
-          v-model="store.form.description"
+          v-model="description"
           rows="3"
           placeholder="Descreva brevemente o conteúdo do documento…"
           maxlength="500"
         />
       </FormField>
 
-      <FormField label="Grau de Confidencialidade" required>
+      <FormField
+        label="Grau de Confidencialidade"
+        required
+        :suggested="store.isFieldSuggested('confidentiality')"
+      >
         <div class="metadata__radios" role="radiogroup" aria-label="Grau de Confidencialidade">
           <label v-for="level in CONFIDENTIALITY_LEVELS" :key="level.value" class="metadata__radio">
             <input
-              v-model="store.form.confidentiality"
+              v-model="confidentiality"
               type="radio"
               name="confidentiality"
               :value="level.value"
@@ -157,6 +207,7 @@ function back(event) {
         </div>
       </FormField>
 
+<<<<<<< HEAD
       <div class="metadata__author-field">
         <label class="metadata__label" for="author">
           Responsável / Autor
@@ -180,17 +231,23 @@ function back(event) {
         </p>
       </div>
 
+=======
+>>>>>>> 59a83e9 (feat(#46): implement AI suggestion feature for document metadata; add badge and update form handling)
       <FormField
         label="Área(s) relacionada(s)"
         html-for="areas"
         required
+<<<<<<< HEAD
         class="metadata__full"
         :error="fieldError('areas')"
         @focusout="touch('areas')"
+=======
+        :suggested="store.isFieldSuggested('areas')"
+>>>>>>> 59a83e9 (feat(#46): implement AI suggestion feature for document metadata; add badge and update form handling)
       >
         <TagMultiSelect
           id="areas"
-          v-model="store.form.areas"
+          v-model="areas"
           :options="areaOptions"
           placeholder="Adicionar área…"
         />

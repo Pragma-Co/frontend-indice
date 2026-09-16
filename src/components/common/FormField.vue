@@ -1,4 +1,6 @@
 <script setup>
+import AiSuggestionBadge from './AiSuggestionBadge.vue'
+
 defineProps({
   label: { type: String, required: true },
   htmlFor: { type: String, default: undefined },
@@ -10,6 +12,8 @@ defineProps({
     default: '',
     validator: (value) => ['', 'search', 'document'].includes(value),
   },
+  /** Whether the current value was pre-filled from an AI suggestion. */
+  suggested: { type: Boolean, default: false },
 })
 </script>
 
@@ -18,6 +22,7 @@ defineProps({
     <label class="field__label" :for="htmlFor">
       {{ label }}
       <span v-if="required" class="field__required" aria-hidden="true">*</span>
+      <AiSuggestionBadge v-if="suggested" />
     </label>
     <div class="field__control">
       <span v-if="icon" class="field__icon" aria-hidden="true">
