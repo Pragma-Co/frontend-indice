@@ -1,14 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import DocumentConfirmationView from '../../src/views/DocumentConfirmationView.vue'
 import { useDocumentFormStore } from '../../src/stores/documentFormStore'
+import { useUploadStore } from '../../src/stores/uploadStore'
 
 const push = vi.fn()
 const replace = vi.fn()
 vi.mock('vue-router', () => ({ useRouter: () => ({ push, replace }) }))
 vi.mock('../../src/api/projects', () => ({ listProjects: vi.fn() }))
 vi.mock('../../src/api/disciplines', () => ({ listDisciplines: vi.fn() }))
+vi.mock('../../src/api/documents', async (importOriginal) => ({
+  ...(await importOriginal()),
+  createDocument: vi.fn(),
+}))
+
+import { ApiError } from '../../src/api/client'
+import { createDocument } from '../../src/api/documents'
+
+function publishButton(wrapper) {
+  return wrapper.findAll('button').find((b) => b.text().startsWith('Publicar'))
+}
 
 describe('DocumentConfirmationView', () => {
   let store
@@ -78,5 +90,82 @@ describe('DocumentConfirmationView', () => {
     // Then
     expect(push).toHaveBeenCalledWith({ name: 'document-metadata' })
     expect(store.form.title).toBe('Mantido')
+  })
+
+  describe('publish', () => {
+    let uploadStore
+
+    beforeEach(() => {
+      uploadStore = useUploadStore()
+      uploadStore.setUploadedDocuments([{ id: 'temp-1', name: 'desenho.pdf', size: 10 }])
+    })
+
+    it('should publish with the uploaded temp file and open the success screen on 201', async () => {
+      // Given
+      createDocument.mockResolvedValue({ id: 7, code: 'AK-2100-EST-DWG-0002', title: 'Desenho' })
+      const wrapper = mount(DocumentConfirmationView)
+      // When
+      await publishButton(wrapper).trigger('click')
+      await flushPromises()
+      // Then
+      expect(createDocument).toHaveBeenCalledWith(
+        expect.objectContaining({ temp_file_id: 'temp-1', responsible_id: 12 }),
+      )
+      expect(push).toHaveBeenCalledWith({ name: 'document-published' })
+      expect(uploadStore.uploadedDocuments).toEqual([])
+    })
+
+    it('should stay on the step and show the existing document on 409', async () => {
+      // Given
+      createDocument.mockRejectedValue(
+        new ApiError('Já existe.', {
+          status: 409,
+          details: { document: { id: 3, code: 'AK-2100-EST-DWG-0001' } },
+        }),
+      )
+      const wrapper = mount(DocumentConfirmationView)
+      // When
+      await publishButton(wrapper).trigger('click')
+      await flushPromises()
+      // Then
+      expect(push).not.toHaveBeenCalled()
+      expect(wrapper.find('[role="alert"]').text()).toContain('AK-2100-EST-DWG-0001')
+      expect(uploadStore.uploadedDocuments).toHaveLength(1)
+    })
+
+    it('should send the user back to the upload step on 404', async () => {
+      // Given
+      createDocument.mockRejectedValue(
+        new ApiError('Não encontrado.', {
+          status: 404,
+          details: { errors: { temp_file_id: 'expired' } },
+        }),
+      )
+      const wrapper = mount(DocumentConfirmationView)
+      // When
+      await publishButton(wrapper).trigger('click')
+      await flushPromises()
+      // Then
+      expect(push).toHaveBeenCalledWith({ name: 'document-upload' })
+      expect(uploadStore.uploadedDocuments).toEqual([])
+      expect(store.publishError).toBe('O arquivo enviado expirou. Faça o upload novamente.')
+    })
+
+    it('should send the user back to the metadata step on 400', async () => {
+      // Given
+      createDocument.mockRejectedValue(
+        new ApiError('Dados inválidos.', {
+          status: 400,
+          details: { errors: { title: 'Title is required.' } },
+        }),
+      )
+      const wrapper = mount(DocumentConfirmationView)
+      // When
+      await publishButton(wrapper).trigger('click')
+      await flushPromises()
+      // Then
+      expect(push).toHaveBeenCalledWith({ name: 'document-metadata' })
+      expect(store.serverErrors).toEqual({ title: 'Title is required.' })
+    })
   })
 })

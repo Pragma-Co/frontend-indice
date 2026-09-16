@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import { useDocumentFormStore } from '../../stores/documentFormStore'
 import { AREAS, CONFIDENTIALITY_LEVELS, DOCUMENT_TYPES } from '../../utils/documentCatalog'
 import Button from '../common/Button.vue'
@@ -21,8 +21,17 @@ function touch(field) {
 }
 
 function fieldError(field) {
-  return touched[field] ? (store.errors[field] ?? '') : ''
+  return store.serverErrors[field] ?? (touched[field] ? (store.errors[field] ?? '') : '')
 }
+
+watch(
+  () => ({ ...store.form }),
+  (current, previous) => {
+    for (const field of Object.keys(current)) {
+      if (current[field] !== previous[field]) store.clearServerError(field)
+    }
+  },
+)
 
 /** Navigation between steps belongs to the view; step 3 is a separate task. */
 function next() {
@@ -133,7 +142,12 @@ function back(event) {
         />
       </FormField>
 
-      <FormField label="Descrição Breve" html-for="description" class="metadata__full">
+      <FormField
+        label="Descrição Breve"
+        html-for="description"
+        class="metadata__full"
+        :error="fieldError('description')"
+      >
         <textarea
           id="description"
           v-model="store.form.description"
@@ -143,7 +157,7 @@ function back(event) {
         />
       </FormField>
 
-      <FormField label="Grau de Confidencialidade" required>
+      <FormField label="Grau de Confidencialidade" required :error="fieldError('confidentiality')">
         <div class="metadata__radios" role="radiogroup" aria-label="Grau de Confidencialidade">
           <label v-for="level in CONFIDENTIALITY_LEVELS" :key="level.value" class="metadata__radio">
             <input

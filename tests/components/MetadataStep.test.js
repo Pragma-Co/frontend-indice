@@ -125,6 +125,18 @@ describe('MetadataStep', () => {
     expect(wrapper.find('#title').element.closest('.field').classList).toContain('field--invalid')
   })
 
+  it('should show a backend field error right away and clear it when the field changes', async () => {
+    // Given
+    store.serverErrors = { title: 'Title is required.' }
+    const wrapper = mount(MetadataStep)
+    expect(wrapper.text()).toContain('Title is required.')
+    // When
+    await wrapper.find('#title').setValue('Desenho da fuselagem central')
+    // Then
+    expect(wrapper.text()).not.toContain('Title is required.')
+    expect(store.serverErrors).toEqual({})
+  })
+
   it('should clear the inline error once the field is filled', async () => {
     // Given
     const wrapper = mount(MetadataStep)
