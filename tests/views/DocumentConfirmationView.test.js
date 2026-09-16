@@ -165,7 +165,7 @@ describe('DocumentConfirmationView', () => {
       await flushPromises()
       // Then
       expect(push).toHaveBeenCalledWith({ name: 'document-metadata' })
-      expect(store.serverErrors).toEqual({ title: 'Title is required.' })
+      expect(store.serverErrors).toEqual({ title: 'Valor inválido para o campo Título.' })
     })
   })
 })

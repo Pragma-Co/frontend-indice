@@ -65,6 +65,25 @@ Responses and how the frontend reacts (`documentFormStore.publish` + `DocumentCo
 | `409` | `{ "error": "...", "document": { "id", "code" } }` | shows "já está cadastrado no documento `<code>`" on step 3 |
 | `500` / `503` | `{ "error": "..." }` | generic message by status, no backend details |
 
+### Field error codes
+
+The frontend never shows the backend `message` of a `400`: it translates `field + code` into a
+Portuguese message (`src/utils/publishErrors.js`) and falls back to "Valor inválido para o campo
+<label>." when the entry is a plain string or the code is unknown. For that to work the backend
+should send each entry as `{ "code": "<code>", "message": "<developer text>" }` with these codes:
+
+| Payload field | Codes |
+| --- | --- |
+| `title` | `required`, `max_length` |
+| `description` | `max_length` |
+| `project_id` | `required`, `not_found` |
+| `discipline_id` | `required`, `not_found`, `not_in_project` |
+| `document_type` | `required`, `not_found` |
+| `confidentiality` | `required`, `invalid_choice` |
+| `responsible_id` | `required`, `not_found` |
+| `areas` | `required`, `invalid_list`, `not_found` |
+| `temp_file_id` | `required`, `invalid_uuid`, `not_found` (the last one as `404`) |
+
 ### Document code
 
 Pattern `PROJECT-DISCIPLINE-TYPE-NNNN`, e.g. `AK-2100-EST-DWG-0002`; the four-digit sequence is

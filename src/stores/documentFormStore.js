@@ -5,6 +5,7 @@ import { createDocument, toDocumentPayload } from '../api/documents'
 import { useAuthStore } from './authStore'
 import { buildDocumentCode, INITIAL_VERSION, revisionLabel } from '../utils/documentCode'
 import { DEFAULT_CONFIDENTIALITY, findDocumentType } from '../utils/documentCatalog'
+import { mapServerErrors, publishErrorMessage } from '../utils/publishErrors'
 import { validateDocumentForm } from '../utils/validators'
 
 export function emptyForm(author = '') {
@@ -19,41 +20,6 @@ export function emptyForm(author = '') {
     confidentiality: DEFAULT_CONFIDENTIALITY,
     version: INITIAL_VERSION,
   }
-}
-
-const FORM_FIELD_BY_PAYLOAD_KEY = {
-  temp_file_id: 'tempFileId',
-  title: 'title',
-  description: 'description',
-  project_id: 'projectId',
-  discipline_id: 'disciplineId',
-  document_type: 'documentType',
-  confidentiality: 'confidentiality',
-  responsible_id: 'author',
-  areas: 'areas',
-}
-
-export function mapServerErrors(errors = {}) {
-  return Object.fromEntries(
-    Object.entries(errors ?? {}).map(([key, message]) => [
-      FORM_FIELD_BY_PAYLOAD_KEY[key] ?? key,
-      message,
-    ]),
-  )
-}
-
-export function publishErrorMessage(error) {
-  const status = error?.status
-  const details = error?.details
-  if (status === 400) return 'Alguns campos precisam de correção. Revise os metadados.'
-  if (status === 404) return 'O arquivo enviado expirou. Faça o upload novamente.'
-  if (status === 409) {
-    const code = details?.document?.code
-    return code
-      ? `Este arquivo já está cadastrado no documento ${code}.`
-      : 'Este arquivo já está cadastrado em outro documento.'
-  }
-  return error?.message || 'Não foi possível publicar o documento. Tente novamente.'
 }
 
 export const useDocumentFormStore = defineStore('documentForm', {

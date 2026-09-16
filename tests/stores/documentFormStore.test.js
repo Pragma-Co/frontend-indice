@@ -202,8 +202,8 @@ describe('documentFormStore', () => {
       // Then
       expect(error.status).toBe(400)
       expect(store.serverErrors).toEqual({
-        projectId: 'Project is required.',
-        author: 'Responsible not found.',
+        projectId: 'Valor inválido para o campo Projeto.',
+        author: 'Valor inválido para o campo Responsável/Autor.',
       })
       expect(store.publishError).toBe('Alguns campos precisam de correção. Revise os metadados.')
       expect(store.form.title).toBe('Desenho da fuselagem central')
