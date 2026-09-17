@@ -35,6 +35,14 @@ function remove(value) {
 
 <template>
   <div class="tags">
+    <select :id="id" class="tags__select" :disabled="!available.length" @change="add">
+      <option value="">
+        {{ available.length ? placeholder : 'Todas as opções selecionadas' }}
+      </option>
+      <option v-for="option in available" :key="option.value" :value="option.value">
+        {{ option.label }}
+      </option>
+    </select>
     <ul v-if="modelValue.length" class="tags__list" aria-label="Itens selecionados">
       <li v-for="tag in selected" :key="tag.value" class="tags__chip">
         {{ tag.label.toUpperCase() }}
@@ -48,40 +56,23 @@ function remove(value) {
         </button>
       </li>
     </ul>
-    <select :id="id" class="tags__select" :disabled="!available.length" @change="add">
-      <option value="">
-        {{ available.length ? placeholder : 'Todas as opções selecionadas' }}
-      </option>
-      <option v-for="option in available" :key="option.value" :value="option.value">
-        {{ option.label }}
-      </option>
-    </select>
   </div>
 </template>
 
 <style scoped>
-/* Looks like a single input: chips flow inline and the select fills the remaining space. */
+/* The selector stays put at the top; selected chips flow below it, side by side. */
 .tags {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem;
-  min-height: 2.5rem;
-  max-height: 6.5rem;
-  overflow-y: auto;
-  padding: 0.3rem 0.5rem;
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-}
-
-.tags:focus-within {
-  outline: 2px solid var(--color-primary-bg);
-  border-color: var(--color-primary);
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
 .tags__list {
-  display: contents;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  max-height: 5.5rem;
+  overflow-y: auto;
   list-style: none;
 }
 
@@ -104,18 +95,5 @@ function remove(value) {
   line-height: 1;
   font-size: 0.9rem;
   color: var(--color-text-muted);
-}
-
-.tags__select {
-  flex: 1;
-  width: auto;
-  min-width: 9rem;
-  padding: 0.3rem 0.25rem;
-  border: none;
-  background: transparent;
-}
-
-.tags__select:focus {
-  outline: none;
 }
 </style>

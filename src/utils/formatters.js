@@ -34,8 +34,16 @@ export function getInitials(name = '') {
     .join('')
 }
 
-export function formatDate(isoDate) {
-  return new Date(isoDate).toLocaleDateString('pt-BR')
+/** Formats a Date (or ISO string) as dd/mm/yyyy in pt-BR. Returns '—' for empty or invalid input. */
+export function formatDate(value) {
+  if (value === null || value === undefined || value === '') return '—'
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(date)
 }
 
 export function formatUpdatedAt(isoDate) {

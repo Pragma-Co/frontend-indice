@@ -1,6 +1,5 @@
 <script setup>
-import { computed } from 'vue'
-import { getInitials } from '../../utils/formatters'
+import { computed, reactive } from 'vue'
 import { useDocumentFormStore } from '../../stores/documentFormStore'
 import { AREAS, CONFIDENTIALITY_LEVELS, DOCUMENT_TYPES } from '../../utils/documentCatalog'
 import Button from '../common/Button.vue'
@@ -13,7 +12,17 @@ const store = useDocumentFormStore()
 const code = computed(() => store.codePreview ?? '')
 const areaOptions = AREAS.map((area) => ({ value: area.code, label: area.name }))
 const canProceed = computed(() => store.isValid && !store.catalogsLoading)
-const authorInitials = computed(() => getInitials(store.form.author))
+
+// Inline errors appear once the user leaves a required field, never before.
+const touched = reactive({})
+
+function touch(field) {
+  touched[field] = true
+}
+
+function fieldError(field) {
+  return touched[field] ? (store.errors[field] ?? '') : ''
+}
 
 /** Navigation between steps belongs to the view; step 3 is a separate task. */
 function next() {
@@ -39,7 +48,14 @@ function back(event) {
     </p>
 
     <div class="metadata__grid">
-      <FormField label="Projeto Associado" html-for="project" required icon="search">
+      <FormField
+        label="Projeto Associado"
+        html-for="project"
+        required
+        icon="search"
+        :error="fieldError('projectId')"
+        @focusout="touch('projectId')"
+      >
         <select id="project" v-model="store.form.projectId" :disabled="store.catalogsLoading">
           <option value="">{{ store.catalogsLoading ? 'Carregando…' : 'Buscar projeto…' }}</option>
           <option v-for="project in store.projects" :key="project.id" :value="project.id">
@@ -48,7 +64,14 @@ function back(event) {
         </select>
       </FormField>
 
-      <FormField label="Disciplina" html-for="discipline" required icon="document">
+      <FormField
+        label="Disciplina"
+        html-for="discipline"
+        required
+        icon="document"
+        :error="fieldError('disciplineId')"
+        @focusout="touch('disciplineId')"
+      >
         <select id="discipline" v-model="store.form.disciplineId" :disabled="store.catalogsLoading">
           <option value="">
             {{ store.catalogsLoading ? 'Carregando…' : 'Selecione a disciplina' }}
@@ -63,7 +86,14 @@ function back(event) {
         </select>
       </FormField>
 
-      <FormField label="Tipo de documento" html-for="document-type" required icon="document">
+      <FormField
+        label="Tipo de documento"
+        html-for="document-type"
+        required
+        icon="document"
+        :error="fieldError('documentType')"
+        @focusout="touch('documentType')"
+      >
         <select id="document-type" v-model="store.form.documentType">
           <option value="">Selecione o tipo</option>
           <option v-for="type in DOCUMENT_TYPES" :key="type.code" :value="type.code">
@@ -86,7 +116,14 @@ function back(event) {
         />
       </FormField>
 
-      <FormField label="Título do Documento" html-for="title" required class="metadata__full">
+      <FormField
+        label="Título do Documento"
+        html-for="title"
+        required
+        class="metadata__full"
+        :error="fieldError('title')"
+        @focusout="touch('title')"
+      >
         <input
           id="title"
           v-model="store.form.title"
@@ -120,7 +157,37 @@ function back(event) {
         </div>
       </FormField>
 
-      <FormField label="Área(s) relacionada(s)" html-for="areas" required>
+      <div class="metadata__author-field">
+        <label class="metadata__label" for="author">
+          Responsável / Autor
+          <span class="metadata__required" aria-hidden="true">*</span>
+        </label>
+        <div
+          class="metadata__author"
+          :class="{ 'metadata__author--invalid': fieldError('author') }"
+        >
+          <input
+            id="author"
+            v-model="store.form.author"
+            type="text"
+            placeholder="Responsável / Autor"
+            required
+            @blur="touch('author')"
+          />
+        </div>
+        <p v-if="fieldError('author')" class="metadata__author-error" role="alert">
+          {{ fieldError('author') }}
+        </p>
+      </div>
+
+      <FormField
+        label="Área(s) relacionada(s)"
+        html-for="areas"
+        required
+        class="metadata__full"
+        :error="fieldError('areas')"
+        @focusout="touch('areas')"
+      >
         <TagMultiSelect
           id="areas"
           v-model="store.form.areas"
@@ -128,20 +195,6 @@ function back(event) {
           placeholder="Adicionar área…"
         />
       </FormField>
-    </div>
-
-    <div class="metadata__author">
-      <span class="metadata__author-avatar" data-testid="author-initials" aria-hidden="true">{{
-        authorInitials
-      }}</span>
-      <input
-        id="author"
-        v-model="store.form.author"
-        type="text"
-        placeholder="Responsável / Autor"
-        aria-label="Responsável / Autor"
-        required
-      />
     </div>
 
     <footer class="metadata__actions">
@@ -204,29 +257,30 @@ function back(event) {
   width: auto;
 }
 
+.metadata__author-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.metadata__label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.metadata__required {
+  color: var(--color-danger);
+  margin-left: 0.15rem;
+}
+
 .metadata__author {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-top: 1rem;
   padding: 0.6rem 1rem;
   background: var(--color-surface-muted);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-}
-
-.metadata__author-avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: var(--color-border);
-  color: var(--color-text-muted);
-  font-size: 0.72rem;
-  font-weight: 700;
 }
 
 .metadata__author input {
@@ -242,6 +296,15 @@ function back(event) {
 
 .metadata__author:focus-within {
   border-color: var(--color-primary);
+}
+
+.metadata__author--invalid {
+  border-color: var(--color-danger);
+}
+
+.metadata__author-error {
+  font-size: 0.8rem;
+  color: var(--color-danger);
 }
 
 .metadata__actions {

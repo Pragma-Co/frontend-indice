@@ -65,7 +65,12 @@ frontend-api-6/
 │   │   ├── formatters.js
 │   │   └── validators.js
 │   └── views/
-│       ├── HomeView.vue
+│       ├── home
+│       │     ├── HomeView.vue
+│       │     ├── composables/
+│       │     │       └── useFilters.js
+│       │     └── components/
+│       │             └── Filters.vue
 │       ├── LoginView.vue
 │       └── DashboardView.vue
 └── node_modules/

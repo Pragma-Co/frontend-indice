@@ -3,7 +3,19 @@ import { createRouter, createWebHistory } from 'vue-router'
 const router = createRouter({
   history: createWebHistory(),
   routes: [
-    { path: '/', redirect: '/documents/upload' },
+    { path: '/', redirect: '/home' },
+    {
+      path: '/home',
+      name: 'home',
+      component: () => import('../views/home/HomeView.vue'),
+      meta: { title: 'Colaborador - Início' },
+    },
+    {
+      path: '/documentos',
+      name: 'document-list',
+      component: () => import('../views/DocumentListView.vue'),
+      meta: { title: 'Colaborador - Documentos' },
+    },
     {
       path: '/documents/upload',
       name: 'document-upload',
@@ -15,6 +27,12 @@ const router = createRouter({
       name: 'document-metadata',
       component: () => import('../views/DocumentMetadataView.vue'),
       meta: { title: 'Colaborador - Metadados' },
+    },
+    {
+      path: '/documentos/confirmacao',
+      name: 'document-confirmation',
+      component: () => import('../views/DocumentConfirmationView.vue'),
+      meta: { title: 'Colaborador - Confirmação' },
     },
   ],
 })
