@@ -17,6 +17,12 @@ const router = createRouter({
       meta: { title: 'Colaborador - Documentos' },
     },
     {
+      path: '/documentos/:documentId',
+      name: 'document-details',
+      component: () => import('../views/document/DocumentDetailsView.vue'),
+      meta: { title: 'Colaborador - Visualizar documento' },
+    },
+    {
       path: '/documentos/upload',
       name: 'document-upload',
       component: () => import('../views/document/components/DocumentUpload.vue'),

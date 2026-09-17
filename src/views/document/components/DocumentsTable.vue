@@ -15,7 +15,7 @@ const emit = defineEmits(['action'])
 
 const ACTION_LABELS = {
   'new-revision': 'Nova revisão',
-  'view-revision': 'Ver revisão',
+  'view-details': 'Ver detalhes',
   'continue-editing': 'Continuar edição',
 }
 

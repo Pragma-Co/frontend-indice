@@ -31,7 +31,7 @@ function normalizeDocument(document) {
     status: document.status ?? 'vigente',
     updatedAt: document.updated_at,
     updatedBy: document.updated_by ?? 'sistema',
-    action: document.action ?? 'view-revision',
+    action: document.action ?? 'view-details',
   }
 }
 
@@ -64,9 +64,15 @@ function setItemsPerPage(value) {
   currentPage.value = 1
 }
 
-function handleDocumentAction({ action }) {
+function goToDocumentDetails(document) {
+  router.push({ name: 'document-details', params: { documentId: document.id } })
+}
+
+function handleDocumentAction({ document, action }) {
   if (action === 'new-revision' || action === 'continue-editing') {
     goToUpload()
+  } else if (action === 'view-details') {
+    goToDocumentDetails(document)
   }
 }
 
