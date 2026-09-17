@@ -6,7 +6,7 @@ defineProps({
 
 <template>
   <nav class="breadcrumbs" aria-label="Breadcrumb">
-    <RouterLink to="/documentos">Documentos</RouterLink>
+    <RouterLink to="/documents">Documentos</RouterLink>
     <span aria-hidden="true">&gt;</span>
     <span class="current" aria-current="page">{{ title }}</span>
   </nav>
