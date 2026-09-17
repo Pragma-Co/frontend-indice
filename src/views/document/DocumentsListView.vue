@@ -3,7 +3,7 @@ import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchDocuments } from '@/api/documents.js'
 import Button from '@/components/common/Button.vue'
-import DocumentsTable from '@/components/common/DocumentsTable.vue'
+import DocumentsTable from '@/views/document/components/DocumentsTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import { buildDocumentQueryKey } from '@/utils/searchParams.js'
@@ -64,7 +64,6 @@ function setItemsPerPage(value) {
   currentPage.value = 1
 }
 
-// "Ver revisão" has no destination yet: the revision detail view isn't built.
 function handleDocumentAction({ action }) {
   if (action === 'new-revision' || action === 'continue-editing') {
     goToUpload()
@@ -133,7 +132,6 @@ watch(() => buildDocumentQueryKey(route.query), loadDocuments)
   margin: 1.5rem 0;
   color: var(--color-text-muted);
 }
-
 .error-message {
   color: var(--color-warning);
 }

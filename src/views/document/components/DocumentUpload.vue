@@ -1,20 +1,20 @@
 <script setup>
 import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import Button from '../components/common/Button.vue'
-import DuplicateFileDialog from '../components/common/DuplicateFileDialog.vue'
-import FileDropzone from '../components/common/FileDropzone.vue'
-import PageLayout from '../components/layout/PageLayout.vue'
-import StepIndicator from '../components/common/StepIndicator.vue'
-import UploadQueueTable from '../components/common/UploadQueueTable.vue'
-import { useDocumentUpload } from '../composables/useDocumentUpload'
-import { useUploadStore } from '../stores/uploadStore'
+import Button from '@/components/common/Button.vue'
+import DuplicateFileDialog from '@/components/common/DuplicateFileDialog.vue'
+import FileDropzone from '@/components/common/FileDropzone.vue'
+import PageLayout from '@/components/layout/PageLayout.vue'
+import StepIndicator from '@/components/common/StepIndicator.vue'
+import UploadQueueTable from '@/components/common/UploadQueueTable.vue'
+import { useDocumentUpload } from '@/composables/useDocumentUpload.js'
+import { useUploadStore } from '@/stores/uploadStore.js'
 import {
   UPLOAD_FLOW_SUBTITLE,
   UPLOAD_FLOW_TITLE,
   UPLOAD_STEP,
   UPLOAD_STEPS,
-} from '../utils/uploadFlow'
+} from '@/utils/uploadFlow.js'
 
 const router = useRouter()
 const uploadStore = useUploadStore()

@@ -19,19 +19,19 @@ const router = createRouter({
     {
       path: '/documentos/upload',
       name: 'document-upload',
-      component: () => import('../views/DocumentUploadView.vue'),
+      component: () => import('../views/document/components/DocumentUpload.vue'),
       meta: { title: 'Colaborador - InserirDocumento' },
     },
     {
       path: '/documentos/metadados',
       name: 'document-metadata',
-      component: () => import('../views/DocumentMetadataView.vue'),
+      component: () => import('../views/document/components/DocumentMetadata.vue'),
       meta: { title: 'Colaborador - Metadados' },
     },
     {
       path: '/documentos/confirmacao',
       name: 'document-confirmation',
-      component: () => import('../views/DocumentConfirmationView.vue'),
+      component: () => import('../views/document/components/DocumentConfirmation.vue'),
       meta: { title: 'Colaborador - Confirmação' },
     },
   ],

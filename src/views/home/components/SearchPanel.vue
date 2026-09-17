@@ -2,7 +2,7 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowRight, Building2, Calendar, ChevronDown, FileText, Search, Upload } from '@lucide/vue'
-import { buildDocumentSearchQuery } from '../../../utils/searchParams'
+import { buildDocumentSearchQuery } from '@/utils/searchParams'
 
 const props = defineProps({
   filters: { type: Object, required: true },
@@ -122,7 +122,7 @@ onMounted(restoreFiltersFromRoute)
 </script>
 
 <template>
-  <form class="search-panel" @submit.prevent="search">
+  <form class="search-panel card" @submit.prevent="search">
     <label class="search-field">
       <span class="sr-only">Pesquisar documentos</span>
       <Search :size="18" :stroke-width="2" aria-hidden="true" />
@@ -296,11 +296,6 @@ onMounted(restoreFiltersFromRoute)
   display: grid;
   grid-template-columns: 1fr auto auto;
   gap: 1rem;
-  padding: 1.25rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: 0 8px 24px rgba(30, 42, 94, 0.06);
 }
 .search-field {
   display: flex;

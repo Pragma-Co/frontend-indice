@@ -1,16 +1,16 @@
 <script setup>
 import { onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
-import StepIndicator from '../components/common/StepIndicator.vue'
-import PageLayout from '../components/layout/PageLayout.vue'
-import ConfirmationStep from '../components/document-upload/ConfirmationStep.vue'
-import { useDocumentFormStore } from '../stores/documentFormStore'
+import StepIndicator from '@/components/common/StepIndicator.vue'
+import PageLayout from '@/components/layout/PageLayout.vue'
+import ConfirmationStep from '@/components/document-upload/ConfirmationStep.vue'
+import { useDocumentFormStore } from '../../../stores/documentFormStore.js'
 import {
   CONFIRMATION_STEP,
   UPLOAD_FLOW_SUBTITLE,
   UPLOAD_FLOW_TITLE,
   UPLOAD_STEPS,
-} from '../utils/uploadFlow'
+} from '../../../utils/uploadFlow.js'
 
 /**
  * Step 3 (Confirmação) of the "Fazer upload de arquivo" flow. Reads the
