@@ -5,7 +5,6 @@ import { fetchDocumentDetail, requestDocumentAccess } from '@/api/documents.js'
 import { useAuthStore } from '@/stores/authStore.js'
 import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import { formatDate } from '@/utils/formatters.js'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -163,8 +162,8 @@ onMounted(loadDocument)
           </aside>
         </div>
       </template>
-    </div> 
-  </main> 
+    </div>
+  </main>
 </template>
 
 <style scoped>
