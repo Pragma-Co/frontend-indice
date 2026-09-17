@@ -42,52 +42,47 @@ describe('DocumentConfirmationView', () => {
   })
 
   it('should send the user back to the metadata step when required fields are missing', () => {
-    // Given
     store.form.title = ''
-    // When
+
     mount(DocumentConfirmationView)
-    // Then
+
     expect(replace).toHaveBeenCalledWith({ name: 'document-metadata' })
   })
 
   it('should stay on the confirmation step when the form is complete', () => {
-    // When
     mount(DocumentConfirmationView)
-    // Then
+
     expect(replace).not.toHaveBeenCalled()
   })
 
   it('should show Confirmação as the current step with the previous steps done', () => {
-    // When
     const wrapper = mount(DocumentConfirmationView)
-    // Then
+
     expect(wrapper.find('.step-circle.active').text()).toBe('3')
     expect(wrapper.findAll('.step-circle.done')).toHaveLength(2)
     expect(wrapper.text()).toContain('Resumo do Documento')
   })
 
   it('should summarise the metadata kept in the store', () => {
-    // Given
     store.form.title = 'Desenho da fuselagem central'
     store.form.projectId = 1
     store.form.disciplineId = 1
     store.form.documentType = 'DWG'
-    // When
+
     const wrapper = mount(DocumentConfirmationView)
-    // Then
+
     expect(wrapper.find('[data-testid="document-code"]').text()).toBe('AK-2100-EST-DWG-####')
   })
 
   it('should go back to the metadata step keeping the form', async () => {
-    // Given
     store.form.title = 'Mantido'
     const wrapper = mount(DocumentConfirmationView)
-    // When
+
     await wrapper
       .findAll('button')
       .find((b) => b.text() === 'Anterior')
       .trigger('click')
-    // Then
+
     expect(push).toHaveBeenCalledWith({ name: 'document-metadata' })
     expect(store.form.title).toBe('Mantido')
   })
@@ -101,13 +96,12 @@ describe('DocumentConfirmationView', () => {
     })
 
     it('should publish with the uploaded temp file and open the success screen on 201', async () => {
-      // Given
       createDocument.mockResolvedValue({ id: 7, code: 'AK-2100-EST-DWG-0002', title: 'Desenho' })
       const wrapper = mount(DocumentConfirmationView)
-      // When
+
       await publishButton(wrapper).trigger('click')
       await flushPromises()
-      // Then
+
       expect(createDocument).toHaveBeenCalledWith(
         expect.objectContaining({ temp_file_id: 'temp-1', responsible_id: 12 }),
       )
@@ -116,7 +110,6 @@ describe('DocumentConfirmationView', () => {
     })
 
     it('should stay on the step and show the existing document on 409', async () => {
-      // Given
       createDocument.mockRejectedValue(
         new ApiError('Já existe.', {
           status: 409,
@@ -124,17 +117,16 @@ describe('DocumentConfirmationView', () => {
         }),
       )
       const wrapper = mount(DocumentConfirmationView)
-      // When
+
       await publishButton(wrapper).trigger('click')
       await flushPromises()
-      // Then
+
       expect(push).not.toHaveBeenCalled()
       expect(wrapper.find('[role="alert"]').text()).toContain('AK-2100-EST-DWG-0001')
       expect(uploadStore.uploadedDocuments).toHaveLength(1)
     })
 
     it('should send the user back to the upload step on 404', async () => {
-      // Given
       createDocument.mockRejectedValue(
         new ApiError('Não encontrado.', {
           status: 404,
@@ -142,17 +134,16 @@ describe('DocumentConfirmationView', () => {
         }),
       )
       const wrapper = mount(DocumentConfirmationView)
-      // When
+
       await publishButton(wrapper).trigger('click')
       await flushPromises()
-      // Then
+
       expect(push).toHaveBeenCalledWith({ name: 'document-upload' })
       expect(uploadStore.uploadedDocuments).toEqual([])
       expect(store.publishError).toBe('O arquivo enviado expirou. Faça o upload novamente.')
     })
 
     it('should send the user back to the metadata step on 400', async () => {
-      // Given
       createDocument.mockRejectedValue(
         new ApiError('Dados inválidos.', {
           status: 400,
@@ -160,10 +151,10 @@ describe('DocumentConfirmationView', () => {
         }),
       )
       const wrapper = mount(DocumentConfirmationView)
-      // When
+
       await publishButton(wrapper).trigger('click')
       await flushPromises()
-      // Then
+
       expect(push).toHaveBeenCalledWith({ name: 'document-metadata' })
       expect(store.serverErrors).toEqual({ title: 'Valor inválido para o campo Título.' })
     })

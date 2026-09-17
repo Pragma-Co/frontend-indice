@@ -45,7 +45,6 @@ describe('documentFormStore', () => {
   })
 
   it('should start at version 1 shown as REV01, confidential by default, with an empty form', () => {
-    // Then
     expect(store.form.version).toBe(1)
     expect(store.revision).toBe('REV01')
     expect(store.form.confidentiality).toBe('CONFIDENTIAL')
@@ -55,9 +54,8 @@ describe('documentFormStore', () => {
   })
 
   it('should load projects and disciplines from the API', async () => {
-    // When
     await store.loadCatalogs()
-    // Then
+
     expect(listProjects).toHaveBeenCalled()
     expect(listDisciplines).toHaveBeenCalled()
     expect(store.projects).toEqual(PROJECTS)
@@ -66,75 +64,68 @@ describe('documentFormStore', () => {
   })
 
   it('should record a friendly error when the catalogs cannot be loaded', async () => {
-    // Given
     listProjects.mockRejectedValue(
       new ApiError('Erro interno do servidor. Tente novamente mais tarde.', { status: 500 }),
     )
-    // When
+
     await store.loadCatalogs()
-    // Then
+
     expect(store.catalogsError).toBe('Erro interno do servidor. Tente novamente mais tarde.')
     expect(store.catalogsLoading).toBe(false)
   })
 
   it('should preview the code from the project, discipline and document type codes', async () => {
-    // Given
     await store.loadCatalogs()
-    // When
+
     fillValidForm(store)
-    // Then
+
     expect(store.codePreview).toBe('AK-2100-EST-DWG-####')
   })
 
   it('should keep the code preview empty while project, discipline or type is missing', async () => {
-    // Given
     await store.loadCatalogs()
-    // When
+
     store.form.projectId = 1
     store.form.documentType = 'DWG'
-    // Then
+
     expect(store.codePreview).toBeNull()
   })
 
   it('should pre-fill the author with the logged-in user without overriding manual edits', () => {
-    // Given
     store.setDefaultAuthor('João Silva')
     expect(store.form.author).toBe('João Silva')
-    // When
+
     store.form.author = 'Maria Souza'
     store.setDefaultAuthor('João Silva')
-    // Then
+
     expect(store.form.author).toBe('Maria Souza')
   })
 
   it('should be valid only when every required field is filled', () => {
-    // Given
     fillValidForm(store)
     expect(store.isValid).toBe(true)
-    // When
+
     store.form.areas = []
-    // Then
+
     expect(store.isValid).toBe(false)
     expect(store.errors).toEqual({ areas: 'Área(s) relacionada(s) é obrigatório.' })
   })
 
   it('should become invalid when the author is cleared', () => {
-    // Given
     fillValidForm(store)
-    // When
+
     store.form.author = ''
-    // Then
+
     expect(store.isValid).toBe(false)
     expect(store.errors).toEqual({ author: 'Responsável/Autor é obrigatório.' })
   })
 
   it('should clear the form and the publishing flag on reset while keeping the default author', () => {
-    // Given
     fillValidForm(store)
     store.publishing = true
-    // When
+
     store.reset('João Silva')
-    // Then
+
     expect(store.form.title).toBe('')
     expect(store.form.areas).toEqual([])
     expect(store.form.author).toBe('João Silva')
@@ -152,32 +143,29 @@ describe('documentFormStore', () => {
     ]
 
     it('should list only the disciplines linked to the selected project', async () => {
-      // Given
       listProjects.mockResolvedValue(LINKED_PROJECTS)
       listDisciplines.mockResolvedValue(TWO_DISCIPLINES)
       await store.loadCatalogs()
-      // When
+
       store.selectProject(2)
-      // Then
+
       expect(store.availableDisciplines.map((d) => d.code)).toEqual(['HID'])
     })
 
     it('should clear the discipline when the new project does not include it', async () => {
-      // Given
       listProjects.mockResolvedValue(LINKED_PROJECTS)
       listDisciplines.mockResolvedValue(TWO_DISCIPLINES)
       await store.loadCatalogs()
       store.selectProject(1)
       store.form.disciplineId = 1
-      // When
+
       store.selectProject('2')
-      // Then
+
       expect(store.form.projectId).toBe('2')
       expect(store.form.disciplineId).toBe('')
     })
 
     it('should keep the discipline when the new project also includes it', async () => {
-      // Given
       listProjects.mockResolvedValue([
         { id: 1, code: 'AK-2100', name: 'A', discipline_ids: [1, 2] },
         { id: 2, code: 'BR-300', name: 'B', discipline_ids: [2] },
@@ -186,41 +174,38 @@ describe('documentFormStore', () => {
       await store.loadCatalogs()
       store.selectProject(1)
       store.form.disciplineId = 2
-      // When
+
       store.selectProject(2)
-      // Then
+
       expect(store.form.disciplineId).toBe(2)
     })
 
     it('should list no discipline until a project is chosen when projects carry discipline_ids', async () => {
-      // Given
       listProjects.mockResolvedValue(LINKED_PROJECTS)
       listDisciplines.mockResolvedValue(TWO_DISCIPLINES)
-      // When
+
       await store.loadCatalogs()
-      // Then
+
       expect(store.projectsCarryDisciplines).toBe(true)
       expect(store.availableDisciplines).toEqual([])
     })
 
     it('should list every discipline while projects do not carry discipline_ids', async () => {
-      // Given
       await store.loadCatalogs()
-      // When
+
       store.selectProject(1)
-      // Then
+
       expect(store.availableDisciplines).toEqual(DISCIPLINES)
     })
   })
 
   describe('publish', () => {
     it('should post the mapped payload with the seeded responsible and keep the created document', async () => {
-      // Given
       fillValidForm(store)
       createDocument.mockResolvedValue(CREATED)
-      // When
+
       const result = await store.publish('temp-1')
-      // Then
+
       expect(createDocument).toHaveBeenCalledWith({
         temp_file_id: 'temp-1',
         title: 'Desenho da fuselagem central',
@@ -244,19 +229,17 @@ describe('documentFormStore', () => {
     })
 
     it('should clear the form on success while keeping the author', async () => {
-      // Given
       fillValidForm(store)
       createDocument.mockResolvedValue(CREATED)
-      // When
+
       await store.publish('temp-1')
-      // Then
+
       expect(store.form.title).toBe('')
       expect(store.form.areas).toEqual([])
       expect(store.form.author).toBe('João Silva')
     })
 
     it('should map the 400 field errors to the form fields and keep the form', async () => {
-      // Given
       fillValidForm(store)
       createDocument.mockRejectedValue(
         new ApiError('Dados inválidos.', {
@@ -269,9 +252,9 @@ describe('documentFormStore', () => {
           },
         }),
       )
-      // When
+
       const error = await store.publish('temp-1').catch((e) => e)
-      // Then
+
       expect(error.status).toBe(400)
       expect(store.serverErrors).toEqual({
         projectId: 'Valor inválido para o campo Projeto.',
@@ -283,7 +266,6 @@ describe('documentFormStore', () => {
     })
 
     it('should ask for a new upload on 404', async () => {
-      // Given
       fillValidForm(store)
       createDocument.mockRejectedValue(
         new ApiError('Recurso não encontrado.', {
@@ -291,15 +273,14 @@ describe('documentFormStore', () => {
           details: { errors: { temp_file_id: 'Uploaded file not found or expired.' } },
         }),
       )
-      // When
+
       await store.publish('temp-1').catch(() => {})
-      // Then
+
       expect(store.publishError).toBe('O arquivo enviado expirou. Faça o upload novamente.')
       expect(store.serverErrors).toEqual({})
     })
 
     it('should name the existing document on 409', async () => {
-      // Given
       fillValidForm(store)
       createDocument.mockRejectedValue(
         new ApiError('Já existe.', {
@@ -310,42 +291,39 @@ describe('documentFormStore', () => {
           },
         }),
       )
-      // When
+
       await store.publish('temp-1').catch(() => {})
-      // Then
+
       expect(store.publishError).toBe(
         'Este arquivo já está cadastrado no documento AK-2100-EST-DWG-0001.',
       )
     })
 
     it('should keep the generic message for other errors', async () => {
-      // Given
       fillValidForm(store)
       createDocument.mockRejectedValue(
         new ApiError('Erro interno do servidor. Tente novamente mais tarde.', { status: 500 }),
       )
-      // When
+
       await store.publish('temp-1').catch(() => {})
-      // Then
+
       expect(store.publishError).toBe('Erro interno do servidor. Tente novamente mais tarde.')
     })
 
     it('should drop a field error once that field is cleared', () => {
-      // Given
       store.serverErrors = { title: 'Title is required.', areas: 'Areas required.' }
-      // When
+
       store.clearServerError('title')
-      // Then
+
       expect(store.serverErrors).toEqual({ areas: 'Areas required.' })
     })
 
     it('should clear the publish state on reset', () => {
-      // Given
       store.publishError = 'erro'
       store.serverErrors = { title: 'x' }
-      // When
+
       store.reset()
-      // Then
+
       expect(store.publishError).toBeNull()
       expect(store.serverErrors).toEqual({})
     })
