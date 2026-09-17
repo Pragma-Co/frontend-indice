@@ -13,7 +13,7 @@ const router = createRouter({
     {
       path: '/documentos',
       name: 'document-list',
-      component: () => import('../views/DocumentListView.vue'),
+      component: () => import('../views/document/DocumentsListView.vue'),
       meta: { title: 'Colaborador - Documentos' },
     },
     {
