@@ -4,7 +4,6 @@ import { useRoute } from 'vue-router'
 import { fetchDocuments } from '@/api/documents.js'
 import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
-import { formatDate } from '@/utils/formatters.js'
 
 const route = useRoute()
 const document = ref(null)
@@ -82,8 +81,20 @@ onMounted(loadDocument)
                 <dd>{{ document.type.name }}</dd>
               </div>
               <div>
-                <dt>Data de atualização</dt>
-                <dd>{{ formatDate(document.updated_at) }}</dd>
+                <dt>Disciplina</dt>
+                <dd>---</dd>
+              </div>
+              <div>
+                <dt>Revisão atual</dt>
+                <dd>---</dd>
+              </div>
+              <div>
+                <dt>Data de Emissão</dt>
+                <dd>---</dd>
+              </div>
+              <div>
+                <dt>Responsável</dt>
+                <dd>---</dd>
               </div>
             </dl>
 
@@ -92,16 +103,17 @@ onMounted(loadDocument)
               <p>{{ document.description }}</p>
             </div>
 
-            <div v-if="document.areas?.length" class="tag-block">
-              <h2>Áreas relacionadas</h2>
-              <div class="tags">
-                <span v-for="area in document.areas" :key="area.acronym">{{ area.acronym }}</span>
+            <div class="tag-block">
+              <h2>Tags relacionadas</h2>
+              <div v-if="document.tags?.length" class="tags">
+                <span v-for="area in document.tags" :key="area.acronym">---</span>
               </div>
+              <p v-else class="tag-block-empty">N/A</p>
             </div>
 
             <div class="revision-block">
-              <h2>Histórico de revisões</h2>
-              <p>As revisões deste documento serão exibidas aqui.</p>
+              <h2>Histórico de versões</h2>
+              <p v-for="version in document.versions" :key="version.id">---</p>
             </div>
           </aside>
         </div>
@@ -238,6 +250,11 @@ dd {
   margin-top: 1.25rem;
   padding-top: 1.25rem;
   border-top: 1px solid var(--color-border);
+}
+
+.tag-block-empty {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
 }
 
 .document-card h2 {
