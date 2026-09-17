@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { fetchDocuments, requestDocumentAccess } from '@/api/documents.js'
+import { fetchDocumentDetail, requestDocumentAccess } from '@/api/documents.js'
 import { useAuthStore } from '@/stores/authStore.js'
 import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
@@ -37,7 +37,7 @@ async function loadDocument() {
 async function handleRequestAccess() {
   requestingAccess.value = true
   try {
-    await requestDocumentAccess(route.params.documentId, authStore.user?.id)
+    await requestDocumentAccess(route.params.documentId, authStore.currentUser?.id)
     await loadDocument()
   } catch {
     error.value = 'Não foi possível solicitar acesso.'
@@ -147,6 +147,8 @@ onMounted(loadDocument)
             <div class="revision-block">
               <h2>Histórico de versões</h2>
               <p v-for="version in document.versions" :key="version.id">---</p>
+            </div>
+
             <div v-if="document.areas?.length" class="tag-block">
               <h2>Áreas relacionadas</h2>
               <div class="tags">
@@ -161,8 +163,8 @@ onMounted(loadDocument)
           </aside>
         </div>
       </template>
-    </div>
-  </main>
+    </div> 
+  </main> 
 </template>
 
 <style scoped>
@@ -312,14 +314,11 @@ dd {
   border-top: 1px solid var(--color-border);
 }
 
-<<<<<<< HEAD
 .tag-block-empty {
   font-size: 0.8rem;
   color: var(--color-text-muted);
 }
 
-=======
->>>>>>> 9cf5bbf (feat(#15): create document view skeleton)
 .document-card h2 {
   margin-bottom: 0.65rem;
   font-size: 0.72rem;
