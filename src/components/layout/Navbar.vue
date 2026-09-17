@@ -9,7 +9,7 @@ const auth = useAuthStore()
 
 const links = [
   { label: 'Início', to: '/home' },
-  { label: 'Documentos', to: '/documentos' },
+  { label: 'Documentos', to: '/documents' },
 ]
 
 function isActive(to) {

@@ -1,8 +1,8 @@
 <script setup>
 import { ref } from 'vue'
-import { formatUpdatedAt } from '../../utils/formatters'
-import Badge from './Badge.vue'
-import StatusBadge from './StatusBadge.vue'
+import { formatUpdatedAt } from '@/utils/formatters.js'
+import Badge from '@/components/common/Badge.vue'
+import StatusBadge from '@/components/common/StatusBadge.vue'
 
 defineProps({
   documents: {
@@ -15,7 +15,7 @@ const emit = defineEmits(['action'])
 
 const ACTION_LABELS = {
   'new-revision': 'Nova revisão',
-  'view-revision': 'Ver revisão',
+  'view-details': 'Ver detalhes',
   'continue-editing': 'Continuar edição',
 }
 
@@ -134,7 +134,8 @@ function handleMenuItem(document, itemKey) {
 
 <style scoped>
 .table-scroll {
-  overflow-x: auto;
+  overflow: auto;
+  height: calc(100vh - 437px);
 }
 
 .documents-table {

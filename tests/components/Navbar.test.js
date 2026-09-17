@@ -11,8 +11,8 @@ function createTestRouter() {
     history: createMemoryHistory(),
     routes: [
       { path: '/home', name: 'home', component: Page },
-      { path: '/documentos', name: 'document-list', component: Page },
-      { path: '/documentos/upload', name: 'document-upload', component: Page },
+      { path: '/documents', name: 'document-list', component: Page },
+      { path: '/documents/upload', name: 'document-upload', component: Page },
     ],
   })
 }
@@ -45,7 +45,7 @@ describe('Navbar', () => {
     // Then
     const links = wrapper.findAll('a.navbar-link')
     expect(links.map((link) => link.text())).toEqual(['Início', 'Documentos'])
-    expect(links.map((link) => link.attributes('href'))).toEqual(['/home', '/documentos'])
+    expect(links.map((link) => link.attributes('href'))).toEqual(['/home', '/documents'])
   })
 
   it('should mark Início as active on the home route', async () => {
@@ -59,7 +59,7 @@ describe('Navbar', () => {
 
   it('should mark Documentos as active on any documents route', async () => {
     // When
-    const { wrapper } = await mountNavbar('/documentos/upload')
+    const { wrapper } = await mountNavbar('/documents/upload')
     // Then
     const [home, documents] = wrapper.findAll('a.navbar-link')
     expect(documents.classes()).toContain('active')
@@ -68,7 +68,7 @@ describe('Navbar', () => {
 
   it('should navigate to the home route when the logo is clicked', async () => {
     // Given
-    const { wrapper, router } = await mountNavbar('/documentos/upload')
+    const { wrapper, router } = await mountNavbar('/documents/upload')
     // When
     await wrapper.find('a.navbar-brand').trigger('click')
     await flushPromises()
@@ -83,7 +83,7 @@ describe('Navbar', () => {
     await wrapper.findAll('a.navbar-link')[1].trigger('click')
     await flushPromises()
     // Then
-    expect(router.currentRoute.value.path).toBe('/documentos')
+    expect(router.currentRoute.value.path).toBe('/documents')
   })
 
   it('should show the notifications bell on the right block', async () => {

@@ -19,7 +19,7 @@ describe('router', () => {
 
   it('should resolve the documents route to the list view', async () => {
     // When
-    await router.push('/documentos')
+    await router.push('/documents')
     // Then
     expect(router.currentRoute.value.name).toBe('document-list')
   })
