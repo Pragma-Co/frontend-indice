@@ -17,13 +17,13 @@ const router = createRouter({
       meta: { title: 'Colaborador - Documentos' },
     },
     {
-      path: '/documentos/upload',
+      path: '/documents/upload',
       name: 'document-upload',
       component: () => import('../views/DocumentUploadView.vue'),
       meta: { title: 'Colaborador - InserirDocumento' },
     },
     {
-      path: '/documentos/metadados',
+      path: '/documents/metadados',
       name: 'document-metadata',
       component: () => import('../views/DocumentMetadataView.vue'),
       meta: { title: 'Colaborador - Metadados' },

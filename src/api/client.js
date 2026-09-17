@@ -19,7 +19,9 @@ export function uploadWithProgress(path, formData, { onProgress, signal } = {}) 
         body = null
       }
 
-      if (xhr.status >= 200 && xhr.status < 300) {
+      const isSuccessOrDuplicate = (xhr.status >= 200 && xhr.status < 300) || xhr.status === 409
+
+      if (isSuccessOrDuplicate) {
         resolve(body)
       } else {
         reject(

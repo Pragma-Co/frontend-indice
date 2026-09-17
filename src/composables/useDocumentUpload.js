@@ -81,7 +81,7 @@ export function useDocumentUpload() {
 
       if (response?.duplicate && !forceNewRevision) {
         item.status = 'duplicate'
-        item.duplicateInfo = response.existingDocument ?? null
+        item.duplicateInfo = response.document ?? null
         return
       }
 
