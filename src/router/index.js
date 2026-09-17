@@ -11,6 +11,12 @@ const router = createRouter({
       meta: { title: 'Colaborador - Início' },
     },
     {
+      path: '/results',
+      name: 'results',
+      component: () => import('../views/document/components/ResultsList.vue'),
+      meta: { title: 'Colaborador - Resultados' },
+    },
+    {
       path: '/documentos',
       name: 'document-list',
       component: () => import('../views/DocumentListView.vue'),

@@ -2,7 +2,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowRight, Building2, Calendar, ChevronDown, FileText, Search, Upload } from '@lucide/vue'
-import { buildDocumentSearchQuery } from '../../../utils/searchParams'
+import { buildDocumentSearchQuery } from '@/utils/searchParams'
+import Button from '@/components/common/Button.vue'
 
 const props = defineProps({
   filters: { type: Object, required: true },
@@ -122,7 +123,7 @@ onMounted(restoreFiltersFromRoute)
 </script>
 
 <template>
-  <form class="search-panel" @submit.prevent="search">
+  <form class="search-panel card" @submit.prevent="search">
     <label class="search-field">
       <span class="sr-only">Pesquisar documentos</span>
       <Search :size="18" :stroke-width="2" aria-hidden="true" />
@@ -132,7 +133,7 @@ onMounted(restoreFiltersFromRoute)
         placeholder="Pesquisar por título, código, descrição ou termos-chave..."
       />
     </label>
-    <button class="search-button" type="submit">Pesquisar</button>
+    <Button>Pesquisar</Button>
     <RouterLink class="upload-button" :to="{ name: 'document-upload' }">
       <Upload :size="17" :stroke-width="2" aria-hidden="true" />
       Upload
@@ -282,7 +283,7 @@ onMounted(restoreFiltersFromRoute)
     </div>
 
     <div class="search-actions">
-      <button type="button" class="clear-button" @click="resetFilters">Limpar filtros</button>
+      <Button variant="outline" @click="resetFilters">Limpar filtros</Button>
       <button type="button" class="all-documents" @click="emit('view-all')">
         Ver todos os documentos
         <ArrowRight :size="16" aria-hidden="true" />
@@ -296,11 +297,6 @@ onMounted(restoreFiltersFromRoute)
   display: grid;
   grid-template-columns: 1fr auto auto;
   gap: 1rem;
-  padding: 1.25rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: 0 8px 24px rgba(30, 42, 94, 0.06);
 }
 .search-field {
   display: flex;
@@ -347,7 +343,7 @@ onMounted(restoreFiltersFromRoute)
   color: white;
 }
 .upload-button {
-  background: var(--color-navy);
+  background: grey;
   color: white;
   border-radius: var(--radius-sm);
 }
