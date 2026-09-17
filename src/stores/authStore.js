@@ -9,7 +9,7 @@ import { getInitials } from '../utils/formatters'
  */
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    currentUser: { id: null, name: 'João Silva', role: 'Colaborador' },
+    currentUser: { id: 51, name: 'João Silva', role: 'Colaborador' },
   }),
   getters: {
     isAuthenticated: (state) => Boolean(state.currentUser),
