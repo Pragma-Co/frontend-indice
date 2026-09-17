@@ -59,3 +59,28 @@ export function fetchDocuments(query = {}) {
   documentsRequests.set(queryString, request)
   return request
 }
+
+export async function fetchDocumentDetail(documentId, userId) {
+  const query = userId ? `?user_id=${userId}` : ''
+  const response = await fetch(`/api/documents/${documentId}${query}`)
+  if (!response.ok) {
+    const error = new Error('Failed to fetch document detail')
+    error.status = response.status
+    throw error
+  }
+  return response.json()
+}
+
+export async function requestDocumentAccess(documentId, userId, justification) {
+  const response = await fetch(`/api/documents/${documentId}/request-access`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: userId, justification }),
+  })
+  if (!response.ok) {
+    const error = new Error('Failed to request document access')
+    error.status = response.status
+    throw error
+  }
+  return response.json()
+}

@@ -1,27 +1,48 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { fetchDocuments } from '@/api/documents.js'
+import { fetchDocuments, requestDocumentAccess } from '@/api/documents.js'
+import { useAuthStore } from '@/stores/authStore.js'
 import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import { formatDate } from '@/utils/formatters.js'
 
 const route = useRoute()
+const authStore = useAuthStore()
 const document = ref(null)
 const loading = ref(true)
 const error = ref('')
+const notFound = ref(false)
+const requestingAccess = ref(false)
+
+const canRequestAccess = computed(() => document.value?.access_status !== 'APPROVED')
 
 async function loadDocument() {
+  loading.value = true
+  error.value = ''
+  notFound.value = false
   try {
-    const response = await fetchDocuments()
-    document.value = response.documents.find(
-      (item) => String(item.id) === String(route.params.documentId),
-    )
-    if (!document.value) error.value = 'Documento não encontrado.'
-  } catch {
-    error.value = 'Não foi possível carregar o documento.'
+    document.value = await fetchDocumentDetail(route.params.documentId, authStore.user?.id)
+  } catch (err) {
+    if (err.status === 404) {
+      notFound.value = true
+    } else {
+      error.value = 'Não foi possível carregar o documento.'
+    }
   } finally {
     loading.value = false
+  }
+}
+
+async function handleRequestAccess() {
+  requestingAccess.value = true
+  try {
+    await requestDocumentAccess(route.params.documentId, authStore.user?.id)
+    await loadDocument()
+  } catch {
+    error.value = 'Não foi possível solicitar acesso.'
+  } finally {
+    requestingAccess.value = false
   }
 }
 
@@ -34,6 +55,7 @@ onMounted(loadDocument)
       <Breadcrumbs :title="document?.title ?? 'Documento'" />
 
       <p v-if="loading" class="status-message">Carregando documento...</p>
+      <p v-else-if="notFound" class="status-message error-message">Documento não encontrado.</p>
       <p v-else-if="error" class="status-message error-message">{{ error }}</p>
 
       <template v-else-if="document">
@@ -66,7 +88,7 @@ onMounted(loadDocument)
 
           <aside class="document-card">
             <header class="document-card-header">
-              <StatusBadge status="vigente" />
+              <StatusBadge status="document.access_status" />
               <span>Ref: {{ document.code }}</span>
             </header>
 
@@ -82,34 +104,38 @@ onMounted(loadDocument)
                 <dd>{{ document.type.name }}</dd>
               </div>
               <div>
-<<<<<<< HEAD
                 <dt>Disciplina</dt>
-                <dd>---</dd>
+                <dd>{{ document.discipline.name }}</dd>
               </div>
               <div>
                 <dt>Revisão atual</dt>
-                <dd>---</dd>
+                <dd>{{ document.revision ? `REV${document.revision.version}` : '-' }}</dd>
               </div>
               <div>
                 <dt>Data de Emissão</dt>
-                <dd>---</dd>
+                <dd>{{ document.revision?.issue_date ?? '-' }}</dd>
               </div>
               <div>
                 <dt>Responsável</dt>
-                <dd>---</dd>
-=======
-                <dt>Data de atualização</dt>
-                <dd>{{ formatDate(document.updated_at) }}</dd>
->>>>>>> 9cf5bbf (feat(#15): create document view skeleton)
+                <dd>{{ document.responsible.name }}</dd>
               </div>
             </dl>
+
+            <button
+              v-if="canRequestAccess"
+              type="button"
+              class="request-access-button"
+              :disabled="requestingAccess"
+              @click="handleRequestAccess"
+            >
+              Solicitar Acesso
+            </button>
 
             <div v-if="document.description" class="description-block">
               <h2>Descrição</h2>
               <p>{{ document.description }}</p>
             </div>
 
-<<<<<<< HEAD
             <div class="tag-block">
               <h2>Tags relacionadas</h2>
               <div v-if="document.tags?.length" class="tags">
@@ -121,7 +147,6 @@ onMounted(loadDocument)
             <div class="revision-block">
               <h2>Histórico de versões</h2>
               <p v-for="version in document.versions" :key="version.id">---</p>
-=======
             <div v-if="document.areas?.length" class="tag-block">
               <h2>Áreas relacionadas</h2>
               <div class="tags">
@@ -132,7 +157,6 @@ onMounted(loadDocument)
             <div class="revision-block">
               <h2>Histórico de revisões</h2>
               <p>As revisões deste documento serão exibidas aqui.</p>
->>>>>>> 9cf5bbf (feat(#15): create document view skeleton)
             </div>
           </aside>
         </div>
@@ -240,6 +264,23 @@ onMounted(loadDocument)
   border-bottom: 1px solid var(--color-border);
   font-size: 1.05rem;
   line-height: 1.35;
+}
+
+.request-access-button {
+  width: 100%;
+  padding: 0.65rem;
+  margin-bottom: 1rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--color-primary);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.request-access-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .metadata-list {
