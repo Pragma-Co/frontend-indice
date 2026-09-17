@@ -18,6 +18,8 @@ import {
 
 // const AUTO_ADVANCE_DELAY_MS = 1200
 
+// const AUTO_ADVANCE_DELAY_MS = 1200
+
 const router = useRouter()
 const uploadStore = useUploadStore()
 
