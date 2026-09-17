@@ -128,4 +128,54 @@ describe('documentFormStore', () => {
     expect(store.form.author).toBe('João Silva')
     expect(store.publishing).toBe(false)
   })
+
+  it('should pre-fill suggestible fields and flag them as suggested', () => {
+    // When
+    store.applySuggestions({
+      title: 'Desenho da fuselagem central',
+      disciplineId: 1,
+      documentType: 'DWG',
+      description: 'Gerado pela IA',
+      areas: ['EST'],
+    })
+    // Then
+    expect(store.form.title).toBe('Desenho da fuselagem central')
+    expect(store.form.disciplineId).toBe(1)
+    expect(store.form.documentType).toBe('DWG')
+    expect(store.form.description).toBe('Gerado pela IA')
+    expect(store.form.areas).toEqual(['EST'])
+    expect(store.isFieldSuggested('title')).toBe(true)
+    expect(store.isFieldSuggested('disciplineId')).toBe(true)
+    expect(store.isFieldSuggested('documentType')).toBe(true)
+    expect(store.isFieldSuggested('description')).toBe(true)
+    expect(store.isFieldSuggested('areas')).toBe(true)
+  })
+
+  it('should ignore suggestions for fields outside the suggestible list', () => {
+    // When
+    store.applySuggestions({ author: 'Robô', confidentiality: 'PUBLIC' })
+    // Then
+    expect(store.form.author).toBe('')
+    expect(store.form.confidentiality).not.toBe('PUBLIC')
+    expect(store.isFieldSuggested('author')).toBe(false)
+  })
+
+  it('should drop the suggested flag for a field once cleared', () => {
+    // Given
+    store.applySuggestions({ title: 'Desenho da fuselagem central' })
+    // When
+    store.clearSuggestion('title')
+    // Then
+    expect(store.isFieldSuggested('title')).toBe(false)
+    expect(store.form.title).toBe('Desenho da fuselagem central')
+  })
+
+  it('should clear all suggestion flags on reset', () => {
+    // Given
+    store.applySuggestions({ title: 'Desenho da fuselagem central' })
+    // When
+    store.reset()
+    // Then
+    expect(store.isFieldSuggested('title')).toBe(false)
+  })
 })
