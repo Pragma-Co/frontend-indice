@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { fetchDocuments } from '@/api/documents.js'
 import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import { formatDate } from '@/utils/formatters.js'
 
 const route = useRoute()
 const document = ref(null)
@@ -81,6 +82,7 @@ onMounted(loadDocument)
                 <dd>{{ document.type.name }}</dd>
               </div>
               <div>
+<<<<<<< HEAD
                 <dt>Disciplina</dt>
                 <dd>---</dd>
               </div>
@@ -95,6 +97,10 @@ onMounted(loadDocument)
               <div>
                 <dt>Responsável</dt>
                 <dd>---</dd>
+=======
+                <dt>Data de atualização</dt>
+                <dd>{{ formatDate(document.updated_at) }}</dd>
+>>>>>>> 9cf5bbf (feat(#15): create document view skeleton)
               </div>
             </dl>
 
@@ -103,6 +109,7 @@ onMounted(loadDocument)
               <p>{{ document.description }}</p>
             </div>
 
+<<<<<<< HEAD
             <div class="tag-block">
               <h2>Tags relacionadas</h2>
               <div v-if="document.tags?.length" class="tags">
@@ -114,6 +121,18 @@ onMounted(loadDocument)
             <div class="revision-block">
               <h2>Histórico de versões</h2>
               <p v-for="version in document.versions" :key="version.id">---</p>
+=======
+            <div v-if="document.areas?.length" class="tag-block">
+              <h2>Áreas relacionadas</h2>
+              <div class="tags">
+                <span v-for="area in document.areas" :key="area.acronym">{{ area.acronym }}</span>
+              </div>
+            </div>
+
+            <div class="revision-block">
+              <h2>Histórico de revisões</h2>
+              <p>As revisões deste documento serão exibidas aqui.</p>
+>>>>>>> 9cf5bbf (feat(#15): create document view skeleton)
             </div>
           </aside>
         </div>
@@ -252,11 +271,14 @@ dd {
   border-top: 1px solid var(--color-border);
 }
 
+<<<<<<< HEAD
 .tag-block-empty {
   font-size: 0.8rem;
   color: var(--color-text-muted);
 }
 
+=======
+>>>>>>> 9cf5bbf (feat(#15): create document view skeleton)
 .document-card h2 {
   margin-bottom: 0.65rem;
   font-size: 0.72rem;
