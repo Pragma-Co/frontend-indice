@@ -23,13 +23,13 @@ const router = createRouter({
       meta: { title: 'Colaborador - Documentos' },
     },
     {
-      path: '/documents/upload',
+      path: '/documentos/upload',
       name: 'document-upload',
       component: () => import('../views/DocumentUploadView.vue'),
       meta: { title: 'Colaborador - InserirDocumento' },
     },
     {
-      path: '/documents/metadados',
+      path: '/documentos/metadados',
       name: 'document-metadata',
       component: () => import('../views/DocumentMetadataView.vue'),
       meta: { title: 'Colaborador - Metadados' },
@@ -39,6 +39,12 @@ const router = createRouter({
       name: 'document-confirmation',
       component: () => import('../views/DocumentConfirmationView.vue'),
       meta: { title: 'Colaborador - Confirmação' },
+    },
+    {
+      path: '/documentos/publicado',
+      name: 'document-published',
+      component: () => import('../views/DocumentPublishedView.vue'),
+      meta: { title: 'Colaborador - Documento publicado' },
     },
   ],
 })

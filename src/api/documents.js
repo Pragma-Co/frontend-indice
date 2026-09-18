@@ -1,4 +1,4 @@
-import { uploadWithProgress } from './client'
+import { api, uploadWithProgress } from './client'
 import { buildDocumentQueryKey } from '../utils/searchParams'
 
 let simpleFiltersCache = null
@@ -59,4 +59,22 @@ export function fetchDocuments(query = {}) {
 
   documentsRequests.set(queryString, request)
   return request
+}
+
+export function toDocumentPayload(form, { tempFileId, responsibleId }) {
+  return {
+    temp_file_id: tempFileId,
+    title: form.title.trim(),
+    description: form.description.trim(),
+    project_id: Number(form.projectId),
+    discipline_id: Number(form.disciplineId),
+    document_type: form.documentType,
+    confidentiality: form.confidentiality,
+    responsible_id: responsibleId,
+    areas: [...form.areas],
+  }
+}
+
+export function createDocument(payload) {
+  return api.post('/documents', payload)
 }

@@ -1,15 +1,10 @@
 import { defineStore } from 'pinia'
 import { getInitials } from '../utils/formatters'
 
-/**
- * Logged-in user. Authentication (RF4) is not implemented yet, so the store
- * exposes a development user; replace `currentUser` with the session user
- * once the auth endpoints exist. The metadata form reads `currentUser.name`
- * to pre-fill "Responsável/Autor".
- */
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    currentUser: { id: null, name: 'João Silva', role: 'Colaborador' },
+    // User 12 of the backend seed. Replaced by the session user once authentication exists.
+    currentUser: { id: 12, name: 'Beatriz Canuto', role: 'Colaborador' },
   }),
   getters: {
     isAuthenticated: (state) => Boolean(state.currentUser),
