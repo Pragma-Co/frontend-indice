@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import StepIndicator from '../components/common/StepIndicator.vue'
 import PageLayout from '../components/layout/PageLayout.vue'
 import ConfirmationStep from '../components/document-upload/ConfirmationStep.vue'
+import { usePublishFeedback } from '../composables/usePublishFeedback'
 import { useDocumentFormStore } from '../stores/documentFormStore'
 import { useUploadStore } from '../stores/uploadStore'
 import {
@@ -16,6 +17,7 @@ import {
 const router = useRouter()
 const store = useDocumentFormStore()
 const uploadStore = useUploadStore()
+const { onPublished, onPublishFailed } = usePublishFeedback()
 
 onBeforeMount(() => {
   if (!store.isValid) router.replace({ name: 'document-metadata' })
@@ -32,10 +34,11 @@ function needsNewUpload(error) {
 async function publish() {
   const tempFileId = uploadStore.uploadedDocuments[0]?.id ?? null
   try {
-    await store.publish(tempFileId)
+    const document = await store.publish(tempFileId)
     uploadStore.reset()
-    router.push({ name: 'document-published' })
+    onPublished(document)
   } catch (error) {
+    onPublishFailed(store.publishError)
     if (needsNewUpload(error)) {
       uploadStore.reset()
       router.push({ name: 'document-upload' })

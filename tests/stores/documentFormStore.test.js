@@ -218,12 +218,6 @@ describe('documentFormStore', () => {
         areas: ['EST'],
       })
       expect(result).toEqual(CREATED)
-      expect(store.publishedDocument).toEqual({
-        id: 7,
-        code: 'AK-2100-EST-DWG-0002',
-        title: 'Desenho da fuselagem central',
-        revision: 'REV01',
-      })
       expect(store.publishing).toBe(false)
       expect(store.publishError).toBeNull()
     })

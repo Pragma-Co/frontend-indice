@@ -32,7 +32,6 @@ export const useDocumentFormStore = defineStore('documentForm', {
     publishing: false,
     publishError: null,
     serverErrors: {},
-    publishedDocument: null,
   }),
 
   getters: {
@@ -107,12 +106,6 @@ export const useDocumentFormStore = defineStore('documentForm', {
           responsibleId: auth.currentUser?.id ?? null,
         })
         const document = await createDocument(payload)
-        this.publishedDocument = {
-          id: document.id,
-          code: document.code,
-          title: document.title,
-          revision: document.revision?.label ?? revisionLabel(INITIAL_VERSION),
-        }
         this.form = emptyForm(this.form.author)
         return document
       } catch (error) {

@@ -40,12 +40,6 @@ const router = createRouter({
       component: () => import('../views/DocumentConfirmationView.vue'),
       meta: { title: 'Colaborador - Confirmação' },
     },
-    {
-      path: '/documentos/publicado',
-      name: 'document-published',
-      component: () => import('../views/DocumentPublishedView.vue'),
-      meta: { title: 'Colaborador - Documento publicado' },
-    },
   ],
 })
 
