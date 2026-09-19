@@ -1,3 +1,13 @@
+# AGENTS.md — Instruções para agentes de IA
+
+> Este arquivo é a **fonte única de verdade** para instruções de IA neste repositório.
+> Ferramentas específicas (GitHub Copilot, Claude Code, Cursor, Aider, etc.) devem
+> referenciar este arquivo em vez de duplicar seu conteúdo.
+>
+> Leia este documento **por completo** antes de gerar, modificar ou revisar qualquer código.
+
+---
+
 # Estrutura de projeto — Frontend Vue 3
 
 Este documento descreve a estrutura recomendada para o frontend em Vue 3, com foco em manutenção, clareza para desenvolvedores e facilidade de interpretação por inteligências artificiais.
@@ -183,7 +193,37 @@ Imagens, ícones, fontes e recursos estáticos.
 
 ---
 
-## 5) Boas práticas para manter o projeto legível
+## 5) Política de comentários no código
+
+**Não gere comentários no código.** Esta é uma regra rígida.
+
+- ❌ Não adicione comentários explicativos em linhas de código
+- ❌ Não adicione comentários de seção (ex.: `// ===== Imports =====`)
+- ❌ Não adicione JSDoc, TSDoc ou docstrings
+- ❌ Não adicione comentários "TODO", "FIXME" ou "NOTE" sem solicitação explícita
+- ❌ Não adicione cabeçalhos de arquivo com autor, data ou descrição
+- ✅ Código deve ser autoexplicativo por meio de nomes claros
+- ✅ Se precisar explicar algo, use nomes descritivos em vez de comentários
+- ✅ A única exceção é quando o desenvolvedor pedir explicitamente um comentário
+
+### Exceções técnicas permitidas
+
+Comentários que são **instruções para ferramentas** (não explicações para humanos) são permitidos e obrigatórios quando necessários:
+
+- `/* @vite-ignore */`
+- `// @ts-ignore` e `// @ts-expect-error`
+- `// eslint-disable-next-line` e variantes
+- Diretivas de build e plugins
+
+Esses não contam como "comentários" para efeito desta regra.
+
+### Escopo
+
+Essa regra se aplica a **todo** código gerado: componentes Vue, composables, stores, funções utilitárias, configurações e scripts.
+
+---
+
+## 6) Boas práticas para manter o projeto legível
 
 - manter uma única responsabilidade por arquivo
 - separar lógica de UI, regra de negócio e integração com API
@@ -193,8 +233,10 @@ Imagens, ícones, fontes e recursos estáticos.
 
 ---
 
-## 6) Diretriz final
+## 7) Diretriz final
 
 Para o frontend Vue 3, a estrutura ideal para este projeto é manter a organização simples e modular, com as camadas separadas em `components`, `views`, `router`, `stores`, `api`, `composables`, `utils` e `assets`.
 
 Essa estrutura é suficiente para manter o projeto fácil de ler, fácil de evoluir e claro tanto para desenvolvedores quanto para inteligências artificiais.
+
+Sempre que gerar código para este projeto, siga todas as regras acima — em especial a **Política de comentários no código** (seção 5).

@@ -1,8 +1,11 @@
 import { defineStore } from 'pinia'
 import { listProjects } from '../api/projects'
 import { listDisciplines } from '../api/disciplines'
+import { createDocument, toDocumentPayload } from '../api/documents'
+import { useAuthStore } from './authStore'
 import { buildDocumentCode, INITIAL_VERSION, revisionLabel } from '../utils/documentCode'
 import { DEFAULT_CONFIDENTIALITY, findDocumentType } from '../utils/documentCatalog'
+import { mapServerErrors, publishErrorMessage } from '../utils/publishErrors'
 import { validateDocumentForm } from '../utils/validators'
 
 export function emptyForm(author = '') {
@@ -13,9 +16,9 @@ export function emptyForm(author = '') {
     documentType: '',
     description: '',
     author,
-    areas: [], // area codes
+    areas: [],
     confidentiality: DEFAULT_CONFIDENTIALITY,
-    version: INITIAL_VERSION, // shown as REV01; sent as an integer on submission
+    version: INITIAL_VERSION,
   }
 }
 
@@ -44,6 +47,13 @@ export const useDocumentFormStore = defineStore('documentForm', {
       state.projects.find((p) => String(p.id) === String(state.form.projectId)) ?? null,
     selectedDiscipline: (state) =>
       state.disciplines.find((d) => String(d.id) === String(state.form.disciplineId)) ?? null,
+    projectsCarryDisciplines: (state) =>
+      state.projects.some((project) => Array.isArray(project.discipline_ids)),
+    availableDisciplines() {
+      if (!this.projectsCarryDisciplines) return this.disciplines
+      const ids = this.selectedProject?.discipline_ids ?? []
+      return this.disciplines.filter((d) => ids.includes(d.id))
+    },
     selectedDocumentType: (state) => findDocumentType(state.form.documentType),
     revision: (state) => revisionLabel(state.form.version),
     isFieldSuggested: (state) => (field) => Boolean(state.suggestedFields[field]),
@@ -52,7 +62,6 @@ export const useDocumentFormStore = defineStore('documentForm', {
         project: this.selectedProject?.code,
         discipline: this.selectedDiscipline?.code,
         type: this.selectedDocumentType?.code,
-        version: this.form.version,
       })
     },
     errors: (state) => validateDocumentForm(state.form),
@@ -76,7 +85,14 @@ export const useDocumentFormStore = defineStore('documentForm', {
       }
     },
 
-    /** Pre-fill "Responsável/Autor" with the logged-in user (required, still editable). */
+    selectProject(projectId) {
+      this.form.projectId = projectId
+      const stillValid = this.availableDisciplines.some(
+        (d) => String(d.id) === String(this.form.disciplineId),
+      )
+      if (!stillValid) this.form.disciplineId = ''
+    },
+
     setDefaultAuthor(name) {
       if (!this.form.author && name) this.form.author = name
     },

@@ -48,7 +48,7 @@ describe('ConfirmationStep', () => {
     const wrapper = mount(ConfirmationStep)
     const text = wrapper.text()
     // Then
-    expect(wrapper.find('[data-testid="document-code"]').text()).toBe('AK-2100-EST-DWG-REV01')
+    expect(wrapper.find('[data-testid="document-code"]').text()).toBe('AK-2100-EST-DWG-####')
     expect(text).toContain('REV01')
     expect(text).toContain('15/09/2026')
     expect(text).toContain('João Silva')

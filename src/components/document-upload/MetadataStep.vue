@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import { useDocumentFormStore } from '../../stores/documentFormStore'
 import { AREAS, CONFIDENTIALITY_LEVELS, DOCUMENT_TYPES } from '../../utils/documentCatalog'
 import Button from '../common/Button.vue'
@@ -12,6 +12,12 @@ const store = useDocumentFormStore()
 const code = computed(() => store.codePreview ?? '')
 const areaOptions = AREAS.map((area) => ({ value: area.code, label: area.name }))
 const canProceed = computed(() => store.isValid && !store.catalogsLoading)
+const disciplineLocked = computed(() => store.projectsCarryDisciplines && !store.selectedProject)
+const disciplinePlaceholder = computed(() => {
+  if (store.catalogsLoading) return 'Carregando…'
+  if (disciplineLocked.value) return 'Selecione o projeto primeiro'
+  return 'Selecione a disciplina'
+})
 
 // Inline errors appear once the user leaves a required field, never before.
 const touched = reactive({})
@@ -21,7 +27,7 @@ function touch(field) {
 }
 
 function fieldError(field) {
-  return touched[field] ? (store.errors[field] ?? '') : ''
+  return store.serverErrors[field] ?? (touched[field] ? (store.errors[field] ?? '') : '')
 }
 
 /** Two-way binding that also drops a field's "suggested by AI" flag once the user edits it. */
@@ -73,7 +79,12 @@ function back(event) {
         :error="fieldError('projectId')"
         @focusout="touch('projectId')"
       >
-        <select id="project" v-model="store.form.projectId" :disabled="store.catalogsLoading">
+        <select
+          id="project"
+          :value="store.form.projectId"
+          :disabled="store.catalogsLoading"
+          @change="store.selectProject($event.target.value)"
+        >
           <option value="">{{ store.catalogsLoading ? 'Carregando…' : 'Buscar projeto…' }}</option>
           <option v-for="project in store.projects" :key="project.id" :value="project.id">
             {{ project.code }} - {{ project.name }}
@@ -95,7 +106,7 @@ function back(event) {
             {{ store.catalogsLoading ? 'Carregando…' : 'Selecione a disciplina' }}
           </option>
           <option
-            v-for="discipline in store.disciplines"
+            v-for="discipline in store.availableDisciplines"
             :key="discipline.id"
             :value="discipline.id"
           >
@@ -168,7 +179,7 @@ function back(event) {
         />
       </FormField>
 
-      <FormField label="Grau de Confidencialidade" required>
+      <FormField label="Grau de Confidencialidade" required :error="fieldError('confidentiality')">
         <div class="metadata__radios" role="radiogroup" aria-label="Grau de Confidencialidade">
           <label v-for="level in CONFIDENTIALITY_LEVELS" :key="level.value" class="metadata__radio">
             <input

@@ -34,7 +34,7 @@ describe('DocumentMetadataView', () => {
     // Then
     expect(listProjects).toHaveBeenCalled()
     expect(listDisciplines).toHaveBeenCalled()
-    expect(store.form.author).toBe('João Silva')
+    expect(store.form.author).toBe('Beatriz Canuto')
   })
 
   it('should show Metadados as the current step with the form populated from the API', async () => {
