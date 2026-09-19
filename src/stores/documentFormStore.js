@@ -1,11 +1,8 @@
 import { defineStore } from 'pinia'
 import { listProjects } from '../api/projects'
 import { listDisciplines } from '../api/disciplines'
-import { createDocument, toDocumentPayload } from '../api/documents'
-import { useAuthStore } from './authStore'
 import { buildDocumentCode, INITIAL_VERSION, revisionLabel } from '../utils/documentCode'
 import { DEFAULT_CONFIDENTIALITY, findDocumentType } from '../utils/documentCatalog'
-import { mapServerErrors, publishErrorMessage } from '../utils/publishErrors'
 import { validateDocumentForm } from '../utils/validators'
 
 export function emptyForm(author = '') {

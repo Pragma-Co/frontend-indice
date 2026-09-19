@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive } from 'vue'
 import { useDocumentFormStore } from '../../stores/documentFormStore'
 import { AREAS, CONFIDENTIALITY_LEVELS, DOCUMENT_TYPES } from '../../utils/documentCatalog'
 import Button from '../common/Button.vue'
@@ -103,7 +103,7 @@ function back(event) {
       >
         <select id="discipline" v-model="disciplineId" :disabled="store.catalogsLoading">
           <option value="">
-            {{ store.catalogsLoading ? 'Carregando…' : 'Selecione a disciplina' }}
+            {{ disciplinePlaceholder }}
           </option>
           <option
             v-for="discipline in store.availableDisciplines"

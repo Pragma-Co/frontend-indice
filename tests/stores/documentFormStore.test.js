@@ -5,21 +5,9 @@ import { useDocumentFormStore } from '../../src/stores/documentFormStore'
 
 vi.mock('../../src/api/projects', () => ({ listProjects: vi.fn() }))
 vi.mock('../../src/api/disciplines', () => ({ listDisciplines: vi.fn() }))
-vi.mock('../../src/api/documents', async (importOriginal) => ({
-  ...(await importOriginal()),
-  createDocument: vi.fn(),
-}))
 
 import { listProjects } from '../../src/api/projects'
 import { listDisciplines } from '../../src/api/disciplines'
-import { createDocument } from '../../src/api/documents'
-
-const CREATED = {
-  id: 7,
-  code: 'AK-2100-EST-DWG-0002',
-  title: 'Desenho da fuselagem central',
-  revision: { version: 1, label: 'REV01', status: 'PENDING' },
-}
 
 const PROJECTS = [{ id: 1, code: 'AK-2100', name: 'Aeroestrutura de Fuselagem Central' }]
 const DISCIPLINES = [{ id: 1, code: 'EST', name: 'Estruturas' }]
