@@ -14,6 +14,21 @@ in `ApiError.details` for the callers that need it.
 
 Document types and areas are static lists in `src/utils/documentCatalog.js`, mirroring the seed.
 
+## Documents list
+
+`GET /documents` returns `{ "documents": [...] }` ordered from the most recent to the oldest. Each
+item has `id`, `code`, `title`, `description`, `type`, `areas`, `updated_at` and `status`, the
+status of the latest revision. The list shows it as a badge (`src/utils/documentStatus.js`):
+
+| `status` | Badge |
+| --- | --- |
+| `PENDING` | Em revisão |
+| `APPROVED` | Vigente |
+| `REJECTED` | Rejeitado |
+| `OBSOLETE` | Obsoleto |
+
+The list is cached in memory by query; `clearDocumentsCache()` drops it after a publication.
+
 ## Upload (step 1)
 
 `POST /documents/upload`, `multipart/form-data` with the field `file`.
@@ -59,7 +74,7 @@ Responses and how the frontend reacts (`documentFormStore.publish` + `DocumentCo
 
 | Status | Body | Frontend |
 | --- | --- | --- |
-| `201` | `id`, `code`, `title`, `description`, `project`, `discipline`, `document_type`, `confidentiality`, `responsible`, `areas`, `revision` (`version`, `label` such as `REV01`, `status`, `issue_date`), `file` (`original_name`, `extension`, `mime_type`, `size_bytes`, `sha256`, `storage_path`), `created_at` | stores `id`, `code`, `title` and `revision.label`, clears the form and opens `/documentos/publicado` |
+| `201` | `id`, `code`, `title`, `description`, `project`, `discipline`, `document_type`, `confidentiality`, `responsible`, `areas`, `revision` (`version`, `label` such as `REV01`, `status`, `issue_date`), `file` (`original_name`, `extension`, `mime_type`, `size_bytes`, `sha256`, `storage_path`), `created_at` | clears the form, shows the success notification with the code and opens `/documentos`, where the new document comes first with the status "Em revisão" |
 | `400` | `{ "errors": { "<field>": "<message>" } }` (payload field names) or `{ "error": "..." }` | maps each key to the form field (`project_id` → `projectId`, `responsible_id` → `author`, ...) and returns to step 2 with the messages inline |
 | `404` | `{ "errors": { "temp_file_id": "..." } }` | asks for a new upload and returns to step 1 |
 | `409` | `{ "error": "...", "document": { "id", "code" } }` | shows "já está cadastrado no documento `<code>`" on step 3 |

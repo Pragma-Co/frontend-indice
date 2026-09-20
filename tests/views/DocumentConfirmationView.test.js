@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import DocumentConfirmationView from '../../src/views/DocumentConfirmationView.vue'
 import { useDocumentFormStore } from '../../src/stores/documentFormStore'
+import { useNotificationStore } from '../../src/stores/notificationStore'
 import { useUploadStore } from '../../src/stores/uploadStore'
 
 const push = vi.fn()
@@ -95,7 +96,7 @@ describe('DocumentConfirmationView', () => {
       uploadStore.setUploadedDocuments([{ id: 'temp-1', name: 'desenho.pdf', size: 10 }])
     })
 
-    it('should publish with the uploaded temp file and open the success screen on 201', async () => {
+    it('should publish with the uploaded temp file, notify and open the documents list on 201', async () => {
       createDocument.mockResolvedValue({ id: 7, code: 'AK-2100-EST-DWG-0002', title: 'Desenho' })
       const wrapper = mount(DocumentConfirmationView)
 
@@ -105,7 +106,11 @@ describe('DocumentConfirmationView', () => {
       expect(createDocument).toHaveBeenCalledWith(
         expect.objectContaining({ temp_file_id: 'temp-1', responsible_id: 12 }),
       )
-      expect(push).toHaveBeenCalledWith({ name: 'document-published' })
+      expect(push).toHaveBeenCalledWith({ name: 'document-list' })
+      expect(useNotificationStore().items[0]).toMatchObject({
+        type: 'success',
+        message: 'Documento AK-2100-EST-DWG-0002 publicado com sucesso.',
+      })
       expect(uploadStore.uploadedDocuments).toEqual([])
     })
 
@@ -123,6 +128,10 @@ describe('DocumentConfirmationView', () => {
 
       expect(push).not.toHaveBeenCalled()
       expect(wrapper.find('[role="alert"]').text()).toContain('AK-2100-EST-DWG-0001')
+      expect(useNotificationStore().items[0]).toMatchObject({
+        type: 'error',
+        message: 'Este arquivo já está cadastrado no documento AK-2100-EST-DWG-0001.',
+      })
       expect(uploadStore.uploadedDocuments).toHaveLength(1)
     })
 
@@ -141,6 +150,7 @@ describe('DocumentConfirmationView', () => {
       expect(push).toHaveBeenCalledWith({ name: 'document-upload' })
       expect(uploadStore.uploadedDocuments).toEqual([])
       expect(store.publishError).toBe('O arquivo enviado expirou. Faça o upload novamente.')
+      expect(useNotificationStore().items[0].type).toBe('error')
     })
 
     it('should send the user back to the metadata step on 400', async () => {

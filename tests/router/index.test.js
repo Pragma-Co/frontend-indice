@@ -25,13 +25,7 @@ describe('router', () => {
   })
 
   it('should keep every document route under /documentos so the navbar marks the Documentos tab', () => {
-    const names = [
-      'document-list',
-      'document-upload',
-      'document-metadata',
-      'document-confirmation',
-      'document-published',
-    ]
+    const names = ['document-list', 'document-upload', 'document-metadata', 'document-confirmation']
 
     const paths = names.map((name) => router.resolve({ name }).path)
 
@@ -40,7 +34,6 @@ describe('router', () => {
       '/documentos/upload',
       '/documentos/metadados',
       '/documentos/confirmacao',
-      '/documentos/publicado',
     ])
   })
 })

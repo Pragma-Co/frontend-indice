@@ -2,6 +2,8 @@
 import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchDocuments } from '../api/documents'
+import StatusBadge from '../components/common/StatusBadge.vue'
+import { statusBadgeFor } from '../utils/documentStatus'
 import { buildDocumentQueryKey } from '../utils/searchParams'
 
 const route = useRoute()
@@ -48,7 +50,13 @@ watch(() => buildDocumentQueryKey(route.query), loadDocuments)
       <article v-for="document in documents" :key="document.id" class="document-card">
         <div class="document-card-header">
           <span class="document-type">{{ document.type.code }}</span>
-          <span>{{ formatDate(document.updated_at) }}</span>
+          <span class="document-card-meta">
+            <StatusBadge
+              v-if="statusBadgeFor(document.status)"
+              :status="statusBadgeFor(document.status)"
+            />
+            <span>{{ formatDate(document.updated_at) }}</span>
+          </span>
         </div>
         <h2>{{ document.title }}</h2>
         <p>
@@ -99,6 +107,11 @@ p {
   gap: 1rem;
   color: var(--color-text-muted);
   font-size: 0.75rem;
+}
+.document-card-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
 }
 .document-type {
   color: var(--color-primary);
