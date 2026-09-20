@@ -87,7 +87,12 @@ watch(() => buildDocumentQueryKey(route.query), loadDocuments)
       <p v-if="loading" class="status-message">Carregando documentos...</p>
       <p v-else-if="error" class="status-message error-message">{{ error }}</p>
       <p v-else-if="!documents.length" class="status-message">Nenhum documento encontrado.</p>
-      <DocumentsTable v-else :documents="paginatedDocuments()" @action="handleDocumentAction" />
+      <DocumentsTable
+        v-else
+        class="documents-table"
+        :documents="paginatedDocuments()"
+        @action="handleDocumentAction"
+      />
 
       <Pagination
         :current-page="currentPage"
@@ -103,6 +108,10 @@ watch(() => buildDocumentQueryKey(route.query), loadDocuments)
 </template>
 
 <style scoped>
+.documents-table {
+  height: calc(100vh - 366px);
+}
+
 .status-message {
   margin: 1.5rem 0;
   color: var(--color-text-muted);
