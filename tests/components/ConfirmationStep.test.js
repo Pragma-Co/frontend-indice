@@ -42,12 +42,9 @@ describe('ConfirmationStep', () => {
   })
 
   it('should render the summary faithfully from the data filled in step 2', () => {
-    // Given
     fillValidForm(store)
-    // When
     const wrapper = mount(ConfirmationStep)
     const text = wrapper.text()
-    // Then
     expect(wrapper.find('[data-testid="document-code"]').text()).toBe('AK-2100-EST-DWG-####')
     expect(text).toContain('REV01')
     expect(text).toContain('15/09/2026')
@@ -61,12 +58,9 @@ describe('ConfirmationStep', () => {
   })
 
   it('should render tags and confidentiality as badges', () => {
-    // Given
     fillValidForm(store)
-    // When
     const wrapper = mount(ConfirmationStep)
     const badges = wrapper.findAll('.badge').map((b) => b.text())
-    // Then
     expect(badges).toContain('Sigiloso')
     expect(badges).toContain('Engenharia Estrutural')
     expect(badges).toContain('Qualidade e Inspeção')
@@ -74,23 +68,18 @@ describe('ConfirmationStep', () => {
   })
 
   it('should show dashes for empty fields without listing validation messages', () => {
-    // When
     const wrapper = mount(ConfirmationStep)
-    // Then
     expect(wrapper.find('[data-testid="document-code"]').text()).toBe('—')
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
     expect(wrapper.text()).not.toContain('obrigatório')
   })
 
   it('should list the files attached in the upload step with type icon and size', () => {
-    // Given
     useUploadStore().setUploadedDocuments([
       { id: 'up-1', name: 'relatorio.pdf', size: 1536, typeLabel: 'Memorial' },
       { id: 'up-2', name: 'foto.png', size: 500, typeLabel: 'Imagem' },
     ])
-    // When
     const wrapper = mount(ConfirmationStep)
-    // Then
     const rows = wrapper.findAll('.preview-file')
     expect(rows).toHaveLength(2)
     expect(rows[0].text()).toContain('relatorio.pdf')
@@ -100,9 +89,7 @@ describe('ConfirmationStep', () => {
   })
 
   it('should show a placeholder in the preview container when no file was attached', () => {
-    // When
     const wrapper = mount(ConfirmationStep)
-    // Then
     expect(wrapper.find('[data-testid="preview-container"]').text()).toContain(
       'Nenhum arquivo anexado',
     )
@@ -110,31 +97,23 @@ describe('ConfirmationStep', () => {
   })
 
   it('should keep "Publicar" disabled while required fields are missing', () => {
-    // When
     const wrapper = mount(ConfirmationStep)
-    // Then
     expect(publishButton(wrapper).attributes('disabled')).toBeDefined()
   })
 
   it('should emit publish when the form is complete', async () => {
-    // Given
     fillValidForm(store)
     const wrapper = mount(ConfirmationStep)
-    // When
     await publishButton(wrapper).trigger('click')
-    // Then
     expect(wrapper.emitted('publish')).toHaveLength(1)
   })
 
   it('should show the loading state and block both actions while publishing', () => {
-    // Given
     fillValidForm(store)
     store.publishing = true
-    // When
     const wrapper = mount(ConfirmationStep)
     const publish = publishButton(wrapper)
     const back = wrapper.findAll('button').find((b) => b.text() === 'Anterior')
-    // Then
     expect(publish.text()).toContain('Publicando')
     expect(publish.attributes('disabled')).toBeDefined()
     expect(publish.attributes('aria-busy')).toBe('true')
@@ -142,15 +121,12 @@ describe('ConfirmationStep', () => {
   })
 
   it('should emit back without touching the filled data', async () => {
-    // Given
     fillValidForm(store)
     const wrapper = mount(ConfirmationStep)
-    // When
     await wrapper
       .findAll('button')
       .find((b) => b.text() === 'Anterior')
       .trigger('click')
-    // Then
     expect(wrapper.emitted('back')).toHaveLength(1)
     expect(store.form.title).toBe('Desenho da fuselagem central')
     expect(store.form.areas).toEqual(['EST', 'QUA'])

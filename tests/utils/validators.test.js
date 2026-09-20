@@ -13,16 +13,12 @@ const validForm = {
 
 describe('validateDocumentForm', () => {
   it('should return no errors when every required field is filled', () => {
-    // Given
     const form = { ...validForm }
-    // When
     const errors = validateDocumentForm(form)
-    // Then
     expect(errors).toEqual({})
   })
 
   it('should flag every empty required field', () => {
-    // Given
     const form = {
       title: '  ',
       projectId: '',
@@ -32,9 +28,7 @@ describe('validateDocumentForm', () => {
       author: '',
       areas: [],
     }
-    // When
     const errors = validateDocumentForm(form)
-    // Then
     expect(Object.keys(errors).sort()).toEqual([
       'areas',
       'author',
@@ -49,27 +43,19 @@ describe('validateDocumentForm', () => {
   })
 
   it('should require at least one related area', () => {
-    // Given
     const form = { ...validForm, areas: [] }
-    // When
     const errors = validateDocumentForm(form)
-    // Then
     expect(errors).toEqual({ areas: 'Área(s) relacionada(s) é obrigatório.' })
   })
 
   it('should not require the description', () => {
-    // Given
     const form = { ...validForm, description: '' }
-    // When / Then
     expect(validateDocumentForm(form)).toEqual({})
   })
 
   it('should require author and confidentiality', () => {
-    // Given
     const form = { ...validForm, author: '   ', confidentiality: '' }
-    // When
     const errors = validateDocumentForm(form)
-    // Then
     expect(errors).toEqual({
       confidentiality: 'Grau de confidencialidade é obrigatório.',
       author: 'Responsável/Autor é obrigatório.',

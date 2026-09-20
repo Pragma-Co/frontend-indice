@@ -1,18 +1,18 @@
 <script setup>
 import { onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router'
-import StepIndicator from '../components/common/StepIndicator.vue'
-import PageLayout from '../components/layout/PageLayout.vue'
-import ConfirmationStep from '../components/document-upload/ConfirmationStep.vue'
-import { usePublishFeedback } from '../composables/usePublishFeedback'
-import { useDocumentFormStore } from '../stores/documentFormStore'
-import { useUploadStore } from '../stores/uploadStore'
+import StepIndicator from '@/components/common/StepIndicator.vue'
+import PageLayout from '@/components/layout/PageLayout.vue'
+import ConfirmationStep from '@/components/document-upload/ConfirmationStep.vue'
+import { usePublishFeedback } from '@/composables/usePublishFeedback'
+import { useDocumentFormStore } from '@/stores/documentFormStore'
+import { useUploadStore } from '@/stores/uploadStore'
 import {
   CONFIRMATION_STEP,
   UPLOAD_FLOW_SUBTITLE,
   UPLOAD_FLOW_TITLE,
   UPLOAD_STEPS,
-} from '../utils/uploadFlow'
+} from '@/utils/uploadFlow.js'
 
 const router = useRouter()
 const store = useDocumentFormStore()

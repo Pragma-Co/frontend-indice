@@ -12,7 +12,7 @@ const STATUS_LABELS = {
   validating: 'Validando...',
   ready: 'Pronto',
   success: 'Concluído',
-  invalid: null, // uses item.error
+  invalid: null,
   duplicate: 'Duplicado',
   error: 'Falha no envio',
 }
