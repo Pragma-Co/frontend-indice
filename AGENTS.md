@@ -40,7 +40,7 @@ frontend-api-6/
 ├── .gitignore
 ├── LICENSE
 ├── README.md
-├── PROJECT_STRUCTURE.md
+├── AGENTS.md
 ├── index.html
 ├── package.json
 ├── package-lock.json

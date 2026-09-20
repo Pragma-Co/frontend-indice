@@ -19,7 +19,6 @@ const disciplinePlaceholder = computed(() => {
   return 'Selecione a disciplina'
 })
 
-// Inline errors appear once the user leaves a required field, never before.
 const touched = reactive({})
 
 function touch(field) {
@@ -55,12 +54,10 @@ watch(
   },
 )
 
-/** Navigation between steps belongs to the view; step 3 is a separate task. */
 function next() {
   if (canProceed.value) emit('next')
 }
 
-// Button renders a plain <button>, which submits the form by default.
 function back(event) {
   event?.preventDefault?.()
   emit('back')

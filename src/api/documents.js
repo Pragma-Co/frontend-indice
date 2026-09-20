@@ -17,7 +17,6 @@ export function uploadDocument(file, { onProgress, forceNewRevision = false, sig
   if (forceNewRevision) {
     formData.append('force_new_revision', 'true')
   }
-
   return uploadWithProgress('/documents/upload', formData, { onProgress, signal })
 }
 
@@ -82,4 +81,16 @@ export function toDocumentPayload(form, { tempFileId, responsibleId }) {
 
 export function createDocument(payload) {
   return api.post('/documents', payload)
+}
+
+export function fetchDocumentDetail(documentId, userId) {
+  const query = userId ? `?user_id=${userId}` : ''
+  return api.get(`/documents/${documentId}${query}`)
+}
+
+export function requestDocumentAccess(documentId, userId, justification) {
+  return api.post(`/documents/${documentId}/request-access`, {
+    user_id: userId,
+    justification,
+  })
 }

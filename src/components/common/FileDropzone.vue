@@ -36,9 +36,6 @@ function onDragEnter() {
 }
 
 function onDragLeave(event) {
-  // Child elements (icon, text) fire their own dragleave as the pointer
-  // moves across them; only clear the state once we actually leave the
-  // dropzone bounds, or the "dragging" style flickers off mid-drag.
   if (!event.currentTarget.contains(event.relatedTarget)) {
     isDragging.value = false
   }

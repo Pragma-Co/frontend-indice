@@ -1,7 +1,6 @@
 <script setup>
 defineProps({
   label: { type: String, required: true },
-  /** stack: label above the value; row: label and value side by side */
   layout: { type: String, default: 'stack' },
 })
 </script>

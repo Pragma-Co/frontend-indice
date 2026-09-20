@@ -1,6 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { formatUpdatedAt } from '@/utils/formatters.js'
+import { statusBadgeFor } from '@/utils/documentStatus.js'
 import Badge from '@/components/common/Badge.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 
@@ -82,7 +83,10 @@ function handleMenuItem(document, itemKey) {
             <Badge>{{ document.revision }}</Badge>
           </td>
           <td>
-            <StatusBadge :status="document.status" />
+            <StatusBadge
+              v-if="statusBadgeFor(document.status)"
+              :status="statusBadgeFor(document.status)"
+            />
           </td>
           <td class="cell-updated">
             <span class="updated-date">{{ formatUpdatedAt(document.updatedAt) }}</span>
@@ -135,7 +139,6 @@ function handleMenuItem(document, itemKey) {
 <style scoped>
 .table-scroll {
   overflow: auto;
-  height: calc(100vh - 367px);
 }
 
 .documents-table {

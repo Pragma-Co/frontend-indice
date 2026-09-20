@@ -19,11 +19,8 @@ describe('api client', () => {
   })
 
   it('should call the API through the /api prefix and return the JSON body', async () => {
-    // Given
     globalThis.fetch.mockResolvedValue(mockResponse([{ id: 1 }]))
-    // When
     const data = await api.get('/projects/')
-    // Then
     expect(globalThis.fetch).toHaveBeenCalledWith(
       '/api/projects/',
       expect.objectContaining({ method: 'GET' }),
@@ -32,11 +29,8 @@ describe('api client', () => {
   })
 
   it('should send the body as JSON on POST', async () => {
-    // Given
     globalThis.fetch.mockResolvedValue(mockResponse({ id: 7 }, { status: 201 }))
-    // When
     await api.post('/documents/', { title: 'X' })
-    // Then
     const [, init] = globalThis.fetch.mock.calls[0]
     expect(init.method).toBe('POST')
     expect(init.headers['Content-Type']).toBe('application/json')
@@ -44,12 +38,9 @@ describe('api client', () => {
   })
 
   it('should throw ApiError with a friendly message and details when the response fails', async () => {
-    // Given
     const details = { title: ['Este campo é obrigatório.'] }
     globalThis.fetch.mockResolvedValue(mockResponse(details, { status: 400 }))
-    // When
     const promise = request('/documents/', { method: 'POST', body: {} })
-    // Then
     await expect(promise).rejects.toBeInstanceOf(ApiError)
     await promise.catch((error) => {
       expect(error.status).toBe(400)
@@ -59,11 +50,8 @@ describe('api client', () => {
   })
 
   it('should not expose internal details when the server is unreachable', async () => {
-    // Given
     globalThis.fetch.mockRejectedValue(new TypeError('Failed to fetch http://10.0.0.5:8000'))
-    // When
     const promise = api.get('/health/')
-    // Then
     await expect(promise).rejects.toMatchObject({
       status: 0,
       message: 'Não foi possível conectar ao servidor.',
@@ -71,9 +59,7 @@ describe('api client', () => {
   })
 
   it('should map a 500 with {"error"} body to a generic server message', async () => {
-    // Given
     globalThis.fetch.mockResolvedValue(mockResponse({ error: 'DatabaseError' }, { status: 500 }))
-    // When / Then
     await expect(api.get('/disciplines/')).rejects.toMatchObject({
       status: 500,
       message: 'Erro interno do servidor. Tente novamente mais tarde.',

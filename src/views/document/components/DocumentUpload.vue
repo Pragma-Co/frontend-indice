@@ -1,23 +1,21 @@
 <script setup>
 import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import Button from '../components/common/Button.vue'
-import DuplicateFileDialog from '../components/common/DuplicateFileDialog.vue'
-import FileDropzone from '../components/common/FileDropzone.vue'
-import PageLayout from '../components/layout/PageLayout.vue'
-import StepIndicator from '../components/common/StepIndicator.vue'
-import UploadQueueTable from '../components/common/UploadQueueTable.vue'
-import { useDocumentUpload } from '../composables/useDocumentUpload'
-import { useDocumentFormStore } from '../stores/documentFormStore'
-import { useUploadStore } from '../stores/uploadStore'
+import Button from '@/components/common/Button.vue'
+import DuplicateFileDialog from '@/components/common/DuplicateFileDialog.vue'
+import FileDropzone from '@/components/common/FileDropzone.vue'
+import PageLayout from '@/components/layout/PageLayout.vue'
+import StepIndicator from '@/components/common/StepIndicator.vue'
+import UploadQueueTable from '@/components/common/UploadQueueTable.vue'
+import { useDocumentUpload } from '@/composables/useDocumentUpload'
+import { useDocumentFormStore } from '@/stores/documentFormStore'
+import { useUploadStore } from '@/stores/uploadStore'
 import {
   UPLOAD_FLOW_SUBTITLE,
   UPLOAD_FLOW_TITLE,
   UPLOAD_STEP,
   UPLOAD_STEPS,
-} from '../utils/uploadFlow'
-
-// const AUTO_ADVANCE_DELAY_MS = 1200
+} from '@/utils/uploadFlow.js'
 
 const router = useRouter()
 const uploadStore = useUploadStore()
@@ -52,16 +50,6 @@ function handleFilesSelected(fileList) {
   addFiles(fileList)
 }
 
-// watch(allSettled, (settled) => {
-//  if (settled && hasSucceededFile.value) {
-//    clearAutoAdvance()
-//    autoAdvanceTimeoutId = setTimeout(goToMetadataStep, AUTO_ADVANCE_DELAY_MS)
-//  }
-// })
-
-// A drop that lands even slightly outside the dashed dropzone would
-// otherwise fall through to the browser's default action (opening the
-// file), which looks like the drag silently failed.
 function preventStrayFileDrop(event) {
   if (event.dataTransfer?.types.includes('Files')) {
     event.preventDefault()
@@ -69,7 +57,6 @@ function preventStrayFileDrop(event) {
 }
 
 onMounted(() => {
-  // Coming back from the metadata step: show the files already sent
   if (uploadStore.uploadedDocuments.length) restore(uploadStore.uploadedDocuments)
   window.addEventListener('dragover', preventStrayFileDrop)
   window.addEventListener('drop', preventStrayFileDrop)

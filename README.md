@@ -143,7 +143,7 @@ npm install                  # (re)install dependencies after a git pull
 
 ## Project structure
 
-See [PROJECT_STRUCTURE.md](PROJECT_STRUCTURE.md) for the full layout and conventions. Summary:
+See [AGENTS.md](AGENTS.md) for the full layout and conventions. Summary:
 
 ```
 frontend/

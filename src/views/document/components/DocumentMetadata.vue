@@ -1,23 +1,19 @@
 <script setup>
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import StepIndicator from '../components/common/StepIndicator.vue'
-import PageLayout from '../components/layout/PageLayout.vue'
-import MetadataStep from '../components/document-upload/MetadataStep.vue'
-import { useAuthStore } from '../stores/authStore'
-import { useDocumentFormStore } from '../stores/documentFormStore'
-import { useUploadStore } from '../stores/uploadStore'
+import StepIndicator from '@/components/common/StepIndicator.vue'
+import PageLayout from '@/components/layout/PageLayout.vue'
+import MetadataStep from '@/components/document-upload/MetadataStep.vue'
+import { useAuthStore } from '@/stores/authStore.js'
+import { useDocumentFormStore } from '@/stores/documentFormStore.js'
+import { useUploadStore } from '@/stores/uploadStore.js'
 import {
   METADATA_STEP,
   UPLOAD_FLOW_SUBTITLE,
   UPLOAD_FLOW_TITLE,
   UPLOAD_STEPS,
-} from '../utils/uploadFlow'
+} from '@/utils/uploadFlow.js'
 
-/**
- * Step 2 (Metadados) of the "Fazer upload de arquivo" flow. The upload step
- * (DocumentUploadView) leads here and "Próximo Passo" leads to the confirmation.
- */
 const router = useRouter()
 const auth = useAuthStore()
 const store = useDocumentFormStore()
