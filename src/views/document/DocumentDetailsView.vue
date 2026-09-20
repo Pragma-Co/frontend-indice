@@ -3,7 +3,7 @@ import { onMounted, ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { fetchDocumentDetail, requestDocumentAccess } from '@/api/documents.js'
 import { useAuthStore } from '@/stores/authStore.js'
-import { accessStatusBadgeFor } from '@/utils/documentStatus.js'
+import { statusBadgeFor } from '@/utils/documentStatus.js'
 import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
 import Button from '@/components/common/Button.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
@@ -90,8 +90,8 @@ onMounted(loadDocument)
           <aside class="document-card">
             <header class="document-card-header">
               <StatusBadge
-                v-if="accessStatusBadgeFor(document.access_status)"
-                :status="accessStatusBadgeFor(document.access_status)"
+                v-if="statusBadgeFor(document.access_status)"
+                :status="statusBadgeFor(document.access_status)"
               />
               <span>Ref: {{ document.code }}</span>
             </header>
@@ -139,16 +139,8 @@ onMounted(loadDocument)
               <p>{{ document.description }}</p>
             </div>
 
-            <div class="tag-block">
-              <h2>Tags relacionadas</h2>
-              <div v-if="document.tags?.length" class="tags">
-                <span v-for="area in document.tags" :key="area.acronym">---</span>
-              </div>
-              <p v-else class="tag-block-empty">N/A</p>
-            </div>
-
             <div v-if="document.areas?.length" class="tag-block">
-              <h2>Áreas relacionadas</h2>
+              <h2>Tags relacionadas</h2>
               <div class="tags">
                 <span v-for="area in document.areas" :key="area.acronym">{{ area.acronym }}</span>
               </div>
@@ -156,7 +148,35 @@ onMounted(loadDocument)
 
             <div class="revision-block">
               <h2>Histórico de versões</h2>
-              <p v-for="version in document.versions" :key="version.id">---</p>
+              <p v-if="!document.versions?.length" class="tag-block-empty">
+                Nenhuma versão registrada.
+              </p>
+              <ul v-else class="revision-list">
+                <li
+                  v-for="(version, index) in document.versions"
+                  :key="version.id"
+                  :class="{ 'is-current': index === 0 }"
+                >
+                  <div class="revision-header">
+                    <strong>REV{{ version.version }}</strong>
+                    <span v-if="index === 0" class="current-tag">Versão atual</span>
+                  </div>
+                  <dl class="revision-meta">
+                    <div>
+                      <dt>Data de emissão</dt>
+                      <dd>{{ version.issue_date ?? '-' }}</dd>
+                    </div>
+                    <div>
+                      <dt>Autor</dt>
+                      <dd>{{ version.author?.name ?? '-' }}</dd>
+                    </div>
+                    <div v-if="version.change_description">
+                      <dt>Descrição da mudança</dt>
+                      <dd>{{ version.change_description }}</dd>
+                    </div>
+                  </dl>
+                </li>
+              </ul>
             </div>
           </aside>
         </div>
@@ -168,7 +188,7 @@ onMounted(loadDocument)
 <style scoped>
 .details-page {
   min-height: calc(100vh - 56px);
-  padding: 1.25rem 2rem 2.5rem;
+  padding: 1.25rem 2rem 1.25rem;
   background: var(--color-background);
 }
 
@@ -189,11 +209,11 @@ onMounted(loadDocument)
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
+  height: calc(100vh - 132px);
 }
 
 .preview-panel {
   display: flex;
-  min-height: calc(100vh - 160px);
   flex-direction: column;
   justify-content: space-between;
   padding: 1rem;
@@ -247,6 +267,7 @@ onMounted(loadDocument)
 .document-card {
   align-self: start;
   padding: 1.25rem;
+  overflow: auto;
 }
 
 .document-card-header {
@@ -346,6 +367,62 @@ dd {
 
 .error-message {
   color: var(--color-warning);
+}
+
+.revision-list {
+  display: grid;
+  gap: 0.75rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.revision-list li {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+  transition:
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.revision-list li.is-current {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-muted));
+}
+
+.revision-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--color-primary);
+}
+
+.current-tag {
+  margin-left: auto;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  background: var(--color-primary);
+  color: var(--color-surface);
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.revision-meta {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+}
+
+.revision-meta div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
 }
 
 @media (max-width: 900px) {
