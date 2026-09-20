@@ -3,7 +3,9 @@ import { onMounted, ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { fetchDocumentDetail, requestDocumentAccess } from '@/api/documents.js'
 import { useAuthStore } from '@/stores/authStore.js'
+import { accessStatusBadgeFor } from '@/utils/documentStatus.js'
 import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
+import Button from '@/components/common/Button.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 
 const route = useRoute()
@@ -87,7 +89,10 @@ onMounted(loadDocument)
 
           <aside class="document-card">
             <header class="document-card-header">
-              <StatusBadge status="document.access_status" />
+              <StatusBadge
+                v-if="accessStatusBadgeFor(document.access_status)"
+                :status="accessStatusBadgeFor(document.access_status)"
+              />
               <span>Ref: {{ document.code }}</span>
             </header>
 
@@ -120,15 +125,14 @@ onMounted(loadDocument)
               </div>
             </dl>
 
-            <button
+            <Button
               v-if="canRequestAccess"
-              type="button"
               class="request-access-button"
               :disabled="requestingAccess"
               @click="handleRequestAccess"
             >
               Solicitar Acesso
-            </button>
+            </Button>
 
             <div v-if="document.description" class="description-block">
               <h2>Descrição</h2>
@@ -143,11 +147,6 @@ onMounted(loadDocument)
               <p v-else class="tag-block-empty">N/A</p>
             </div>
 
-            <div class="revision-block">
-              <h2>Histórico de versões</h2>
-              <p v-for="version in document.versions" :key="version.id">---</p>
-            </div>
-
             <div v-if="document.areas?.length" class="tag-block">
               <h2>Áreas relacionadas</h2>
               <div class="tags">
@@ -156,8 +155,8 @@ onMounted(loadDocument)
             </div>
 
             <div class="revision-block">
-              <h2>Histórico de revisões</h2>
-              <p>As revisões deste documento serão exibidas aqui.</p>
+              <h2>Histórico de versões</h2>
+              <p v-for="version in document.versions" :key="version.id">---</p>
             </div>
           </aside>
         </div>
@@ -269,14 +268,7 @@ onMounted(loadDocument)
 
 .request-access-button {
   width: 100%;
-  padding: 0.65rem;
-  margin-bottom: 1rem;
-  border: none;
-  border-radius: var(--radius-sm);
-  background: var(--color-primary);
-  color: white;
-  font-weight: 600;
-  cursor: pointer;
+  margin-top: 1rem;
 }
 
 .request-access-button:disabled {
