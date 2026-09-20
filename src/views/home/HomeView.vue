@@ -25,7 +25,7 @@ const filters = reactive({ ...fallbackFilters })
 const filtersLoading = ref(true)
 
 function search(query) {
-  router.push({ name: 'document-list', query })
+  router.push({ name: 'results', query })
 }
 
 function viewAll() {

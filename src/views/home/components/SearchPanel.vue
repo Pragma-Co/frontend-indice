@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowRight, Building2, Calendar, ChevronDown, FileText, Search, Upload } from '@lucide/vue'
 import { buildDocumentSearchQuery } from '@/utils/searchParams'
+import Button from '@/components/common/Button.vue'
 
 const props = defineProps({
   filters: { type: Object, required: true },
@@ -132,7 +133,7 @@ onMounted(restoreFiltersFromRoute)
         placeholder="Pesquisar por título, código, descrição ou termos-chave..."
       />
     </label>
-    <button class="search-button" type="submit">Pesquisar</button>
+    <Button>Pesquisar</Button>
     <RouterLink class="upload-button" :to="{ name: 'document-upload' }">
       <Upload :size="17" :stroke-width="2" aria-hidden="true" />
       Upload
@@ -282,7 +283,7 @@ onMounted(restoreFiltersFromRoute)
     </div>
 
     <div class="search-actions">
-      <button type="button" class="clear-button" @click="resetFilters">Limpar filtros</button>
+      <Button variant="outline" @click="resetFilters">Limpar filtros</Button>
       <button type="button" class="all-documents" @click="emit('view-all')">
         Ver todos os documentos
         <ArrowRight :size="16" aria-hidden="true" />
@@ -342,7 +343,7 @@ onMounted(restoreFiltersFromRoute)
   color: white;
 }
 .upload-button {
-  background: var(--color-navy);
+  background: grey;
   color: white;
   border-radius: var(--radius-sm);
 }

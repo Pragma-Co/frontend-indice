@@ -135,7 +135,7 @@ function handleMenuItem(document, itemKey) {
 <style scoped>
 .table-scroll {
   overflow: auto;
-  height: calc(100vh - 437px);
+  height: calc(100vh - 367px);
 }
 
 .documents-table {

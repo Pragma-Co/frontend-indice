@@ -1,8 +1,11 @@
 import { defineStore } from 'pinia'
 import { listProjects } from '../api/projects'
 import { listDisciplines } from '../api/disciplines'
+import { createDocument, toDocumentPayload } from '../api/documents'
+import { useAuthStore } from './authStore'
 import { buildDocumentCode, INITIAL_VERSION, revisionLabel } from '../utils/documentCode'
 import { DEFAULT_CONFIDENTIALITY, findDocumentType } from '../utils/documentCatalog'
+import { mapServerErrors, publishErrorMessage } from '../utils/publishErrors'
 import { validateDocumentForm } from '../utils/validators'
 
 export function emptyForm(author = '') {
@@ -13,17 +16,12 @@ export function emptyForm(author = '') {
     documentType: '',
     description: '',
     author,
-    areas: [], // area codes
+    areas: [],
     confidentiality: DEFAULT_CONFIDENTIALITY,
-    version: INITIAL_VERSION, // shown as REV01; sent as an integer on submission
+    version: INITIAL_VERSION,
   }
 }
 
-/**
- * State of the metadata form (step 2), also read by the confirmation (step 3).
- * Keeping it in a store lets the user move between the steps without losing
- * what was filled in. The submission fired by "Publicar" is a separate task.
- */
 export const useDocumentFormStore = defineStore('documentForm', {
   state: () => ({
     form: emptyForm(),
@@ -31,7 +29,9 @@ export const useDocumentFormStore = defineStore('documentForm', {
     disciplines: [],
     catalogsLoading: false,
     catalogsError: null,
-    publishing: false, // drives the loading state of "Publicar"; set by the submission task
+    publishing: false,
+    publishError: null,
+    serverErrors: {},
   }),
 
   getters: {
@@ -39,6 +39,13 @@ export const useDocumentFormStore = defineStore('documentForm', {
       state.projects.find((p) => String(p.id) === String(state.form.projectId)) ?? null,
     selectedDiscipline: (state) =>
       state.disciplines.find((d) => String(d.id) === String(state.form.disciplineId)) ?? null,
+    projectsCarryDisciplines: (state) =>
+      state.projects.some((project) => Array.isArray(project.discipline_ids)),
+    availableDisciplines() {
+      if (!this.projectsCarryDisciplines) return this.disciplines
+      const ids = this.selectedProject?.discipline_ids ?? []
+      return this.disciplines.filter((d) => ids.includes(d.id))
+    },
     selectedDocumentType: (state) => findDocumentType(state.form.documentType),
     revision: (state) => revisionLabel(state.form.version),
     codePreview() {
@@ -46,7 +53,6 @@ export const useDocumentFormStore = defineStore('documentForm', {
         project: this.selectedProject?.code,
         discipline: this.selectedDiscipline?.code,
         type: this.selectedDocumentType?.code,
-        version: this.form.version,
       })
     },
     errors: (state) => validateDocumentForm(state.form),
@@ -70,14 +76,52 @@ export const useDocumentFormStore = defineStore('documentForm', {
       }
     },
 
-    /** Pre-fill "Responsável/Autor" with the logged-in user (required, still editable). */
+    selectProject(projectId) {
+      this.form.projectId = projectId
+      const stillValid = this.availableDisciplines.some(
+        (d) => String(d.id) === String(this.form.disciplineId),
+      )
+      if (!stillValid) this.form.disciplineId = ''
+    },
+
     setDefaultAuthor(name) {
       if (!this.form.author && name) this.form.author = name
+    },
+
+    clearServerError(field) {
+      if (!(field in this.serverErrors)) return
+      const rest = { ...this.serverErrors }
+      delete rest[field]
+      this.serverErrors = rest
+    },
+
+    async publish(tempFileId) {
+      const auth = useAuthStore()
+      this.publishing = true
+      this.publishError = null
+      this.serverErrors = {}
+      try {
+        const payload = toDocumentPayload(this.form, {
+          tempFileId,
+          responsibleId: auth.currentUser?.id ?? null,
+        })
+        const document = await createDocument(payload)
+        this.form = emptyForm(this.form.author)
+        return document
+      } catch (error) {
+        this.publishError = publishErrorMessage(error)
+        if (error?.status === 400) this.serverErrors = mapServerErrors(error.details?.errors)
+        throw error
+      } finally {
+        this.publishing = false
+      }
     },
 
     reset(author = '') {
       this.form = emptyForm(author)
       this.publishing = false
+      this.publishError = null
+      this.serverErrors = {}
     },
   },
 })

@@ -7,8 +7,9 @@ import FileDropzone from '@/components/common/FileDropzone.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import StepIndicator from '@/components/common/StepIndicator.vue'
 import UploadQueueTable from '@/components/common/UploadQueueTable.vue'
-import { useDocumentUpload } from '@/composables/useDocumentUpload.js'
-import { useUploadStore } from '@/stores/uploadStore.js'
+import { useDocumentUpload } from '@/composables/useDocumentUpload'
+import { useDocumentFormStore } from '@/stores/documentFormStore'
+import { useUploadStore } from '@/stores/uploadStore'
 import {
   UPLOAD_FLOW_SUBTITLE,
   UPLOAD_FLOW_TITLE,
@@ -16,12 +17,9 @@ import {
   UPLOAD_STEPS,
 } from '@/utils/uploadFlow.js'
 
-// const AUTO_ADVANCE_DELAY_MS = 1200
-
-// const AUTO_ADVANCE_DELAY_MS = 1200
-
 const router = useRouter()
 const uploadStore = useUploadStore()
+const formStore = useDocumentFormStore()
 
 const { queue, hasSucceededFile, addFiles, resolveDuplicate, reset, restore, ACCEPTED_EXTENSIONS } =
   useDocumentUpload()
@@ -39,6 +37,7 @@ function goToMetadataStep() {
     }))
 
   uploadStore.setUploadedDocuments(uploadedDocuments)
+  formStore.publishError = null
   router.push({ name: 'document-metadata' })
 }
 
@@ -51,16 +50,6 @@ function handleFilesSelected(fileList) {
   addFiles(fileList)
 }
 
-// watch(allSettled, (settled) => {
-//  if (settled && hasSucceededFile.value) {
-//    clearAutoAdvance()
-//    autoAdvanceTimeoutId = setTimeout(goToMetadataStep, AUTO_ADVANCE_DELAY_MS)
-//  }
-// })
-
-// A drop that lands even slightly outside the dashed dropzone would
-// otherwise fall through to the browser's default action (opening the
-// file), which looks like the drag silently failed.
 function preventStrayFileDrop(event) {
   if (event.dataTransfer?.types.includes('Files')) {
     event.preventDefault()
@@ -68,7 +57,6 @@ function preventStrayFileDrop(event) {
 }
 
 onMounted(() => {
-  // Coming back from the metadata step: show the files already sent
   if (uploadStore.uploadedDocuments.length) restore(uploadStore.uploadedDocuments)
   window.addEventListener('dragover', preventStrayFileDrop)
   window.addEventListener('drop', preventStrayFileDrop)
@@ -82,6 +70,10 @@ onUnmounted(() => {
 
 <template>
   <PageLayout :title="UPLOAD_FLOW_TITLE" :subtitle="UPLOAD_FLOW_SUBTITLE">
+    <p v-if="formStore.publishError" class="upload-alert" role="alert">
+      {{ formStore.publishError }}
+    </p>
+
     <section class="card">
       <StepIndicator :steps="UPLOAD_STEPS" :current-step="UPLOAD_STEP" />
     </section>
@@ -117,6 +109,16 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.upload-alert {
+  margin-top: 1.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
+  color: var(--color-danger);
+  font-size: 0.85rem;
+}
+
 .queue-title {
   font-size: 1rem;
   margin-bottom: 1rem;

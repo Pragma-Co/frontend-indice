@@ -99,8 +99,8 @@ describe('Navbar', () => {
     // When
     const { wrapper } = await mountNavbar()
     // Then
-    expect(wrapper.find('.navbar-avatar').text()).toBe('JS')
-    expect(wrapper.find('.navbar-user-name').text()).toBe('João Silva')
+    expect(wrapper.find('.navbar-avatar').text()).toBe('BC')
+    expect(wrapper.find('.navbar-user-name').text()).toBe('Beatriz Canuto')
   })
 
   it('should keep the bar sticky at the top of the page', async () => {

@@ -103,6 +103,10 @@ const files = computed(() => uploadStore.uploadedDocuments)
       </div>
     </section>
 
+    <p v-if="store.publishError" class="confirmation-alert" role="alert">
+      {{ store.publishError }}
+    </p>
+
     <footer class="confirmation-actions">
       <Button variant="outline" :disabled="store.publishing" @click="emit('back')">Anterior</Button>
       <Button
@@ -242,6 +246,16 @@ const files = computed(() => uploadStore.uploadedDocuments)
   align-items: center;
   justify-content: center;
   color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.confirmation-alert {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-danger-bg);
+  border: 1px solid var(--color-danger-border);
+  color: var(--color-danger);
   font-size: 0.85rem;
 }
 
