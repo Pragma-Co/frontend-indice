@@ -6,6 +6,11 @@ let simpleFiltersRequest = null
 const documentsCache = new Map()
 const documentsRequests = new Map()
 
+export function clearDocumentsCache() {
+  documentsCache.clear()
+  documentsRequests.clear()
+}
+
 export function uploadDocument(file, { onProgress, forceNewRevision = false, signal } = {}) {
   const formData = new FormData()
   formData.append('file', file)
