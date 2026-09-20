@@ -1,7 +1,10 @@
 <script setup>
 defineProps({
-  /** neutral | public | confidential | secret */
-  variant: { type: String, default: 'neutral' },
+  variant: {
+    type: String,
+    default: 'neutral',
+    validator: (value) => ['neutral', 'public', 'confidential', 'secret'].includes(value),
+  },
 })
 </script>
 

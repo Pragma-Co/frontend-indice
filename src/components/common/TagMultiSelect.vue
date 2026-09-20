@@ -3,7 +3,7 @@ import { computed } from 'vue'
 
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
-  options: { type: Array, default: () => [] }, // [{ value, label }]
+  options: { type: Array, default: () => [] },
   id: { type: String, default: undefined },
   placeholder: { type: String, default: 'Adicionar...' },
 })

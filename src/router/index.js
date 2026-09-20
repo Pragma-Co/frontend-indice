@@ -17,7 +17,7 @@ const router = createRouter({
       meta: { title: 'Colaborador - Resultados' },
     },
     {
-      path: '/documentos',
+      path: '/documents',
       name: 'document-list',
       component: () => import('../views/document/DocumentsListView.vue'),
       meta: { title: 'Colaborador - Documentos' },

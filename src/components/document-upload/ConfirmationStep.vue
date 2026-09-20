@@ -9,12 +9,6 @@ import Button from '../common/Button.vue'
 import FileTypeIcon from '../common/FileTypeIcon.vue'
 import KeyValue from '../common/KeyValue.vue'
 
-/**
- * Step 3 — Confirmação. Read-only summary of what was filled in step 2,
- * the reserved preview container and the Anterior / Publicar actions.
- * The submission itself (what happens on `publish`) is a separate task;
- * this component only emits the event and reflects `store.publishing`.
- */
 const emit = defineEmits(['back', 'publish'])
 const store = useDocumentFormStore()
 const uploadStore = useUploadStore()

@@ -3,7 +3,6 @@ defineProps({
   steps: {
     type: Array,
     required: true,
-    // [{ title: 'Upload', subtitle: 'Arquivos do projeto' }, ...]
   },
   currentStep: {
     type: Number,

@@ -14,10 +14,6 @@ import {
   UPLOAD_STEPS,
 } from '@/utils/uploadFlow.js'
 
-/**
- * Step 2 (Metadados) of the "Fazer upload de arquivo" flow. The upload step
- * (DocumentUploadView) leads here and "Próximo Passo" leads to the confirmation.
- */
 const router = useRouter()
 const auth = useAuthStore()
 const store = useDocumentFormStore()

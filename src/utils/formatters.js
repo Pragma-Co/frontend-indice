@@ -24,7 +24,6 @@ export function getFileTypeLabel(fileName) {
   return FILE_TYPE_LABELS_BY_EXTENSION[extension] ?? 'Documento'
 }
 
-/** "Ana Beatriz Costa" -> "AB"; empty or blank names yield "". */
 export function getInitials(name = '') {
   return name
     .split(/\s+/)
@@ -34,7 +33,6 @@ export function getInitials(name = '') {
     .join('')
 }
 
-/** Formats a Date (or ISO string) as dd/mm/yyyy in pt-BR. Returns '—' for empty or invalid input. */
 export function formatDate(value) {
   if (value === null || value === undefined || value === '') return '—'
   const date = value instanceof Date ? value : new Date(value)

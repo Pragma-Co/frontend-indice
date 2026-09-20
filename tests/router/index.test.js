@@ -3,24 +3,18 @@ import router from '../../src/router'
 
 describe('router', () => {
   it('should resolve the home route to the home view', async () => {
-    // When
     await router.push('/home')
-    // Then
     expect(router.currentRoute.value.name).toBe('home')
     expect(document.title).toBe('Colaborador - Início')
   })
 
   it('should send the root path to the home route', async () => {
-    // When
     await router.push('/')
-    // Then
     expect(router.currentRoute.value.path).toBe('/home')
   })
 
   it('should resolve the documents route to the list view', async () => {
-    // When
     await router.push('/documents')
-    // Then
     expect(router.currentRoute.value.name).toBe('document-list')
   })
 
