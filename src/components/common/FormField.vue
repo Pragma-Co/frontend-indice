@@ -12,7 +12,6 @@ defineProps({
     default: '',
     validator: (value) => ['', 'search', 'document'].includes(value),
   },
-  /** Whether the current value was pre-filled by the AI suggestion flow. */
   suggested: { type: Boolean, default: false },
 })
 </script>

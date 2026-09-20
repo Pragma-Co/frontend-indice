@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive } from 'vue'
+import { computed, reactive, watch } from 'vue'
 import { useDocumentFormStore } from '../../stores/documentFormStore'
 import { AREAS, CONFIDENTIALITY_LEVELS, DOCUMENT_TYPES } from '../../utils/documentCatalog'
 import Button from '../common/Button.vue'
@@ -30,7 +30,6 @@ function fieldError(field) {
   return store.serverErrors[field] ?? (touched[field] ? (store.errors[field] ?? '') : '')
 }
 
-/** Two-way binding that also drops a field's "suggested by AI" flag once the user edits it. */
 function fieldModel(field) {
   return computed({
     get: () => store.form[field],
@@ -46,6 +45,15 @@ const documentType = fieldModel('documentType')
 const title = fieldModel('title')
 const description = fieldModel('description')
 const areas = fieldModel('areas')
+
+watch(
+  () => ({ ...store.form }),
+  (current, previous) => {
+    for (const field of Object.keys(current)) {
+      if (current[field] !== previous[field]) store.clearServerError(field)
+    }
+  },
+)
 
 /** Navigation between steps belongs to the view; step 3 is a separate task. */
 function next() {
@@ -101,10 +109,12 @@ function back(event) {
         :suggested="store.isFieldSuggested('disciplineId')"
         @focusout="touch('disciplineId')"
       >
-        <select id="discipline" v-model="disciplineId" :disabled="store.catalogsLoading">
-          <option value="">
-            {{ disciplinePlaceholder }}
-          </option>
+        <select
+          id="discipline"
+          v-model="disciplineId"
+          :disabled="store.catalogsLoading || disciplineLocked"
+        >
+          <option value="">{{ disciplinePlaceholder }}</option>
           <option
             v-for="discipline in store.availableDisciplines"
             :key="discipline.id"

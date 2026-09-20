@@ -1,8 +1,11 @@
 import { defineStore } from 'pinia'
 import { listProjects } from '../api/projects'
 import { listDisciplines } from '../api/disciplines'
+import { createDocument, toDocumentPayload } from '../api/documents'
+import { useAuthStore } from './authStore'
 import { buildDocumentCode, INITIAL_VERSION, revisionLabel } from '../utils/documentCode'
 import { DEFAULT_CONFIDENTIALITY, findDocumentType } from '../utils/documentCatalog'
+import { mapServerErrors, publishErrorMessage } from '../utils/publishErrors'
 import { validateDocumentForm } from '../utils/validators'
 
 export function emptyForm(author = '') {
@@ -19,14 +22,8 @@ export function emptyForm(author = '') {
   }
 }
 
-// Fields the AI suggestion flow is allowed to pre-fill.
 const SUGGESTIBLE_FIELDS = ['title', 'description', 'disciplineId', 'documentType', 'areas']
 
-/**
- * State of the metadata form (step 2), also read by the confirmation (step 3).
- * Keeping it in a store lets the user move between the steps without losing
- * what was filled in. The submission fired by "Publicar" is a separate task.
- */
 export const useDocumentFormStore = defineStore('documentForm', {
   state: () => ({
     form: emptyForm(),
@@ -34,8 +31,9 @@ export const useDocumentFormStore = defineStore('documentForm', {
     disciplines: [],
     catalogsLoading: false,
     catalogsError: null,
-    publishing: false, // drives the loading state of "Publicar"; set by the submission task
-    // Fields currently holding a value proposed by the AI and not yet edited by the user.
+    publishing: false,
+    publishError: null,
+    serverErrors: {},
     suggestedFields: {},
   }),
 
@@ -94,23 +92,58 @@ export const useDocumentFormStore = defineStore('documentForm', {
       if (!this.form.author && name) this.form.author = name
     },
 
-    /** Pre-fills the given fields from an AI suggestion and flags them as such until edited. */
+    clearServerError(field) {
+      if (!(field in this.serverErrors)) return
+      const rest = { ...this.serverErrors }
+      delete rest[field]
+      this.serverErrors = rest
+    },
+
     applySuggestions(suggestions = {}) {
       for (const [field, value] of Object.entries(suggestions)) {
         if (!SUGGESTIBLE_FIELDS.includes(field)) continue
+        if (
+          field === 'disciplineId' &&
+          !this.availableDisciplines.some((d) => String(d.id) === String(value))
+        ) {
+          continue
+        }
         this.form[field] = value
         this.suggestedFields[field] = true
       }
     },
 
-    /** Drops the "suggested" flag for a field once the user edits it. */
     clearSuggestion(field) {
       if (field in this.suggestedFields) delete this.suggestedFields[field]
+    },
+
+    async publish(tempFileId) {
+      const auth = useAuthStore()
+      this.publishing = true
+      this.publishError = null
+      this.serverErrors = {}
+      try {
+        const payload = toDocumentPayload(this.form, {
+          tempFileId,
+          responsibleId: auth.currentUser?.id ?? null,
+        })
+        const document = await createDocument(payload)
+        this.form = emptyForm(this.form.author)
+        return document
+      } catch (error) {
+        this.publishError = publishErrorMessage(error)
+        if (error?.status === 400) this.serverErrors = mapServerErrors(error.details?.errors)
+        throw error
+      } finally {
+        this.publishing = false
+      }
     },
 
     reset(author = '') {
       this.form = emptyForm(author)
       this.publishing = false
+      this.publishError = null
+      this.serverErrors = {}
       this.suggestedFields = {}
     },
   },
