@@ -199,6 +199,74 @@ describe('documentFormStore', () => {
     })
   })
 
+  describe('applySuggestions', () => {
+    it('should pre-fill suggestible fields and flag them as suggested', async () => {
+      await store.loadCatalogs()
+      store.selectProject(1)
+
+      store.applySuggestions({
+        title: 'Desenho da fuselagem central',
+        disciplineId: 1,
+        documentType: 'DWG',
+        description: 'Gerado pela IA',
+        areas: ['EST'],
+      })
+
+      expect(store.form.title).toBe('Desenho da fuselagem central')
+      expect(store.form.disciplineId).toBe(1)
+      expect(store.form.documentType).toBe('DWG')
+      expect(store.form.description).toBe('Gerado pela IA')
+      expect(store.form.areas).toEqual(['EST'])
+      expect(store.isFieldSuggested('title')).toBe(true)
+      expect(store.isFieldSuggested('disciplineId')).toBe(true)
+      expect(store.isFieldSuggested('documentType')).toBe(true)
+      expect(store.isFieldSuggested('description')).toBe(true)
+      expect(store.isFieldSuggested('areas')).toBe(true)
+    })
+
+    it('should ignore suggestions for fields outside the suggestible list', () => {
+      store.applySuggestions({ author: 'Robô', confidentiality: 'PUBLIC' })
+
+      expect(store.form.author).toBe('')
+      expect(store.form.confidentiality).not.toBe('PUBLIC')
+      expect(store.isFieldSuggested('author')).toBe(false)
+    })
+
+    it('should ignore a suggested discipline that does not belong to the selected project', async () => {
+      listProjects.mockResolvedValue([
+        { id: 1, code: 'AK-2100', name: 'Aeroestrutura', discipline_ids: [1] },
+      ])
+      listDisciplines.mockResolvedValue([
+        { id: 1, code: 'EST', name: 'Estruturas' },
+        { id: 3, code: 'QUA', name: 'Qualidade e Inspeção' },
+      ])
+      await store.loadCatalogs()
+      store.selectProject(1)
+
+      store.applySuggestions({ disciplineId: 3 })
+
+      expect(store.form.disciplineId).toBe('')
+      expect(store.isFieldSuggested('disciplineId')).toBe(false)
+    })
+
+    it('should drop the suggested flag for a field once cleared', () => {
+      store.applySuggestions({ title: 'Desenho da fuselagem central' })
+
+      store.clearSuggestion('title')
+
+      expect(store.isFieldSuggested('title')).toBe(false)
+      expect(store.form.title).toBe('Desenho da fuselagem central')
+    })
+
+    it('should clear all suggestion flags on reset', () => {
+      store.applySuggestions({ title: 'Desenho da fuselagem central' })
+
+      store.reset()
+
+      expect(store.isFieldSuggested('title')).toBe(false)
+    })
+  })
+
   describe('publish', () => {
     it('should post the mapped payload with the seeded responsible and keep the created document', async () => {
       fillValidForm(store)

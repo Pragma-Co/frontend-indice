@@ -22,6 +22,8 @@ export function emptyForm(author = '') {
   }
 }
 
+const SUGGESTIBLE_FIELDS = ['title', 'description', 'disciplineId', 'documentType', 'areas']
+
 export const useDocumentFormStore = defineStore('documentForm', {
   state: () => ({
     form: emptyForm(),
@@ -32,6 +34,7 @@ export const useDocumentFormStore = defineStore('documentForm', {
     publishing: false,
     publishError: null,
     serverErrors: {},
+    suggestedFields: {},
   }),
 
   getters: {
@@ -48,6 +51,7 @@ export const useDocumentFormStore = defineStore('documentForm', {
     },
     selectedDocumentType: (state) => findDocumentType(state.form.documentType),
     revision: (state) => revisionLabel(state.form.version),
+    isFieldSuggested: (state) => (field) => Boolean(state.suggestedFields[field]),
     codePreview() {
       return buildDocumentCode({
         project: this.selectedProject?.code,
@@ -95,6 +99,24 @@ export const useDocumentFormStore = defineStore('documentForm', {
       this.serverErrors = rest
     },
 
+    applySuggestions(suggestions = {}) {
+      for (const [field, value] of Object.entries(suggestions)) {
+        if (!SUGGESTIBLE_FIELDS.includes(field)) continue
+        if (
+          field === 'disciplineId' &&
+          !this.availableDisciplines.some((d) => String(d.id) === String(value))
+        ) {
+          continue
+        }
+        this.form[field] = value
+        this.suggestedFields[field] = true
+      }
+    },
+
+    clearSuggestion(field) {
+      if (field in this.suggestedFields) delete this.suggestedFields[field]
+    },
+
     async publish(tempFileId) {
       const auth = useAuthStore()
       this.publishing = true
@@ -122,6 +144,7 @@ export const useDocumentFormStore = defineStore('documentForm', {
       this.publishing = false
       this.publishError = null
       this.serverErrors = {}
+      this.suggestedFields = {}
     },
   },
 })

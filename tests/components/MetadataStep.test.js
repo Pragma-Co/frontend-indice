@@ -206,4 +206,32 @@ describe('MetadataStep', () => {
       'Não foi possível conectar ao servidor.',
     )
   })
+
+  it('should show the AI badge on fields pre-filled by a suggestion', () => {
+    store.applySuggestions({ title: 'Desenho da fuselagem central', documentType: 'DWG' })
+    const wrapper = mount(MetadataStep)
+    expect(wrapper.find('#title').element.value).toBe('Desenho da fuselagem central')
+    const titleField = wrapper.find('#title').element.closest('.field')
+    expect(titleField.classList).toContain('field--suggested')
+    expect(titleField.textContent).toContain('Sugerido por IA')
+    const descriptionField = wrapper.find('#description').element.closest('.field')
+    expect(descriptionField.classList).not.toContain('field--suggested')
+  })
+
+  it('should drop the suggested flag for a field once the user edits it', async () => {
+    store.applySuggestions({ title: 'Desenho da fuselagem central' })
+    const wrapper = mount(MetadataStep)
+    await wrapper.find('#title').setValue('Novo título editado')
+    expect(store.isFieldSuggested('title')).toBe(false)
+    expect(wrapper.find('#title').element.closest('.field').classList).not.toContain(
+      'field--suggested',
+    )
+  })
+
+  it('should drop the suggested flag on the areas field when a tag is removed', async () => {
+    store.applySuggestions({ areas: ['EST', 'QUA'] })
+    const wrapper = mount(MetadataStep)
+    await wrapper.find('button[aria-label="Remover Qualidade e Inspeção"]').trigger('click')
+    expect(store.isFieldSuggested('areas')).toBe(false)
+  })
 })

@@ -29,6 +29,22 @@ function fieldError(field) {
   return store.serverErrors[field] ?? (touched[field] ? (store.errors[field] ?? '') : '')
 }
 
+function fieldModel(field) {
+  return computed({
+    get: () => store.form[field],
+    set: (value) => {
+      store.form[field] = value
+      store.clearSuggestion(field)
+    },
+  })
+}
+
+const disciplineId = fieldModel('disciplineId')
+const documentType = fieldModel('documentType')
+const title = fieldModel('title')
+const description = fieldModel('description')
+const areas = fieldModel('areas')
+
 watch(
   () => ({ ...store.form }),
   (current, previous) => {
@@ -87,11 +103,12 @@ function back(event) {
         required
         icon="document"
         :error="fieldError('disciplineId')"
+        :suggested="store.isFieldSuggested('disciplineId')"
         @focusout="touch('disciplineId')"
       >
         <select
           id="discipline"
-          v-model="store.form.disciplineId"
+          v-model="disciplineId"
           :disabled="store.catalogsLoading || disciplineLocked"
         >
           <option value="">{{ disciplinePlaceholder }}</option>
@@ -111,9 +128,10 @@ function back(event) {
         required
         icon="document"
         :error="fieldError('documentType')"
+        :suggested="store.isFieldSuggested('documentType')"
         @focusout="touch('documentType')"
       >
-        <select id="document-type" v-model="store.form.documentType">
+        <select id="document-type" v-model="documentType">
           <option value="">Selecione o tipo</option>
           <option v-for="type in DOCUMENT_TYPES" :key="type.code" :value="type.code">
             {{ type.code }} - {{ type.name }}
@@ -141,11 +159,12 @@ function back(event) {
         required
         class="metadata__full"
         :error="fieldError('title')"
+        :suggested="store.isFieldSuggested('title')"
         @focusout="touch('title')"
       >
         <input
           id="title"
-          v-model="store.form.title"
+          v-model="title"
           type="text"
           placeholder="Digite o título do documento…"
           maxlength="255"
@@ -156,11 +175,11 @@ function back(event) {
         label="Descrição Breve"
         html-for="description"
         class="metadata__full"
-        :error="fieldError('description')"
+        :suggested="store.isFieldSuggested('description')"
       >
         <textarea
           id="description"
-          v-model="store.form.description"
+          v-model="description"
           rows="3"
           placeholder="Descreva brevemente o conteúdo do documento…"
           maxlength="500"
@@ -210,11 +229,12 @@ function back(event) {
         required
         class="metadata__full"
         :error="fieldError('areas')"
+        :suggested="store.isFieldSuggested('areas')"
         @focusout="touch('areas')"
       >
         <TagMultiSelect
           id="areas"
-          v-model="store.form.areas"
+          v-model="areas"
           :options="areaOptions"
           placeholder="Adicionar área…"
         />

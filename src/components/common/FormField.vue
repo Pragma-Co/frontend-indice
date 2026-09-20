@@ -1,4 +1,6 @@
 <script setup>
+import AiSuggestionBadge from './AiSuggestionBadge.vue'
+
 defineProps({
   label: { type: String, required: true },
   htmlFor: { type: String, default: undefined },
@@ -9,14 +11,19 @@ defineProps({
     default: '',
     validator: (value) => ['', 'search', 'document'].includes(value),
   },
+  suggested: { type: Boolean, default: false },
 })
 </script>
 
 <template>
-  <div class="field" :class="{ 'field--invalid': error, 'field--with-icon': icon }">
+  <div
+    class="field"
+    :class="{ 'field--invalid': error, 'field--with-icon': icon, 'field--suggested': suggested }"
+  >
     <label class="field__label" :for="htmlFor">
       {{ label }}
       <span v-if="required" class="field__required" aria-hidden="true">*</span>
+      <AiSuggestionBadge v-if="suggested" />
     </label>
     <div class="field__control">
       <span v-if="icon" class="field__icon" aria-hidden="true">
@@ -55,6 +62,7 @@ defineProps({
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--color-text);
+  height: 16px;
 }
 
 .field__required {
@@ -120,5 +128,12 @@ defineProps({
 .field--invalid :deep(select),
 .field--invalid :deep(textarea) {
   border-color: var(--color-danger);
+}
+
+.field--suggested :deep(input),
+.field--suggested :deep(select),
+.field--suggested :deep(textarea) {
+  border-color: var(--color-info-border);
+  background: var(--color-info-bg);
 }
 </style>
