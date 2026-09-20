@@ -62,6 +62,7 @@ defineProps({
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--color-text);
+  height: 16px;
 }
 
 .field__required {

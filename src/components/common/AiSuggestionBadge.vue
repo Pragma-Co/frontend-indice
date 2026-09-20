@@ -29,6 +29,7 @@ defineProps({
   font-weight: 600;
   white-space: nowrap;
   vertical-align: middle;
+  height: 16px;
 }
 
 .ai-badge__icon {
