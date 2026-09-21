@@ -50,7 +50,7 @@ function handleMenuItem(document, itemKey) {
           <th></th>
           <th>Código do documento</th>
           <th>Título</th>
-          <th>Tipo</th>
+          <th>Tipo / Disciplina</th>
           <th>Revisão atual</th>
           <th>Status</th>
           <th>Última atualização</th>
@@ -78,7 +78,12 @@ function handleMenuItem(document, itemKey) {
           </td>
           <td class="cell-code">{{ document.code }}</td>
           <td class="cell-title">{{ document.title }}</td>
-          <td class="cell-type">{{ document.type }}</td>
+          <td class="cell-type">
+            <span>{{ document.type }}</span>
+            <span v-if="document.discipline?.name" class="cell-discipline">
+              {{ document.discipline.name }}
+            </span>
+          </td>
           <td>
             <Badge>{{ document.revision }}</Badge>
           </td>
@@ -184,6 +189,12 @@ function handleMenuItem(document, itemKey) {
 .cell-title {
   font-weight: 600;
   min-width: 11rem;
+}
+
+.cell-discipline {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
 }
 
 .cell-type {
