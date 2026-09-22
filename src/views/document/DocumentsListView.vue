@@ -1,83 +1,26 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { fetchDocuments } from '@/api/documents.js'
 import Button from '@/components/common/Button.vue'
 import DocumentsTable from '@/views/document/components/DocumentsTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
-import { buildDocumentQueryKey } from '@/utils/searchParams.js'
+import {
+  ITEMS_PER_PAGE_OPTIONS,
+  useDocumentList,
+} from '@/views/document/composables/useDocumentList.js'
 
-const route = useRoute()
-const router = useRouter()
-const documents = ref([])
-const loading = ref(true)
-const error = ref('')
-const currentPage = ref(1)
-const itemsPerPage = ref(20)
-const ITEMS_PER_PAGE_OPTIONS = [5, 10, 20, 50]
-
-const totalPages = () => Math.max(1, Math.ceil(documents.value.length / itemsPerPage.value))
-const paginatedDocuments = () => {
-  const start = (currentPage.value - 1) * itemsPerPage.value
-  return documents.value.slice(start, start + itemsPerPage.value)
-}
-
-function normalizeDocument(document) {
-  return {
-    ...document,
-    type: document.type?.name ?? document.type?.code ?? 'Não informado',
-    revision: document.revision ?? '-',
-    status: document.status ?? 'vigente',
-    updatedAt: document.updated_at,
-    updatedBy: document.updated_by ?? 'sistema',
-    action: document.action ?? 'view-details',
-  }
-}
-
-async function loadDocuments() {
-  loading.value = true
-  error.value = ''
-  currentPage.value = 1
-
-  try {
-    const response = await fetchDocuments(route.query)
-    documents.value = response.documents.map(normalizeDocument)
-  } catch {
-    documents.value = []
-    error.value = 'Não foi possível carregar os documentos.'
-  } finally {
-    loading.value = false
-  }
-}
-
-function goToUpload() {
-  router.push({ name: 'document-upload' })
-}
-
-function goToPage(page) {
-  currentPage.value = Math.min(Math.max(1, page), totalPages())
-}
-
-function setItemsPerPage(value) {
-  itemsPerPage.value = value
-  currentPage.value = 1
-}
-
-function goToDocumentDetails(document) {
-  router.push({ name: 'document-details', params: { documentId: document.id } })
-}
-
-function handleDocumentAction({ document, action }) {
-  if (action === 'new-revision' || action === 'continue-editing') {
-    goToUpload()
-  } else if (action === 'view-details') {
-    goToDocumentDetails(document)
-  }
-}
-
-onMounted(loadDocuments)
-watch(() => buildDocumentQueryKey(route.query), loadDocuments)
+const {
+  documents,
+  totalItems,
+  totalPages,
+  currentPage,
+  itemsPerPage,
+  loading,
+  error,
+  goToPage,
+  setItemsPerPage,
+  goToUpload,
+  handleDocumentAction,
+} = useDocumentList()
 </script>
 
 <template>
@@ -99,14 +42,14 @@ watch(() => buildDocumentQueryKey(route.query), loadDocuments)
       <DocumentsTable
         v-else
         class="documents-table"
-        :documents="paginatedDocuments()"
+        :documents="documents"
         @action="handleDocumentAction"
       />
 
       <Pagination
         :current-page="currentPage"
-        :total-pages="totalPages()"
-        :total-items="documents.length"
+        :total-pages="totalPages"
+        :total-items="totalItems"
         :items-per-page="itemsPerPage"
         :items-per-page-options="ITEMS_PER_PAGE_OPTIONS"
         @change-page="goToPage"

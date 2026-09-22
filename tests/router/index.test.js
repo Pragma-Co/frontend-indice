@@ -18,16 +18,16 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('document-list')
   })
 
-  it('should keep every document route under /documentos so the navbar marks the Documentos tab', () => {
+  it('should keep every document route under /documents so the navbar marks the Documentos tab', () => {
     const names = ['document-list', 'document-upload', 'document-metadata', 'document-confirmation']
 
     const paths = names.map((name) => router.resolve({ name }).path)
 
     expect(paths).toEqual([
-      '/documentos',
-      '/documentos/upload',
-      '/documentos/metadados',
-      '/documentos/confirmacao',
+      '/documents',
+      '/documents/upload',
+      '/documents/metadata',
+      '/documents/confirmation',
     ])
   })
 })
