@@ -36,6 +36,10 @@ function closeMenu() {
   openMenuId.value = null
 }
 
+function openDetails(document) {
+  emit('action', { document, action: 'view-details' })
+}
+
 function handleMenuItem(document, itemKey) {
   emit('action', { document, action: itemKey })
   closeMenu()
@@ -50,7 +54,7 @@ function handleMenuItem(document, itemKey) {
           <th></th>
           <th>Código do documento</th>
           <th>Título</th>
-          <th>Tipo</th>
+          <th>Tipo / Disciplina</th>
           <th>Revisão atual</th>
           <th>Status</th>
           <th>Última atualização</th>
@@ -58,7 +62,14 @@ function handleMenuItem(document, itemKey) {
         </tr>
       </thead>
       <tbody>
-        <tr v-for="document in documents" :key="document.id">
+        <tr
+          v-for="document in documents"
+          :key="document.id"
+          class="document-row"
+          tabindex="0"
+          @click="openDetails(document)"
+          @keydown.enter="openDetails(document)"
+        >
           <!-- TODO: map this icon by file extension once documents carry one. -->
           <td class="cell-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -78,7 +89,12 @@ function handleMenuItem(document, itemKey) {
           </td>
           <td class="cell-code">{{ document.code }}</td>
           <td class="cell-title">{{ document.title }}</td>
-          <td class="cell-type">{{ document.type }}</td>
+          <td class="cell-type">
+            <span>{{ document.type }}</span>
+            <span v-if="document.discipline?.name" class="cell-discipline">
+              {{ document.discipline.name }}
+            </span>
+          </td>
           <td>
             <Badge>{{ document.revision }}</Badge>
           </td>
@@ -92,7 +108,7 @@ function handleMenuItem(document, itemKey) {
             <span class="updated-date">{{ formatUpdatedAt(document.updatedAt) }}</span>
             <span class="updated-by">por {{ document.updatedBy }}</span>
           </td>
-          <td class="cell-actions">
+          <td class="cell-actions" @click.stop @keydown.enter.stop>
             <div class="actions-inner">
               <button
                 type="button"
@@ -184,6 +200,12 @@ function handleMenuItem(document, itemKey) {
 .cell-title {
   font-weight: 600;
   min-width: 11rem;
+}
+
+.cell-discipline {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
 }
 
 .cell-type {
@@ -287,5 +309,17 @@ function handleMenuItem(document, itemKey) {
 
 .menu-item:hover {
   background: var(--color-background);
+}
+.document-row {
+  cursor: pointer;
+}
+
+.document-row:hover {
+  background: var(--color-surface-muted);
+}
+
+.document-row:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
 }
 </style>
