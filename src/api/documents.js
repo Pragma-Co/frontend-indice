@@ -88,6 +88,10 @@ export function fetchDocumentDetail(documentId, userId) {
   return api.get(`/documents/${documentId}${query}`)
 }
 
+export function requestDocumentSuggestions(documentId) {
+  return api.post(`/documents/${documentId}/suggestions`)
+}
+
 export function requestDocumentAccess(documentId, userId, justification) {
   return api.post(`/documents/${documentId}/request-access`, {
     user_id: userId,
