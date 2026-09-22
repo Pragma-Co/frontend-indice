@@ -55,4 +55,44 @@ describe('DocumentsTable', () => {
 
     expect(wrapper.find('.cell-discipline').exists()).toBe(false)
   })
+
+  it('should open the details when the row itself is clicked', async () => {
+    const wrapper = mount(DocumentsTable, { props: { documents: [makeDocument()] } })
+
+    await wrapper.find('tbody tr').trigger('click')
+
+    expect(wrapper.emitted('action')).toEqual([
+      [{ document: expect.objectContaining({ id: 33 }), action: 'view-details' }],
+    ])
+  })
+
+  it('should open the details from the keyboard with Enter on the row', async () => {
+    const wrapper = mount(DocumentsTable, { props: { documents: [makeDocument()] } })
+
+    await wrapper.find('tbody tr').trigger('keydown.enter')
+
+    expect(wrapper.emitted('action')).toHaveLength(1)
+    expect(wrapper.emitted('action')[0][0].action).toBe('view-details')
+  })
+
+  it('should not open the details twice when the action button inside the row is clicked', async () => {
+    const wrapper = mount(DocumentsTable, {
+      props: { documents: [makeDocument({ action: 'new-revision' })] },
+    })
+
+    await wrapper.find('.action-button').trigger('click')
+
+    expect(wrapper.emitted('action')).toEqual([
+      [{ document: expect.objectContaining({ id: 33 }), action: 'new-revision' }],
+    ])
+  })
+
+  it('should keep the row quiet while the more-actions menu is used', async () => {
+    const wrapper = mount(DocumentsTable, { props: { documents: [makeDocument()] } })
+
+    await wrapper.find('.menu-trigger').trigger('click')
+
+    expect(wrapper.emitted('action')).toBeUndefined()
+    expect(wrapper.find('.menu-dropdown').exists()).toBe(true)
+  })
 })
