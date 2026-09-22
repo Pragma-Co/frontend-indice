@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowRight, Building2, Calendar, ChevronDown, FileText, Search, Upload } from '@lucide/vue'
 import { buildDocumentSearchQuery } from '@/utils/searchParams'
+import { useSearchStore } from '@/stores/searchStore.js'
 import Button from '@/components/common/Button.vue'
 
 const props = defineProps({
@@ -12,6 +13,7 @@ const props = defineProps({
 
 const emit = defineEmits(['search', 'view-all'])
 const route = useRoute()
+const searchStore = useSearchStore()
 const form = reactive({ query: '', date: '', dateFrom: '', dateTo: '', area: '', type: '' })
 const dateInputs = reactive({ from: '', to: '' })
 const dateMenuOpen = ref(false)
@@ -73,15 +75,16 @@ const dateLabel = computed(() => {
 const areaLabel = computed(() => (form.area ? `Área ${form.area}` : 'Área'))
 const typeLabel = computed(() => (form.type ? `Tipo ${form.type}` : 'Tipo'))
 
-function restoreFiltersFromRoute() {
-  form.query = String(route.query.q ?? '')
-  form.date = String(route.query.data ?? '')
-  form.dateFrom = String(route.query.date_from ?? '')
-  form.dateTo = String(route.query.date_to ?? '')
+function restoreFilters() {
+  const source = Object.keys(route.query).length ? route.query : searchStore.lastSearch
+  form.query = String(source.q ?? '')
+  form.date = String(source.data ?? '')
+  form.dateFrom = String(source.date_from ?? '')
+  form.dateTo = String(source.date_to ?? '')
   dateInputs.from = formatDateForDisplay(form.dateFrom)
   dateInputs.to = formatDateForDisplay(form.dateTo)
-  form.area = String(route.query.area ?? '')
-  form.type = String(route.query.tipo ?? '')
+  form.area = String(source.area ?? '')
+  form.type = String(source.tipo ?? '')
 }
 
 function selectDatePreset(event) {
@@ -113,13 +116,16 @@ function resetFilters() {
   dateInputs.to = ''
   dateMenuOpen.value = false
   filterMenuOpen.value = ''
+  searchStore.forget()
 }
 
 function search() {
-  emit('search', buildDocumentSearchQuery(form))
+  const query = buildDocumentSearchQuery(form)
+  searchStore.remember(query)
+  emit('search', query)
 }
 
-onMounted(restoreFiltersFromRoute)
+onMounted(restoreFilters)
 </script>
 
 <template>
@@ -283,7 +289,7 @@ onMounted(restoreFiltersFromRoute)
     </div>
 
     <div class="search-actions">
-      <Button variant="outline" @click="resetFilters">Limpar filtros</Button>
+      <Button variant="outline" type="button" @click="resetFilters">Limpar filtros</Button>
       <button type="button" class="all-documents" @click="emit('view-all')">
         Ver todos os documentos
         <ArrowRight :size="16" aria-hidden="true" />

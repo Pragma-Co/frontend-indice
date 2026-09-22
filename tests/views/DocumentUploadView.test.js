@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import DocumentUploadView from '../../src/views/DocumentUploadView.vue'
+import DocumentUploadView from '../../src/views/document/components/DocumentUpload.vue'
 import { useUploadStore } from '../../src/stores/uploadStore'
 
 const push = vi.fn()

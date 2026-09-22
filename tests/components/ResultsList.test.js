@@ -1,10 +1,16 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
-import { nextTick } from 'vue'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive, nextTick } from 'vue'
+import { flushPromises, mount } from '@vue/test-utils'
 import ResultsList from '@/views/document/components/ResultsList.vue'
 
-const mockRoute = { query: {} }
-const mockRouter = { push: vi.fn() }
+const mockRoute = reactive({ query: {} })
+const mockRouter = {
+  push: vi.fn(),
+  replace: vi.fn(({ query }) => {
+    mockRoute.query = query
+    return Promise.resolve()
+  }),
+}
 
 vi.mock('vue-router', () => ({
   useRoute: () => mockRoute,
@@ -15,12 +21,7 @@ vi.mock('@/api/documents.js', () => ({
   fetchDocuments: vi.fn(),
 }))
 
-vi.mock('@/utils/searchParams.js', () => ({
-  buildDocumentQueryKey: vi.fn((query) => JSON.stringify(query)),
-}))
-
 import { fetchDocuments } from '@/api/documents.js'
-import { buildDocumentQueryKey } from '@/utils/searchParams.js'
 
 const DocumentsTableStub = {
   name: 'DocumentsTable',
@@ -40,9 +41,6 @@ const DocumentsTableStub = {
       <button data-test="emit-new-revision" @click="$emit('action', { document: documents[0], action: 'new-revision' })">
         new-revision
       </button>
-      <button data-test="emit-continue-editing" @click="$emit('action', { document: documents[0], action: 'continue-editing' })">
-        continue-editing
-      </button>
       <button data-test="emit-unknown" @click="$emit('action', { document: documents[0], action: 'unknown' })">
         unknown
       </button>
@@ -58,7 +56,6 @@ const PaginationStub = {
     <div data-test="pagination">
       <button data-test="page-2" @click="$emit('change-page', 2)">2</button>
       <button data-test="page-999" @click="$emit('change-page', 999)">999</button>
-      <button data-test="page-0" @click="$emit('change-page', 0)">0</button>
       <button data-test="per-page-5" @click="$emit('change-items-per-page', 5)">5</button>
     </div>
   `,
@@ -70,21 +67,29 @@ const PageLayoutStub = {
   template: '<div data-test="page-layout"><slot /></div>',
 }
 
-const makeDoc = (id) => ({
+const makeDocument = (id) => ({
   id,
   title: `Document ${id}`,
-  type: { name: 'Contrato' },
-  revision: '1',
-  status: 'vigente',
+  type: { code: 'DWG', name: 'Desenho Técnico' },
+  revision: { version: 1, label: 'REV01' },
+  status: 'APPROVED',
   updated_at: '2026-01-01',
-  updated_by: 'alice',
-  action: 'view-details',
 })
 
-const makeRawDocs = (count) => Array.from({ length: count }, (_, i) => makeDoc(i + 1))
+const makeDocuments = (count) => Array.from({ length: count }, (_, i) => makeDocument(i + 1))
 
-const mountView = () =>
-  mount(ResultsList, {
+const pageOf = (results, { count = results.length, totalPages = 1, currentPage = 1 } = {}) => ({
+  count,
+  total_pages: totalPages,
+  current_page: currentPage,
+  page_size: 20,
+  results,
+})
+
+const mountedViews = []
+
+const mountView = async () => {
+  const wrapper = mount(ResultsList, {
     global: {
       stubs: {
         DocumentsTable: DocumentsTableStub,
@@ -93,373 +98,176 @@ const mountView = () =>
       },
     },
   })
+  mountedViews.push(wrapper)
+  await flushPromises()
+  return wrapper
+}
 
-const resolveWith = (documents = []) => ({ documents })
-
-describe('ResultsList.vue', () => {
+describe('ResultsList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockRoute.query = {}
-    fetchDocuments.mockResolvedValue(resolveWith([]))
+    fetchDocuments.mockResolvedValue(pageOf([]))
   })
 
   afterEach(() => {
-    vi.restoreAllMocks()
+    mountedViews.splice(0).forEach((wrapper) => wrapper.unmount())
   })
 
-  describe('Carregamento inicial', () => {
-    it('renderiza PageLayout com title e subtitle corretos', async () => {
-      const wrapper = mountView()
-      await flushPromises()
+  it('should render the results page title and subtitle', async () => {
+    const wrapper = await mountView()
 
-      const layout = wrapper.findComponent(PageLayoutStub)
-      expect(layout.exists()).toBe(true)
-      expect(layout.props('title')).toBe('Resultados')
-      expect(layout.props('subtitle')).toBe('Visualize os resultados da sua busca.')
+    const layout = wrapper.findComponent(PageLayoutStub)
+    expect(layout.props('title')).toBe('Resultados')
+    expect(layout.props('subtitle')).toBe('Visualize os resultados da sua busca.')
+  })
+
+  it('should show the loading message while the request is pending', async () => {
+    let resolveRequest
+    fetchDocuments.mockReturnValueOnce(new Promise((resolve) => (resolveRequest = resolve)))
+
+    const wrapper = mount(ResultsList, {
+      global: {
+        stubs: {
+          DocumentsTable: DocumentsTableStub,
+          Pagination: PaginationStub,
+          PageLayout: PageLayoutStub,
+        },
+      },
     })
+    mountedViews.push(wrapper)
+    await nextTick()
+    expect(wrapper.text()).toContain('Carregando documentos...')
 
-    it('exibe mensagem de loading enquanto busca', async () => {
-      let resolveFn
-      fetchDocuments.mockReturnValueOnce(new Promise((res) => (resolveFn = res)))
+    resolveRequest(pageOf([]))
+    await flushPromises()
 
-      const wrapper = mountView()
-      await nextTick()
+    expect(wrapper.text()).not.toContain('Carregando documentos...')
+  })
 
-      expect(wrapper.text()).toContain('Carregando documentos...')
+  it('should search with the filters of the URL plus the page and the page size', async () => {
+    mockRoute.query = { q: 'caverna', tipo: 'DWG' }
 
-      resolveFn(resolveWith([]))
-      await flushPromises()
-      expect(wrapper.text()).not.toContain('Carregando documentos...')
-    })
+    await mountView()
 
-    it('chama fetchDocuments com route.query ao montar', async () => {
-      mockRoute.query = { search: 'contrato' }
-      mountView()
-      await flushPromises()
-
-      expect(fetchDocuments).toHaveBeenCalledWith({ search: 'contrato' })
-    })
-
-    it('preenche documents com os dados normalizados', async () => {
-      fetchDocuments.mockResolvedValueOnce(resolveWith(makeRawDocs(3)))
-      const wrapper = mountView()
-      await flushPromises()
-
-      expect(wrapper.vm.documents).toHaveLength(3)
-      expect(wrapper.vm.documents[0]).toMatchObject({
-        id: 1,
-        title: 'Document 1',
-        type: 'Contrato',
-        revision: '1',
-        status: 'vigente',
-      })
-      expect(wrapper.vm.loading).toBe(false)
+    expect(fetchDocuments).toHaveBeenCalledWith({
+      q: 'caverna',
+      tipo: 'DWG',
+      page: 1,
+      page_size: 20,
     })
   })
 
-  describe('normalizeDocument', () => {
-    it('usa type.name quando disponível', async () => {
-      fetchDocuments.mockResolvedValueOnce({
-        documents: [{ id: 1, type: { name: 'Ofício', code: 'OF' } }],
-      })
-      const wrapper = mountView()
-      await flushPromises()
+  it('should hand the page returned by the server to the table without slicing it', async () => {
+    fetchDocuments.mockResolvedValue(pageOf(makeDocuments(20), { count: 45, totalPages: 3 }))
 
-      expect(wrapper.vm.documents[0].type).toBe('Ofício')
-    })
+    const wrapper = await mountView()
 
-    it('cai para type.code quando não há name', async () => {
-      fetchDocuments.mockResolvedValueOnce({
-        documents: [{ id: 1, type: { code: 'OF' } }],
-      })
-      const wrapper = mountView()
-      await flushPromises()
-
-      expect(wrapper.vm.documents[0].type).toBe('OF')
-    })
-
-    it('usa "Não informado" quando não há type', async () => {
-      fetchDocuments.mockResolvedValueOnce({
-        documents: [{ id: 1 }],
-      })
-      const wrapper = mountView()
-      await flushPromises()
-
-      expect(wrapper.vm.documents[0].type).toBe('Não informado')
-    })
-
-    it('aplica defaults para campos ausentes', async () => {
-      fetchDocuments.mockResolvedValueOnce({
-        documents: [{ id: 1 }],
-      })
-      const wrapper = mountView()
-      await flushPromises()
-
-      const doc = wrapper.vm.documents[0]
-      expect(doc.revision).toBe('-')
-      expect(doc.status).toBe('vigente')
-      expect(doc.updatedBy).toBe('sistema')
-      expect(doc.action).toBe('view-details')
-    })
-
-    it('mapeia updated_at para updatedAt e updated_by para updatedBy', async () => {
-      fetchDocuments.mockResolvedValueOnce({
-        documents: [{ id: 1, updated_at: '2026-01-01', updated_by: 'bob' }],
-      })
-      const wrapper = mountView()
-      await flushPromises()
-
-      expect(wrapper.vm.documents[0].updatedAt).toBe('2026-01-01')
-      expect(wrapper.vm.documents[0].updatedBy).toBe('bob')
+    expect(wrapper.find('[data-test="count"]').text()).toBe('20')
+    expect(wrapper.findComponent(DocumentsTableStub).props('documents')[0]).toMatchObject({
+      id: 1,
+      type: 'Desenho Técnico',
+      revision: 'REV01',
+      status: 'APPROVED',
     })
   })
 
-  describe('Tratamento de erro', () => {
-    it('exibe mensagem de erro e limpa documents em caso de falha', async () => {
-      fetchDocuments.mockRejectedValueOnce(new Error('boom'))
-      const wrapper = mountView()
-      await flushPromises()
+  it('should feed the pagination with the totals of the response', async () => {
+    mockRoute.query = { page: '2' }
+    fetchDocuments.mockResolvedValue(
+      pageOf(makeDocuments(20), { count: 45, totalPages: 3, currentPage: 2 }),
+    )
 
-      expect(wrapper.vm.error).toBe('Não foi possível carregar os documentos.')
-      expect(wrapper.vm.documents).toEqual([])
-      expect(wrapper.vm.loading).toBe(false)
-      expect(wrapper.text()).toContain('Não foi possível carregar os documentos.')
+    const wrapper = await mountView()
+
+    const pagination = wrapper.findComponent(PaginationStub)
+    expect(pagination.props('currentPage')).toBe(2)
+    expect(pagination.props('totalPages')).toBe(3)
+    expect(pagination.props('totalItems')).toBe(45)
+    expect(pagination.props('itemsPerPage')).toBe(20)
+    expect(pagination.props('itemsPerPageOptions')).toEqual([5, 10, 20, 50])
+  })
+
+  it('should request the next page keeping the search filters in the URL', async () => {
+    mockRoute.query = { q: 'caverna', tipo: 'DWG' }
+    fetchDocuments.mockResolvedValue(pageOf(makeDocuments(20), { count: 45, totalPages: 3 }))
+    const wrapper = await mountView()
+
+    await wrapper.find('[data-test="page-2"]').trigger('click')
+    await flushPromises()
+
+    expect(mockRouter.replace).toHaveBeenCalledWith({
+      query: { q: 'caverna', tipo: 'DWG', page: 2 },
     })
-
-    it('exibe "Nenhum documento encontrado." quando vazio', async () => {
-      fetchDocuments.mockResolvedValueOnce(resolveWith([]))
-      const wrapper = mountView()
-      await flushPromises()
-
-      expect(wrapper.text()).toContain('Nenhum documento encontrado.')
-      expect(wrapper.find('[data-test="documents-table"]').exists()).toBe(false)
+    expect(fetchDocuments).toHaveBeenLastCalledWith({
+      q: 'caverna',
+      tipo: 'DWG',
+      page: 2,
+      page_size: 20,
     })
   })
 
-  describe('Renderização do DocumentsTable', () => {
-    it('renderiza a tabela quando há documentos', async () => {
-      fetchDocuments.mockResolvedValueOnce(resolveWith(makeRawDocs(2)))
-      const wrapper = mountView()
-      await flushPromises()
+  it('should not go past the last page', async () => {
+    fetchDocuments.mockResolvedValue(pageOf(makeDocuments(20), { count: 45, totalPages: 3 }))
+    const wrapper = await mountView()
 
-      const table = wrapper.find('[data-test="documents-table"]')
-      expect(table.exists()).toBe(true)
-      expect(table.find('[data-test="count"]').text()).toBe('2')
+    await wrapper.find('[data-test="page-999"]').trigger('click')
+    await flushPromises()
+
+    expect(mockRouter.replace).toHaveBeenCalledWith({ query: { page: 3 } })
+  })
+
+  it('should go back to the first page when the page size changes', async () => {
+    mockRoute.query = { q: 'caverna', page: '3' }
+    fetchDocuments.mockResolvedValue(pageOf(makeDocuments(5), { count: 45, totalPages: 3 }))
+    const wrapper = await mountView()
+
+    await wrapper.find('[data-test="per-page-5"]').trigger('click')
+    await flushPromises()
+
+    expect(mockRouter.replace).toHaveBeenCalledWith({
+      query: { q: 'caverna', page: 1, page_size: 5 },
     })
+    expect(fetchDocuments).toHaveBeenLastCalledWith({ q: 'caverna', page: 1, page_size: 5 })
+  })
 
-    it('não mostra mensagens de status quando há documentos', async () => {
-      fetchDocuments.mockResolvedValueOnce(resolveWith(makeRawDocs(1)))
-      const wrapper = mountView()
-      await flushPromises()
+  it('should show the empty state when nothing matches', async () => {
+    const wrapper = await mountView()
 
-      expect(wrapper.text()).not.toContain('Carregando documentos...')
-      expect(wrapper.text()).not.toContain('Nenhum documento encontrado.')
-      expect(wrapper.text()).not.toContain('Não foi possível carregar')
+    expect(wrapper.text()).toContain('Nenhum documento encontrado.')
+    expect(wrapper.find('[data-test="documents-table"]').exists()).toBe(false)
+  })
+
+  it('should show a generic message when the request fails', async () => {
+    fetchDocuments.mockRejectedValue(new Error('Documents failed with status 400'))
+
+    const wrapper = await mountView()
+
+    expect(wrapper.text()).toContain('Não foi possível carregar os documentos.')
+    expect(wrapper.text()).not.toContain('400')
+    expect(wrapper.find('[data-test="documents-table"]').exists()).toBe(false)
+  })
+
+  it('should open the document details from the table', async () => {
+    fetchDocuments.mockResolvedValue(pageOf(makeDocuments(2)))
+    const wrapper = await mountView()
+
+    await wrapper.find('[data-test="action-1"]').trigger('click')
+
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      name: 'document-details',
+      params: { documentId: 1 },
     })
   })
 
-  describe('Paginação (helpers)', () => {
-    it('totalPages retorna mínimo 1 com lista vazia', async () => {
-      fetchDocuments.mockResolvedValueOnce(resolveWith([]))
-      const wrapper = mountView()
-      await flushPromises()
+  it('should open the upload for a new revision and ignore unknown actions', async () => {
+    fetchDocuments.mockResolvedValue(pageOf(makeDocuments(2)))
+    const wrapper = await mountView()
 
-      expect(wrapper.vm.totalPages()).toBe(1)
-    })
+    await wrapper.find('[data-test="emit-unknown"]').trigger('click')
+    expect(mockRouter.push).not.toHaveBeenCalled()
+    await wrapper.find('[data-test="emit-new-revision"]').trigger('click')
 
-    it('totalPages calcula com base em itemsPerPage', async () => {
-      fetchDocuments.mockResolvedValueOnce(resolveWith(makeRawDocs(45)))
-      const wrapper = mountView()
-      await flushPromises()
-
-      expect(wrapper.vm.totalPages()).toBe(3)
-    })
-
-    it('paginatedDocuments fatia conforme currentPage/itemsPerPage', async () => {
-      fetchDocuments.mockResolvedValueOnce(resolveWith(makeRawDocs(25)))
-      const wrapper = mountView()
-      await flushPromises()
-
-      expect(wrapper.vm.paginatedDocuments()).toHaveLength(20)
-
-      wrapper.vm.currentPage = 2
-      await nextTick()
-      expect(wrapper.vm.paginatedDocuments()).toHaveLength(5)
-    })
-
-    it('passa props corretas para Pagination', async () => {
-      fetchDocuments.mockResolvedValueOnce(resolveWith(makeRawDocs(45)))
-      const wrapper = mountView()
-      await flushPromises()
-
-      const pag = wrapper.findComponent(PaginationStub)
-      expect(pag.props('currentPage')).toBe(1)
-      expect(pag.props('totalPages')).toBe(3)
-      expect(pag.props('totalItems')).toBe(45)
-      expect(pag.props('itemsPerPage')).toBe(20)
-      expect(pag.props('itemsPerPageOptions')).toEqual([5, 10, 20, 50])
-    })
-  })
-
-  describe('Interações de paginação', () => {
-    it('goToPage dentro dos limites', async () => {
-      fetchDocuments.mockResolvedValueOnce(resolveWith(makeRawDocs(45)))
-      const wrapper = mountView()
-      await flushPromises()
-
-      wrapper.vm.goToPage(2)
-      expect(wrapper.vm.currentPage).toBe(2)
-    })
-
-    it('goToPage não ultrapassa totalPages', async () => {
-      fetchDocuments.mockResolvedValueOnce(resolveWith(makeRawDocs(45)))
-      const wrapper = mountView()
-      await flushPromises()
-
-      wrapper.vm.goToPage(999)
-      expect(wrapper.vm.currentPage).toBe(3)
-    })
-
-    it('goToPage não aceita valor abaixo de 1', async () => {
-      fetchDocuments.mockResolvedValueOnce(resolveWith(makeRawDocs(45)))
-      const wrapper = mountView()
-      await flushPromises()
-
-      wrapper.vm.goToPage(0)
-      expect(wrapper.vm.currentPage).toBe(1)
-    })
-
-    it('setItemsPerPage reseta currentPage para 1', async () => {
-      fetchDocuments.mockResolvedValueOnce(resolveWith(makeRawDocs(45)))
-      const wrapper = mountView()
-      await flushPromises()
-
-      wrapper.vm.currentPage = 3
-      wrapper.vm.setItemsPerPage(5)
-
-      expect(wrapper.vm.itemsPerPage).toBe(5)
-      expect(wrapper.vm.currentPage).toBe(1)
-    })
-
-    it('evento change-page do Pagination atualiza currentPage', async () => {
-      fetchDocuments.mockResolvedValueOnce(resolveWith(makeRawDocs(45)))
-      const wrapper = mountView()
-      await flushPromises()
-
-      await wrapper.find('[data-test="page-2"]').trigger('click')
-      expect(wrapper.vm.currentPage).toBe(2)
-    })
-
-    it('evento change-items-per-page reseta currentPage', async () => {
-      fetchDocuments.mockResolvedValueOnce(resolveWith(makeRawDocs(45)))
-      const wrapper = mountView()
-      await flushPromises()
-
-      wrapper.vm.currentPage = 3
-      await wrapper.find('[data-test="per-page-5"]').trigger('click')
-
-      expect(wrapper.vm.itemsPerPage).toBe(5)
-      expect(wrapper.vm.currentPage).toBe(1)
-    })
-  })
-
-  describe('Navegação', () => {
-    it('goToUpload navega para document-upload', () => {
-      const wrapper = mountView()
-      wrapper.vm.goToUpload()
-
-      expect(mockRouter.push).toHaveBeenCalledWith({ name: 'document-upload' })
-    })
-
-    it('goToDocumentDetails navega com o documentId', () => {
-      const wrapper = mountView()
-      wrapper.vm.goToDocumentDetails({ id: 42 })
-
-      expect(mockRouter.push).toHaveBeenCalledWith({
-        name: 'document-details',
-        params: { documentId: 42 },
-      })
-    })
-
-    it('handleDocumentAction → new-revision vai para upload', () => {
-      const wrapper = mountView()
-      wrapper.vm.handleDocumentAction({ document: { id: 1 }, action: 'new-revision' })
-
-      expect(mockRouter.push).toHaveBeenCalledWith({ name: 'document-upload' })
-    })
-
-    it('handleDocumentAction → continue-editing vai para upload', () => {
-      const wrapper = mountView()
-      wrapper.vm.handleDocumentAction({ document: { id: 1 }, action: 'continue-editing' })
-
-      expect(mockRouter.push).toHaveBeenCalledWith({ name: 'document-upload' })
-    })
-
-    it('handleDocumentAction → view-details vai para details', () => {
-      const wrapper = mountView()
-      wrapper.vm.handleDocumentAction({ document: { id: 7 }, action: 'view-details' })
-
-      expect(mockRouter.push).toHaveBeenCalledWith({
-        name: 'document-details',
-        params: { documentId: 7 },
-      })
-    })
-
-    it('handleDocumentAction ignora ações desconhecidas', () => {
-      const wrapper = mountView()
-      wrapper.vm.handleDocumentAction({ document: { id: 1 }, action: 'whatever' })
-
-      expect(mockRouter.push).not.toHaveBeenCalled()
-    })
-
-    it('evento action do DocumentsTable dispara navegação', async () => {
-      fetchDocuments.mockResolvedValueOnce(resolveWith(makeRawDocs(2)))
-      const wrapper = mountView()
-      await flushPromises()
-
-      await wrapper.find('[data-test="action-1"]').trigger('click')
-
-      expect(mockRouter.push).toHaveBeenCalledWith({
-        name: 'document-details',
-        params: { documentId: 1 },
-      })
-    })
-  })
-
-  describe('Watch de route.query', () => {
-    it('recarrega documentos quando a query muda', async () => {
-      fetchDocuments.mockResolvedValue(resolveWith(makeRawDocs(1)))
-      const wrapper = mountView()
-      await flushPromises()
-
-      const initialCalls = fetchDocuments.mock.calls.length
-
-      mockRoute.query = { search: 'foo' }
-      await wrapper.vm.$nextTick()
-
-      await wrapper.vm.loadDocuments()
-      await flushPromises()
-
-      expect(fetchDocuments.mock.calls.length).toBeGreaterThan(initialCalls)
-    })
-
-    it('buildDocumentQueryKey é chamada ao menos uma vez', async () => {
-      mountView()
-      await flushPromises()
-
-      expect(buildDocumentQueryKey).toHaveBeenCalled()
-    })
-
-    it('loadDocuments reseta currentPage para 1', async () => {
-      fetchDocuments.mockResolvedValue(resolveWith(makeRawDocs(45)))
-      const wrapper = mountView()
-      await flushPromises()
-
-      wrapper.vm.currentPage = 3
-      await wrapper.vm.loadDocuments()
-      await flushPromises()
-
-      expect(wrapper.vm.currentPage).toBe(1)
-    })
+    expect(mockRouter.push).toHaveBeenCalledWith({ name: 'document-upload' })
   })
 })

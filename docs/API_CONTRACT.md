@@ -16,9 +16,53 @@ Document types and areas are static lists in `src/utils/documentCatalog.js`, mir
 
 ## Documents list
 
-`GET /documents` returns `{ "documents": [...] }` ordered from the most recent to the oldest. Each
-item has `id`, `code`, `title`, `description`, `type`, `areas`, `updated_at` and `status`, the
-status of the latest revision. The list shows it as a badge (`src/utils/documentStatus.js`):
+`GET /documents` is paginated by the server. Every parameter is optional and they combine with AND:
+
+| Parameter | Meaning |
+| --- | --- |
+| `q` | free text in title, code, description and tags, case-insensitive |
+| `tipo` | document type code, e.g. `DWG` |
+| `area` | area acronym, e.g. `EST` |
+| `data` | `last_7_days`, `last_month` or `last_year` |
+| `date_from`, `date_to` | creation range, `YYYY-MM-DD`, inclusive |
+| `page` | page number starting at 1 (default 1) |
+| `page_size` | items per page (default 20, max 100) |
+
+Response `200`, from the most recent to the oldest:
+
+```json
+{
+  "count": 30,
+  "total_pages": 2,
+  "current_page": 1,
+  "page_size": 20,
+  "results": [
+    {
+      "id": 33,
+      "code": "AK-2100-MAT-ESP-0004",
+      "title": "Card 31 live",
+      "description": "",
+      "type": { "code": "ESP", "name": "Especificação Técnica" },
+      "discipline": { "code": "MAT", "name": "Materiais e Processos" },
+      "areas": [{ "acronym": "EST", "name": "Engenharia Estrutural" }],
+      "revision": { "version": 1, "label": "REV01" },
+      "status": "PENDING",
+      "updated_at": "2026-09-18T21:30:04.000000+00:00"
+    }
+  ]
+}
+```
+
+`count` is the total found with the current filters. `revision` is an object or `null`; the table
+shows `revision.label` or `-`. A page past the end answers `200` with `results: []`; an invalid
+parameter answers `400` with `{ "errors": { "<param>": { "code", "message" } } }`, shown to the
+user as the generic load error.
+
+Both list screens (`/documents` and `/results`) share `useDocumentList`
+(`src/views/document/composables/`): `page` and `page_size` live in the URL next to the search
+filters, changing the page size or the filters goes back to page 1, and a page past the end falls
+back to the last valid page. `status` is the status of the latest revision and becomes a badge
+(`src/utils/documentStatus.js`):
 
 | `status` | Badge |
 | --- | --- |
@@ -27,7 +71,8 @@ status of the latest revision. The list shows it as a badge (`src/utils/document
 | `REJECTED` | Rejeitado |
 | `OBSOLETE` | Obsoleto |
 
-The list is cached in memory by query; `clearDocumentsCache()` drops it after a publication.
+The list is cached in memory by query string, so each page and page size has its own entry;
+`clearDocumentsCache()` drops it after a publication.
 
 ## Upload (step 1)
 

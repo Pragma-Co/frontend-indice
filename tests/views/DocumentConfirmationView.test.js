@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import DocumentConfirmationView from '../../src/views/DocumentConfirmationView.vue'
+import DocumentConfirmationView from '../../src/views/document/components/DocumentConfirmation.vue'
 import { useDocumentFormStore } from '../../src/stores/documentFormStore'
 import { useNotificationStore } from '../../src/stores/notificationStore'
 import { useUploadStore } from '../../src/stores/uploadStore'
