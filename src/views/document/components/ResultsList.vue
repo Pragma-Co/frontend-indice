@@ -109,7 +109,7 @@ watch(() => buildDocumentQueryKey(route.query), loadDocuments)
 
 <style scoped>
 .documents-table {
-  height: calc(100vh - 366px);
+  height: calc(100vh - 368px);
 }
 
 .status-message {
