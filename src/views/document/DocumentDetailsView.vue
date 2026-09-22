@@ -15,8 +15,37 @@ const loading = ref(true)
 const error = ref('')
 const notFound = ref(false)
 const requestingAccess = ref(false)
+const currentPage = ref(1)
+const totalPages = ref(1)
 
 const canRequestAccess = computed(() => document.value?.access_status !== 'APPROVED')
+
+const currentRevision = computed(() => document.value?.revision ?? null)
+const currentFile = computed(() => currentRevision.value?.files?.[0] ?? null)
+
+const canPreview = computed(
+  () => document.value?.access_status === 'APPROVED' && !!currentFile.value,
+)
+
+const isPdf = computed(() => currentFile.value?.mime_type === 'application/pdf')
+const isImage = computed(() => currentFile.value?.mime_type?.startsWith('image/'))
+
+const userId = computed(() => authStore.user?.id ?? authStore.currentUser?.id ?? null)
+
+function withUser(url) {
+  if (!url) return null
+  if (!userId.value) return url
+  const sep = url.includes('?') ? '&' : '?'
+  return `${url}${sep}user_id=${userId.value}`
+}
+
+const previewUrl = computed(() => {
+  if (!currentFile.value) return null
+  const url = withUser(currentFile.value.view_url)
+  return isPdf.value ? `${url}#page=${currentPage.value}` : url
+})
+
+const imageUrl = computed(() => withUser(currentFile.value?.view_url))
 
 async function loadDocument() {
   loading.value = true
@@ -47,6 +76,14 @@ async function handleRequestAccess() {
   }
 }
 
+function prevPage() {
+  if (currentPage.value > 1) currentPage.value--
+}
+
+function nextPage() {
+  if (currentPage.value < totalPages.value) currentPage.value++
+}
+
 onMounted(loadDocument)
 </script>
 
@@ -62,28 +99,57 @@ onMounted(loadDocument)
       <template v-else-if="document">
         <div class="details-grid">
           <section class="preview-panel" aria-label="Visualização do documento">
-            <div class="preview-placeholder">
-              <svg width="42" height="42" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path
-                  d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5a1.5 1.5 0 0 1 1-1.5Z"
-                  stroke="currentColor"
-                  stroke-width="1.3"
-                  stroke-linejoin="round"
-                />
-                <path
-                  d="M14 3.5V7a1 1 0 0 0 1 1h3.5M9 12h6M9 15h6"
-                  stroke="currentColor"
-                  stroke-width="1.3"
-                  stroke-linecap="round"
-                />
-              </svg>
-              <p>Visualização do documento</p>
-              <span>{{ document.code }}</span>
+            <div class="preview-viewer">
+              <!-- <div v-if="false" class="preview-placeholder"> -->
+              <div v-if="!canPreview" class="preview-placeholder">
+                <svg width="42" height="42" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <path
+                    d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5a1.5 1.5 0 0 1 1-1.5Z"
+                    stroke="currentColor"
+                    stroke-width="1.3"
+                    stroke-linejoin="round"
+                  />
+                  <path
+                    d="M14 3.5V7a1 1 0 0 0 1 1h3.5M9 12h6M9 15h6"
+                    stroke="currentColor"
+                    stroke-width="1.3"
+                    stroke-linecap="round"
+                  />
+                </svg>
+                <p v-if="document.access_status === 'PENDING'">
+                  Solicite acesso para visualizar o documento.
+                </p>
+                <p v-else>Documento em revisão. Visualização indisponível.</p>
+                <span>{{ document.code }}</span>
+              </div>
+
+              <iframe
+                v-else-if="isPdf"
+                :src="previewUrl"
+                class="preview-frame"
+                title="Visualização do PDF"
+              />
+
+              <img
+                v-else-if="isImage"
+                :src="imageUrl"
+                class="preview-image"
+                :alt="document.title"
+              />
+
+              <div v-else class="preview-placeholder">
+                <p>Formato não suportado para visualização.</p>
+              </div>
             </div>
+
             <div class="preview-footer">
-              <button type="button">Página anterior</button>
-              <strong>Página 1</strong>
-              <button type="button">Próxima página</button>
+              <button type="button" :disabled="currentPage <= 1" @click="prevPage">
+                Página anterior
+              </button>
+              <strong>Página {{ currentPage }} de {{ totalPages }}</strong>
+              <button type="button" :disabled="currentPage >= totalPages" @click="nextPage">
+                Próxima página
+              </button>
             </div>
           </section>
 
@@ -219,6 +285,27 @@ onMounted(loadDocument)
   padding: 1rem;
 }
 
+.preview-viewer {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.preview-frame {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+}
+
+.preview-image {
+  max-width: 100%;
+  max-height: 100%;
+  margin: auto;
+  object-fit: contain;
+}
+
 .preview-placeholder {
   display: flex;
   flex: 1;
@@ -262,6 +349,11 @@ onMounted(loadDocument)
   background: var(--color-surface);
   color: var(--color-text-muted);
   cursor: pointer;
+}
+
+.preview-footer button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .document-card {
