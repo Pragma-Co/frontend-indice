@@ -1,4 +1,5 @@
 <script setup>
+import { useAuthStore } from '@/stores/authStore'
 import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from '@/components/common/Button.vue'
@@ -20,9 +21,10 @@ import {
 const router = useRouter()
 const uploadStore = useUploadStore()
 const formStore = useDocumentFormStore()
+const auth = useAuthStore()
 
 const { queue, hasSucceededFile, addFiles, resolveDuplicate, reset, restore, ACCEPTED_EXTENSIONS } =
-  useDocumentUpload()
+  useDocumentUpload({ getUserId: () => auth.currentUser?.id })
 
 const activeDuplicate = computed(() => queue.value.find((item) => item.status === 'duplicate'))
 
