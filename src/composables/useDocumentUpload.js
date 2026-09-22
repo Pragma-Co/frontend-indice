@@ -6,17 +6,17 @@ import { isFileSizeValid, isFileTypeAccepted } from '../utils/validators'
 const ACCEPTED_EXTENSIONS = ['pdf', 'doc', 'jpeg', 'png']
 const MAX_FILE_SIZE_BYTES = 100 * 1024 * 1024
 const MAX_CONCURRENT_UPLOADS = 2
+const SETTLED_STATUSES = ['success', 'invalid', 'revision']
 
 let nextId = 1
 
-export function useDocumentUpload() {
+export function useDocumentUpload({ getUserId = () => undefined } = {}) {
   const queue = ref([])
 
   const hasSucceededFile = computed(() => queue.value.some((item) => item.status === 'success'))
   const allSettled = computed(
     () =>
-      queue.value.length > 0 &&
-      queue.value.every((item) => item.status === 'success' || item.status === 'invalid'),
+      queue.value.length > 0 && queue.value.every((item) => SETTLED_STATUSES.includes(item.status)),
   )
 
   function addFiles(fileList) {
@@ -33,6 +33,7 @@ export function useDocumentUpload() {
         progress: 0,
         error: null,
         duplicateInfo: null,
+        revisionInfo: null,
       }
       queue.value.push(item)
       validateAndQueue(item)
@@ -74,6 +75,7 @@ export function useDocumentUpload() {
     try {
       const response = await uploadDocument(item.file, {
         forceNewRevision,
+        userId: getUserId(),
         onProgress: (percent) => {
           item.progress = percent
         },
@@ -82,6 +84,12 @@ export function useDocumentUpload() {
       if (response?.duplicate && !forceNewRevision) {
         item.status = 'duplicate'
         item.duplicateInfo = response.document ?? null
+        return
+      }
+
+      if (response?.revision_created) {
+        item.status = 'revision'
+        item.revisionInfo = response.document ?? null
         return
       }
 
