@@ -75,7 +75,12 @@ onMounted(async () => {
 </script>
 
 <template>
-  <PageLayout wide title="Resultados" subtitle="Refine a busca pelos filtros ao lado.">
+  <PageLayout
+    wide
+    class="results-page"
+    title="Resultados"
+    subtitle="Refine a busca pelos filtros ao lado."
+  >
     <ResultsSearchBar :term="filters.q" @search="searchAgain" />
 
     <div class="results-layout">
@@ -122,12 +127,17 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.results-page {
+  max-width: 1440px;
+  padding: 2.5rem 1.5rem;
+}
+
 .results-layout {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
-  gap: 1.25rem;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 1rem;
   align-items: start;
-  margin-top: 1.25rem;
+  margin-top: 1rem;
 }
 
 .results-sidebar {
@@ -138,6 +148,24 @@ onMounted(async () => {
 .results-main {
   margin-top: 0;
   min-width: 0;
+  padding: 1rem;
+}
+
+.results-main :deep(.documents-table th),
+.results-main :deep(.documents-table td) {
+  padding: 0.7rem 0.5rem;
+}
+
+.results-main :deep(.documents-table th) {
+  white-space: normal;
+}
+
+.results-main :deep(.cell-title) {
+  min-width: 12.5rem;
+}
+
+.results-main :deep(.cell-type) {
+  min-width: 8rem;
 }
 
 .results-headline {
@@ -152,6 +180,25 @@ onMounted(async () => {
 
 .error-message {
   color: var(--color-warning);
+}
+
+@media (max-width: 1320px) {
+  .results-page {
+    padding: 2.5rem 1rem;
+  }
+
+  .results-layout {
+    grid-template-columns: 216px minmax(0, 1fr);
+  }
+
+  .results-main :deep(.documents-table th),
+  .results-main :deep(.documents-table td) {
+    padding: 0.7rem 0.45rem;
+  }
+
+  .results-main :deep(.cell-title) {
+    min-width: 10.5rem;
+  }
 }
 
 @media (max-width: 960px) {

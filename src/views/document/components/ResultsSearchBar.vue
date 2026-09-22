@@ -51,7 +51,7 @@ function submit() {
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-top: 0;
+  margin-top: 1.5rem;
   padding: 1rem 1.25rem;
 }
 
