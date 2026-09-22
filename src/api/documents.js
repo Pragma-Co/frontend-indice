@@ -11,11 +11,17 @@ export function clearDocumentsCache() {
   documentsRequests.clear()
 }
 
-export function uploadDocument(file, { onProgress, forceNewRevision = false, signal } = {}) {
+export function uploadDocument(
+  file,
+  { onProgress, forceNewRevision = false, signal, userId } = {},
+) {
   const formData = new FormData()
   formData.append('file', file)
   if (forceNewRevision) {
     formData.append('force_new_revision', 'true')
+  }
+  if (userId != null) {
+    formData.append('user_id', String(userId))
   }
   return uploadWithProgress('/documents/upload', formData, { onProgress, signal })
 }
@@ -65,8 +71,8 @@ export function fetchDocuments(query = {}) {
   return request
 }
 
-export function toDocumentPayload(form, { tempFileId, responsibleId }) {
-  return {
+export function toDocumentPayload(form, { tempFileId, responsibleId, userId }) {
+  const payload = {
     temp_file_id: tempFileId,
     title: form.title.trim(),
     description: form.description.trim(),
@@ -77,6 +83,8 @@ export function toDocumentPayload(form, { tempFileId, responsibleId }) {
     responsible_id: responsibleId,
     areas: [...form.areas],
   }
+  if (userId != null) payload.user_id = userId
+  return payload
 }
 
 export function createDocument(payload) {
