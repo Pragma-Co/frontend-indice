@@ -128,36 +128,53 @@ onMounted(async () => {
 
 <style scoped>
 .results-page {
+  display: flex;
+  flex-direction: column;
   max-width: 1440px;
-  padding: 2.5rem 1.5rem;
+  height: calc(100vh - 56px);
+  padding: 1.5rem 1.5rem 1.25rem;
 }
 
 .results-layout {
   display: grid;
   grid-template-columns: 240px minmax(0, 1fr);
   gap: 1rem;
-  align-items: start;
-  margin-top: 1rem;
+  flex: 1;
+  min-height: 0;
+  margin-top: 0.75rem;
 }
 
 .results-sidebar {
-  position: sticky;
-  top: 72px;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .results-main {
-  margin-top: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   min-width: 0;
+  margin-top: 0;
   padding: 1rem;
+}
+
+.results-main :deep(.table-scroll) {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.results-main :deep(.documents-table th) {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--color-surface);
+  white-space: normal;
 }
 
 .results-main :deep(.documents-table th),
 .results-main :deep(.documents-table td) {
-  padding: 0.7rem 0.5rem;
-}
-
-.results-main :deep(.documents-table th) {
-  white-space: normal;
+  padding: 0.55rem 0.5rem;
 }
 
 .results-main :deep(.cell-title) {
@@ -168,9 +185,14 @@ onMounted(async () => {
   min-width: 8rem;
 }
 
+.results-main :deep(.pagination) {
+  flex-shrink: 0;
+}
+
 .results-headline {
+  flex-shrink: 0;
   font-size: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
 }
 
 .status-message {
@@ -184,7 +206,7 @@ onMounted(async () => {
 
 @media (max-width: 1320px) {
   .results-page {
-    padding: 2.5rem 1rem;
+    padding: 1.5rem 1rem 1.25rem;
   }
 
   .results-layout {
@@ -193,7 +215,7 @@ onMounted(async () => {
 
   .results-main :deep(.documents-table th),
   .results-main :deep(.documents-table td) {
-    padding: 0.7rem 0.45rem;
+    padding: 0.55rem 0.45rem;
   }
 
   .results-main :deep(.cell-title) {
@@ -202,12 +224,20 @@ onMounted(async () => {
 }
 
 @media (max-width: 960px) {
+  .results-page {
+    height: auto;
+  }
+
   .results-layout {
     grid-template-columns: 1fr;
   }
 
   .results-sidebar {
-    position: static;
+    overflow: visible;
+  }
+
+  .results-main :deep(.table-scroll) {
+    max-height: 60vh;
   }
 }
 </style>

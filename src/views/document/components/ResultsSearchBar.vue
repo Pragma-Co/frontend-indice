@@ -51,8 +51,8 @@ function submit() {
   display: flex;
   align-items: center;
   gap: 1rem;
-  margin-top: 1.5rem;
-  padding: 1rem 1.25rem;
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
 }
 
 .results-search-field {
