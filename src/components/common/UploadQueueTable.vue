@@ -16,6 +16,14 @@ const STATUS_LABELS = {
   duplicate: 'Duplicado',
   error: 'Falha no envio',
 }
+function statusLabel(item) {
+  if (item.status === 'invalid') return item.error
+  if (item.status === 'revision') {
+    const version = item.revisionInfo?.version
+    return version ? `Nova revisão v${version} criada` : 'Nova revisão criada'
+  }
+  return STATUS_LABELS[item.status]
+}
 </script>
 
 <template>
@@ -44,13 +52,14 @@ const STATUS_LABELS = {
             v-else
             class="badge"
             :class="{
-              'badge-success': item.status === 'ready' || item.status === 'success',
+              'badge-success':
+                item.status === 'ready' || item.status === 'success' || item.status === 'revision',
               'badge-warning':
                 item.status === 'invalid' || item.status === 'duplicate' || item.status === 'error',
               'badge-neutral': item.status === 'validating',
             }"
           >
-            {{ item.status === 'invalid' ? item.error : STATUS_LABELS[item.status] }}
+            {{ statusLabel(item) }}
           </span>
         </td>
       </tr>
