@@ -1,13 +1,17 @@
 <script setup>
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, watch, onMounted } from 'vue'
 import { useDocumentFormStore } from '../../stores/documentFormStore'
-import { AREAS, CONFIDENTIALITY_LEVELS, DOCUMENT_TYPES } from '../../utils/documentCatalog'
+import { useUploadStore } from '@/stores/uploadStore.js'
+import { requestDocumentSuggestions } from '@/api/documents.js'
+import { AREAS, CONFIDENTIALITY_LEVELS } from '../../utils/documentCatalog'
 import Button from '../common/Button.vue'
 import FormField from '../common/FormField.vue'
 import TagMultiSelect from '../common/TagMultiSelect.vue'
 
 const emit = defineEmits(['back', 'next'])
 const store = useDocumentFormStore()
+const uploadStore = useUploadStore()
+const files = computed(() => uploadStore.uploadedDocuments)
 
 const code = computed(() => store.codePreview ?? '')
 const areaOptions = AREAS.map((area) => ({ value: area.code, label: area.name }))
@@ -17,6 +21,28 @@ const disciplinePlaceholder = computed(() => {
   if (store.catalogsLoading) return 'Carregando…'
   if (disciplineLocked.value) return 'Selecione o projeto primeiro'
   return 'Selecione a disciplina'
+})
+
+function setSuggestions(suggestions) {
+  if (!suggestions) return
+  store.form.projectId = suggestions.project.id
+  store.form.disciplineId = suggestions.discipline.id
+  store.form.documentType = suggestions.document_type.id
+  store.form.title = suggestions.title
+  store.form.description = suggestions.description
+}
+
+onMounted(() => {
+  if (files.value.length === 0) return
+  const file = files.value.reduce((biggest, current) => {
+    return current.size > biggest.size ? current : biggest
+  }, files.value[0])
+  requestDocumentSuggestions(file.id).catch((error) => {
+    console.error('Erro ao buscar sugestões de documentos:', error)
+  }).then((response) => {
+    console.log('Sugestões de documentos carregadas:', response)
+    setSuggestions(response)
+  })
 })
 
 const touched = reactive({})
@@ -67,6 +93,13 @@ function back(event) {
 <template>
   <form class="card metadata" novalidate @submit.prevent="next">
     <h2 class="metadata__title">Informações do Documento</h2>
+
+    <p v-if="store.catalogsError" class="metadata__alert" role="alert">
+      {{ store.catalogsError }}
+      <button type="button" class="metadata__retry" @click="store.loadCatalogs()">
+        Tentar novamente
+      </button>
+    </p>
 
     <p v-if="store.catalogsError" class="metadata__alert" role="alert">
       {{ store.catalogsError }}
@@ -133,7 +166,7 @@ function back(event) {
       >
         <select id="document-type" v-model="documentType">
           <option value="">Selecione o tipo</option>
-          <option v-for="type in DOCUMENT_TYPES" :key="type.code" :value="type.code">
+          <option v-for="type in store.documentTypes" :key="type.id" :value="type.id">
             {{ type.code }} - {{ type.name }}
           </option>
         </select>

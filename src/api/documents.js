@@ -65,6 +65,10 @@ export function fetchDocuments(query = {}) {
   return request
 }
 
+export function listDocumentTypes() {
+  return api.get('/documents/types')
+}
+
 export function toDocumentPayload(form, { tempFileId, responsibleId }) {
   return {
     temp_file_id: tempFileId,
