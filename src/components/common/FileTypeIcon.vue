@@ -9,7 +9,7 @@ const props = defineProps({
 const KINDS = {
   pdf: { label: 'PDF', kind: 'pdf' },
   doc: { label: 'DOC', kind: 'doc' },
-  docx: { label: 'DOC', kind: 'doc' },
+  docx: { label: 'DOCX', kind: 'docx' },
   jpeg: { label: 'IMG', kind: 'image' },
   jpg: { label: 'IMG', kind: 'image' },
   png: { label: 'IMG', kind: 'image' },
