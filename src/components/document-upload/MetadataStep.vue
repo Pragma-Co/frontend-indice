@@ -37,12 +37,13 @@ onMounted(() => {
   const file = files.value.reduce((biggest, current) => {
     return current.size > biggest.size ? current : biggest
   }, files.value[0])
-  requestDocumentSuggestions(file.id).catch((error) => {
-    console.error('Erro ao buscar sugestões de documentos:', error)
-  }).then((response) => {
-    console.log('Sugestões de documentos carregadas:', response)
-    setSuggestions(response)
-  })
+  requestDocumentSuggestions(file.id)
+    .catch((error) => {
+      console.error('Erro ao buscar sugestões de documentos:', error)
+    })
+    .then((response) => {
+      setSuggestions(response)
+    })
 })
 
 const touched = reactive({})

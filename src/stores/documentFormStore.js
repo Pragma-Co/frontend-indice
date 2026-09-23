@@ -50,7 +50,8 @@ export const useDocumentFormStore = defineStore('documentForm', {
       const ids = this.selectedProject?.discipline_ids ?? []
       return this.disciplines.filter((d) => ids.includes(d.id))
     },
-    selectedDocumentType: (state) => state.documentTypes.find((t) => t.code === state.form.documentType) ?? null,
+    selectedDocumentType: (state) =>
+      state.documentTypes.find((t) => t.id === state.form.documentType) ?? null,
     revision: (state) => revisionLabel(state.form.version),
     isFieldSuggested: (state) => (field) => Boolean(state.suggestedFields[field]),
     codePreview() {
@@ -71,7 +72,11 @@ export const useDocumentFormStore = defineStore('documentForm', {
       this.catalogsLoading = true
       this.catalogsError = null
       try {
-        const [projects, disciplines, document_types] = await Promise.all([listProjects(), listDisciplines(), listDocumentTypes()])
+        const [projects, disciplines, document_types] = await Promise.all([
+          listProjects(),
+          listDisciplines(),
+          listDocumentTypes(),
+        ])
         this.projects = Array.isArray(projects) ? projects : []
         this.disciplines = Array.isArray(disciplines) ? disciplines : []
         this.documentTypes = Array.isArray(document_types) ? document_types : []
