@@ -161,11 +161,13 @@ describe('documentFormStore', () => {
       await store.loadCatalogs()
       store.selectProject(1)
       store.form.disciplineId = 1
+      store.suggestedFields.disciplineId = true
 
       store.selectProject('2')
 
       expect(store.form.projectId).toBe('2')
       expect(store.form.disciplineId).toBe('')
+      expect(store.isFieldSuggested('disciplineId')).toBe(false)
     })
 
     it('should keep the discipline when the new project also includes it', async () => {

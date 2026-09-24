@@ -170,11 +170,16 @@ describe('MetadataStep', () => {
     const wrapper = mount(MetadataStep)
     await wrapper.find('#project').setValue(1)
     await wrapper.find('#discipline').setValue(1)
+    store.suggestedFields.disciplineId = true
 
     await wrapper.find('#project').setValue(2)
 
     expect(store.form.disciplineId).toBe('')
+    expect(store.isFieldSuggested('disciplineId')).toBe(false)
     expect(wrapper.find('#discipline').element.value).toBe('')
+    expect(wrapper.find('#discipline').element.closest('.field').classList).not.toContain(
+      'field--suggested',
+    )
   })
 
   it('should show an inline error only after a required field is left empty', async () => {

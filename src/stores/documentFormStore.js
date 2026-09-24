@@ -112,7 +112,10 @@ export const useDocumentFormStore = defineStore('documentForm', {
       const stillValid = this.availableDisciplines.some(
         (d) => String(d.id) === String(this.form.disciplineId),
       )
-      if (!stillValid) this.form.disciplineId = ''
+      if (!stillValid) {
+        this.form.disciplineId = ''
+        this.clearSuggestion('disciplineId')
+      }
     },
 
     setDefaultAuthor(name) {
