@@ -227,6 +227,27 @@ describe('documentFormStore', () => {
       expect(store.isFieldSuggested('areas')).toBe(true)
     })
 
+    it('should not flag a field whose suggestion is empty or unmatched', async () => {
+      await store.loadCatalogs()
+      store.selectProject(1)
+
+      store.applySuggestions({
+        title: 'Desenho da fuselagem central',
+        description: '',
+        disciplineId: null,
+        documentType: undefined,
+        areas: [],
+      })
+
+      expect(store.isFieldSuggested('title')).toBe(true)
+      expect(store.isFieldSuggested('description')).toBe(false)
+      expect(store.isFieldSuggested('disciplineId')).toBe(false)
+      expect(store.isFieldSuggested('documentType')).toBe(false)
+      expect(store.isFieldSuggested('areas')).toBe(false)
+      expect(store.form.description).toBe('')
+      expect(store.form.disciplineId).toBe('')
+    })
+
     it('should ignore suggestions for fields outside the suggestible list', () => {
       store.applySuggestions({ author: 'Robô', confidentiality: 'PUBLIC' })
 

@@ -24,6 +24,12 @@ export function emptyForm(author = '') {
 
 const SUGGESTIBLE_FIELDS = ['title', 'description', 'disciplineId', 'documentType', 'areas']
 
+function isEmptySuggestion(value) {
+  if (value === null || value === undefined) return true
+  if (Array.isArray(value)) return value.length === 0
+  return String(value).trim() === ''
+}
+
 export const useDocumentFormStore = defineStore('documentForm', {
   state: () => ({
     form: emptyForm(),
@@ -109,6 +115,7 @@ export const useDocumentFormStore = defineStore('documentForm', {
     applySuggestions(suggestions = {}) {
       for (const [field, value] of Object.entries(suggestions)) {
         if (!SUGGESTIBLE_FIELDS.includes(field)) continue
+        if (isEmptySuggestion(value)) continue
         if (
           field === 'disciplineId' &&
           !this.availableDisciplines.some((d) => String(d.id) === String(value))
