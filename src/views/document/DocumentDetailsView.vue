@@ -4,26 +4,28 @@ import { useRoute } from 'vue-router'
 import { renderAsync } from 'docx-preview'
 import { fetchDocumentDetail, requestDocumentAccess } from '@/api/documents.js'
 import { useAuthStore } from '@/stores/authStore.js'
+import { useNotificationStore } from '@/stores/notificationStore.js'
 import { statusBadgeFor } from '@/utils/documentStatus.js'
 import { formatDate } from '@/utils/formatters.js'
 import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
-import Button from '@/components/common/Button.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import DocumentAccessOverlay from '@/views/document/components/DocumentAccessOverlay.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
+const notifications = useNotificationStore()
 const document = ref(null)
 const loading = ref(true)
 const error = ref('')
 const notFound = ref(false)
 const requestingAccess = ref(false)
+const accessRequested = ref(false)
+const requestError = ref('')
 
 const docxContainer = ref(null)
 const docxLoading = ref(false)
 
 const currentFileIndex = ref(0)
-
-const canRequestAccess = computed(() => document.value?.access_status !== 'APPROVED')
 
 const currentRevision = computed(() => document.value?.revision ?? null)
 
@@ -38,16 +40,19 @@ const currentFile = computed(() => {
 
 const totalFiles = computed(() => allFiles.value.length)
 
-const currentUserId = computed(() => authStore.user?.id ?? authStore.currentUser?.id ?? null)
+const currentUserId = computed(() => authStore.currentUser?.id ?? null)
 
 const isResponsible = computed(
   () => currentUserId.value != null && document.value?.responsible?.id === currentUserId.value,
 )
 
-const canPreview = computed(
-  () =>
-    !!currentFile.value && (document.value?.access_status === 'APPROVED' || isResponsible.value),
+const hasAccess = computed(
+  () => document.value?.access_status === 'APPROVED' || isResponsible.value,
 )
+
+const accessRejected = computed(() => document.value?.access_request?.status === 'REJECTED')
+
+const canPreview = computed(() => !!currentFile.value && hasAccess.value)
 
 const isPdf = computed(() => {
   if (!currentFile.value) return false
@@ -96,6 +101,7 @@ async function loadDocument() {
   try {
     document.value = await fetchDocumentDetail(route.params.documentId, currentUserId.value)
     currentFileIndex.value = 0
+    accessRequested.value = document.value.access_request?.status === 'PENDING'
   } catch (err) {
     if (err.status === 404) {
       notFound.value = true
@@ -109,11 +115,22 @@ async function loadDocument() {
 
 async function handleRequestAccess() {
   requestingAccess.value = true
+  requestError.value = ''
   try {
-    await requestDocumentAccess(route.params.documentId, currentUserId.value)
-    await loadDocument()
-  } catch {
-    error.value = 'Não foi possível solicitar acesso.'
+    const result = await requestDocumentAccess(route.params.documentId, currentUserId.value)
+    if (result?.status === 'REJECTED') {
+      await loadDocument()
+      return
+    }
+    accessRequested.value = true
+    notifications.success('Solicitação enviada. O responsável pelo documento foi notificado.')
+  } catch (err) {
+    if (err?.status === 409) {
+      await loadDocument()
+      return
+    }
+    requestError.value = 'Não foi possível enviar a solicitação. Tente novamente.'
+    notifications.error(requestError.value)
   } finally {
     requestingAccess.value = false
   }
@@ -175,32 +192,18 @@ onMounted(loadDocument)
 
       <template v-else-if="document">
         <div class="details-grid">
-          <section class="preview-panel" aria-label="Visualização do documento">
+          <section
+            class="preview-panel"
+            :class="{ 'is-restricted': !hasAccess }"
+            aria-label="Visualização do documento"
+          >
             <div class="preview-viewer">
-              <div v-if="!totalFiles" class="preview-placeholder">
-                <p>Nenhum arquivo disponível para esta revisão.</p>
-                <span>{{ document.code }}</span>
+              <div v-if="!hasAccess" class="preview-masked" aria-hidden="true">
+                <span v-for="line in 9" :key="line" class="preview-masked-line" />
               </div>
 
-              <div v-else-if="!canPreview" class="preview-placeholder">
-                <svg width="42" height="42" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path
-                    d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5a1.5 1.5 0 0 1 1-1.5Z"
-                    stroke="currentColor"
-                    stroke-width="1.3"
-                    stroke-linejoin="round"
-                  />
-                  <path
-                    d="M14 3.5V7a1 1 0 0 0 1 1h3.5M9 12h6M9 15h6"
-                    stroke="currentColor"
-                    stroke-width="1.3"
-                    stroke-linecap="round"
-                  />
-                </svg>
-                <p v-if="document.access_status === 'PENDING'">
-                  Solicite acesso para visualizar o documento.
-                </p>
-                <p v-else>Documento em revisão. Visualização indisponível.</p>
+              <div v-else-if="!totalFiles" class="preview-placeholder">
+                <p>Nenhum arquivo disponível para esta revisão.</p>
                 <span>{{ document.code }}</span>
               </div>
 
@@ -252,6 +255,15 @@ onMounted(loadDocument)
                 Próximo arquivo
               </button>
             </div>
+
+            <DocumentAccessOverlay
+              v-if="!hasAccess"
+              :requesting="requestingAccess"
+              :requested="accessRequested"
+              :rejected="accessRejected"
+              :error-message="requestError"
+              @request="handleRequestAccess"
+            />
           </section>
 
           <aside class="document-card">
@@ -295,15 +307,6 @@ onMounted(loadDocument)
                 <dd>{{ document.responsible.name }}</dd>
               </div>
             </dl>
-
-            <Button
-              v-if="canRequestAccess"
-              class="request-access-button"
-              :disabled="requestingAccess"
-              @click="handleRequestAccess"
-            >
-              Solicitar Acesso
-            </Button>
 
             <div v-if="document.description" class="description-block">
               <h2>Descrição</h2>
@@ -386,10 +389,43 @@ onMounted(loadDocument)
 }
 
 .preview-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   padding: 1rem;
+}
+
+.preview-panel.is-restricted {
+  overflow: hidden;
+}
+
+.preview-masked {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.5rem 2rem;
+  filter: blur(6px);
+  user-select: none;
+}
+
+.preview-masked-line {
+  height: 0.8rem;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+}
+
+.preview-masked-line:nth-child(3n) {
+  width: 70%;
+}
+
+.preview-masked-line:nth-child(3n + 1) {
+  width: 92%;
+}
+
+.preview-masked-line:nth-child(3n + 2) {
+  width: 82%;
 }
 
 .preview-viewer {
@@ -540,16 +576,6 @@ onMounted(loadDocument)
   border-bottom: 1px solid var(--color-border);
   font-size: 1.05rem;
   line-height: 1.35;
-}
-
-.request-access-button {
-  width: 100%;
-  margin-top: 1rem;
-}
-
-.request-access-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 
 .metadata-list {

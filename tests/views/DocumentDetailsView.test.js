@@ -1,9 +1,11 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
 import DocumentDetailsView from '@/views/document/DocumentDetailsView.vue'
+import { ApiError } from '@/api/client.js'
 import { useAuthStore } from '@/stores/authStore.js'
+import { useNotificationStore } from '@/stores/notificationStore.js'
 import { fetchDocumentDetail, requestDocumentAccess } from '@/api/documents.js'
 
 const routeParams = { documentId: '23' }
@@ -64,17 +66,42 @@ function makeDocument(overrides = {}) {
   }
 }
 
+const accessStubs = {
+  Breadcrumbs: { template: '<nav />' },
+  StatusBadge: { template: '<span />' },
+}
+
+const mountedViews = []
+
+async function mountAsStranger(document, stubs = accessStubs) {
+  fetchDocumentDetail.mockResolvedValue(document)
+  const wrapper = mount(DocumentDetailsView, { global: { stubs } })
+  mountedViews.push(wrapper)
+  await flushPromises()
+  return wrapper
+}
+
+function requestButton(wrapper) {
+  return wrapper.find('.access-overlay button')
+}
+
 describe('DocumentDetailsView', () => {
   let authStore
+  let notifications
 
   beforeEach(() => {
     setActivePinia(createPinia())
     authStore = useAuthStore()
+    notifications = useNotificationStore()
     vi.clearAllMocks()
   })
 
+  afterEach(() => {
+    mountedViews.splice(0).forEach((wrapper) => wrapper.unmount())
+  })
+
   it('should render the document title and metadata after loading', async () => {
-    authStore.user = { id: OTHER_USER_ID, name: 'Visitante' }
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
     fetchDocumentDetail.mockResolvedValue(makeDocument())
 
     const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
@@ -87,7 +114,7 @@ describe('DocumentDetailsView', () => {
   })
 
   it('should show "not found" when the API returns a 404', async () => {
-    authStore.user = { id: OTHER_USER_ID }
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
     const err = new Error('not found')
     err.status = 404
     fetchDocumentDetail.mockRejectedValue(err)
@@ -99,7 +126,7 @@ describe('DocumentDetailsView', () => {
   })
 
   it('should show a generic error when the API fails for another reason', async () => {
-    authStore.user = { id: OTHER_USER_ID }
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
     fetchDocumentDetail.mockRejectedValue(new Error('boom'))
 
     const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
@@ -109,7 +136,7 @@ describe('DocumentDetailsView', () => {
   })
 
   it('should render a PDF iframe when the first file is a PDF', async () => {
-    authStore.user = { id: OTHER_USER_ID }
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
     fetchDocumentDetail.mockResolvedValue(makeDocument())
 
     const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
@@ -122,7 +149,7 @@ describe('DocumentDetailsView', () => {
   })
 
   it('should render an img when the current file is an image', async () => {
-    authStore.user = { id: OTHER_USER_ID }
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
     const doc = makeDocument({
       revision: {
         ...makeDocument().revision,
@@ -148,7 +175,7 @@ describe('DocumentDetailsView', () => {
   })
 
   it('should render the docx container and call renderAsync when the file is a .docx', async () => {
-    authStore.user = { id: OTHER_USER_ID }
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
     const { renderAsync } = await import('docx-preview')
 
     const doc = makeDocument({
@@ -180,7 +207,7 @@ describe('DocumentDetailsView', () => {
   })
 
   it('should navigate to the next file when clicking "Próximo arquivo"', async () => {
-    authStore.user = { id: OTHER_USER_ID }
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
     const base = makeDocument()
     const doc = makeDocument({
       revision: {
@@ -216,7 +243,7 @@ describe('DocumentDetailsView', () => {
   })
 
   it('should navigate to the previous file when clicking "Arquivo anterior"', async () => {
-    authStore.user = { id: OTHER_USER_ID }
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
     const base = makeDocument()
     const doc = makeDocument({
       revision: {
@@ -252,7 +279,7 @@ describe('DocumentDetailsView', () => {
   })
 
   it('should disable the navigation buttons when there is only one file', async () => {
-    authStore.user = { id: OTHER_USER_ID }
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
     fetchDocumentDetail.mockResolvedValue(makeDocument())
 
     const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
@@ -263,20 +290,51 @@ describe('DocumentDetailsView', () => {
     buttons.forEach((b) => expect(b.attributes('disabled')).toBeDefined())
   })
 
-  it('should show the access placeholder when the user has no access and is not the responsible', async () => {
-    authStore.user = { id: OTHER_USER_ID }
-    fetchDocumentDetail.mockResolvedValue(makeDocument({ access_status: 'PENDING' }))
+  it('should hide the file behind the blurred mask when the user has no access and is not the responsible', async () => {
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
 
-    const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
-    await flushPromises()
+    const wrapper = await mountAsStranger(makeDocument({ access_status: 'PENDING' }))
 
     expect(wrapper.find('iframe.preview-frame').exists()).toBe(false)
-    expect(wrapper.text()).toContain('Solicite acesso para visualizar o documento.')
-    expect(wrapper.text()).toContain('Solicitar Acesso')
+    expect(wrapper.find('.preview-panel').classes()).toContain('is-restricted')
+    expect(wrapper.find('.preview-masked').exists()).toBe(true)
+    expect(wrapper.find('.access-overlay').text()).toContain('Conteúdo restrito')
+    expect(requestButton(wrapper).text()).toBe('Solicitar Acesso')
+    expect(wrapper.find('.preview-footer').exists()).toBe(false)
+  })
+
+  it('should also restrict a document whose revision is still in review', async () => {
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
+
+    const wrapper = await mountAsStranger(makeDocument({ access_status: 'IN_REVIEW' }))
+
+    expect(wrapper.find('.access-overlay').exists()).toBe(true)
+    expect(wrapper.find('iframe.preview-frame').exists()).toBe(false)
+  })
+
+  it('should keep the metadata visible while the content is restricted', async () => {
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
+
+    const wrapper = await mountAsStranger(makeDocument({ access_status: 'PENDING' }))
+
+    expect(wrapper.text()).toContain('teste 2 docs')
+    expect(wrapper.text()).toContain('Beatriz Canuto')
+  })
+
+  it('should render the reduced payload the backend sends to a user without access', async () => {
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
+    const { description, ...reduced } = makeDocument({ access_status: 'PENDING' })
+    delete reduced.revision.files
+
+    const wrapper = await mountAsStranger(reduced)
+
+    expect(wrapper.find('.description-block').exists()).toBe(false)
+    expect(wrapper.find('.access-overlay').exists()).toBe(true)
+    expect(description).toBeDefined()
   })
 
   it('should allow the responsible user to preview even when access is PENDING', async () => {
-    authStore.user = { id: RESPONSIBLE_ID }
+    authStore.currentUser = { id: RESPONSIBLE_ID, name: 'Beatriz Canuto' }
     fetchDocumentDetail.mockResolvedValue(makeDocument({ access_status: 'PENDING' }))
 
     const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
@@ -285,26 +343,93 @@ describe('DocumentDetailsView', () => {
     expect(wrapper.find('iframe.preview-frame').exists()).toBe(true)
   })
 
-  it('should request access and reload the document when clicking "Solicitar Acesso"', async () => {
-    authStore.user = { id: OTHER_USER_ID }
-    fetchDocumentDetail.mockResolvedValue(makeDocument({ access_status: 'PENDING' }))
-    requestDocumentAccess.mockResolvedValue({})
+  it('should send the request with the logged-in user, confirm it and disable the button', async () => {
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
+    let finishRequest
+    requestDocumentAccess.mockReturnValue(new Promise((resolve) => (finishRequest = resolve)))
+    const wrapper = await mountAsStranger(makeDocument({ access_status: 'PENDING' }))
 
-    const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
-    await flushPromises()
-
-    expect(fetchDocumentDetail).toHaveBeenCalledTimes(1)
-
-    const requestBtn = wrapper.findAll('button').find((b) => b.text() === 'Solicitar Acesso')
-    await requestBtn.trigger('click')
+    await requestButton(wrapper).trigger('click')
+    expect(requestButton(wrapper).attributes('disabled')).toBeDefined()
+    expect(requestButton(wrapper).text()).toContain('Enviando solicitação')
+    finishRequest({ id: 9, status: 'PENDING', created: true })
     await flushPromises()
 
     expect(requestDocumentAccess).toHaveBeenCalledWith('23', OTHER_USER_ID)
+    expect(fetchDocumentDetail).toHaveBeenCalledTimes(1)
+    expect(requestButton(wrapper).text()).toBe('Solicitação enviada')
+    expect(requestButton(wrapper).attributes('disabled')).toBeDefined()
+    expect(notifications.items[0]).toMatchObject({
+      type: 'success',
+      message: 'Solicitação enviada. O responsável pelo documento foi notificado.',
+    })
+  })
+
+  it('should show the error and let the user try again when the request fails', async () => {
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
+    requestDocumentAccess.mockRejectedValue(new ApiError('Erro interno.', { status: 500 }))
+    const wrapper = await mountAsStranger(makeDocument({ access_status: 'PENDING' }))
+
+    await requestButton(wrapper).trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.access-overlay [role="alert"]').text()).toContain(
+      'Não foi possível enviar a solicitação',
+    )
+    expect(requestButton(wrapper).text()).toBe('Solicitar Acesso')
+    expect(requestButton(wrapper).attributes('disabled')).toBeUndefined()
+    expect(notifications.items[0].type).toBe('error')
+  })
+
+  it('should start as sent when the backend already has a pending request', async () => {
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
+
+    const wrapper = await mountAsStranger(
+      makeDocument({
+        access_status: 'PENDING',
+        access_request: { id: 9, status: 'PENDING', created_at: '2026-09-22' },
+      }),
+    )
+
+    expect(requestButton(wrapper).text()).toBe('Solicitação enviada')
+    expect(requestButton(wrapper).attributes('disabled')).toBeDefined()
+  })
+
+  it('should show the refusal and no button when the request was rejected', async () => {
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
+
+    const wrapper = await mountAsStranger(
+      makeDocument({
+        access_status: 'PENDING',
+        access_request: { id: 9, status: 'REJECTED', created_at: '2026-09-22' },
+      }),
+    )
+
+    expect(wrapper.find('.access-overlay').text()).toContain('recusada pelo responsável')
+    expect(wrapper.find('.access-overlay button').exists()).toBe(false)
+  })
+
+  it('should reload the document when the backend says the user already has access', async () => {
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
+    requestDocumentAccess.mockRejectedValue(new ApiError('Já tem acesso.', { status: 409 }))
+    fetchDocumentDetail
+      .mockResolvedValueOnce(makeDocument({ access_status: 'PENDING' }))
+      .mockResolvedValueOnce(makeDocument({ access_status: 'APPROVED' }))
+    const wrapper = mount(DocumentDetailsView, { global: { stubs: accessStubs } })
+    mountedViews.push(wrapper)
+    await flushPromises()
+
+    await requestButton(wrapper).trigger('click')
+    await flushPromises()
+
     expect(fetchDocumentDetail).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('.access-overlay').exists()).toBe(false)
+    expect(wrapper.find('iframe.preview-frame').exists()).toBe(true)
+    expect(notifications.items).toHaveLength(0)
   })
 
   it('should show "Nenhum arquivo disponível" when the revision has no files', async () => {
-    authStore.user = { id: OTHER_USER_ID }
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
     const doc = makeDocument({
       revision: { ...makeDocument().revision, files: [] },
     })
