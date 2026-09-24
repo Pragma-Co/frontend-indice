@@ -23,14 +23,24 @@ const disciplinePlaceholder = computed(() => {
   return 'Selecione a disciplina'
 })
 
+function suggestedAreaCode(area) {
+  const name = String(area?.name ?? '')
+    .trim()
+    .toLowerCase()
+  if (!name) return null
+  return AREAS.find((option) => option.name.toLowerCase() === name)?.code ?? null
+}
+
 function setSuggestions(suggestions) {
   if (!suggestions) return
-  store.selectProject(suggestions.project.id)
+  if (suggestions.project?.id) store.selectProject(suggestions.project.id)
+  const areaCode = suggestedAreaCode(suggestions.area)
   store.applySuggestions({
-    disciplineId: suggestions.discipline.id,
-    documentType: suggestions.document_type.id,
+    disciplineId: suggestions.discipline?.id,
+    documentType: suggestions.document_type?.id,
     title: suggestions.title,
     description: suggestions.description,
+    areas: areaCode ? [areaCode] : [],
   })
 }
 
