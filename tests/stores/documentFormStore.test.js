@@ -208,6 +208,7 @@ describe('documentFormStore', () => {
       store.selectProject(1)
 
       store.applySuggestions({
+        projectId: 1,
         title: 'Desenho da fuselagem central',
         disciplineId: 1,
         documentType: 'DWG',
@@ -216,11 +217,13 @@ describe('documentFormStore', () => {
       })
 
       expect(store.form.title).toBe('Desenho da fuselagem central')
+      expect(store.form.projectId).toBe(1)
       expect(store.form.disciplineId).toBe(1)
       expect(store.form.documentType).toBe('DWG')
       expect(store.form.description).toBe('Gerado pela IA')
       expect(store.form.areas).toEqual(['EST'])
       expect(store.isFieldSuggested('title')).toBe(true)
+      expect(store.isFieldSuggested('projectId')).toBe(true)
       expect(store.isFieldSuggested('disciplineId')).toBe(true)
       expect(store.isFieldSuggested('documentType')).toBe(true)
       expect(store.isFieldSuggested('description')).toBe(true)

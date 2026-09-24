@@ -246,6 +246,18 @@ describe('MetadataStep', () => {
     )
   })
 
+  it('should drop the project suggested flag once the user changes it', async () => {
+    store.applySuggestions({ projectId: 1 })
+    const wrapper = mount(MetadataStep)
+
+    await wrapper.find('#project').setValue('')
+
+    expect(store.isFieldSuggested('projectId')).toBe(false)
+    expect(wrapper.find('#project').element.closest('.field').classList).not.toContain(
+      'field--suggested',
+    )
+  })
+
   it('should drop the suggested flag on the areas field when a tag is removed', async () => {
     store.applySuggestions({ areas: ['EST', 'QUA'] })
     const wrapper = mount(MetadataStep)
@@ -307,6 +319,7 @@ describe('MetadataStep', () => {
       await flushPromises()
 
       const fieldOf = (selector) => wrapper.find(selector).element.closest('.field')
+      expect(fieldOf('#project').classList).toContain('field--suggested')
       expect(fieldOf('#title').classList).toContain('field--suggested')
       expect(fieldOf('#document-type').classList).toContain('field--suggested')
       expect(fieldOf('#areas').classList).toContain('field--suggested')
@@ -314,7 +327,7 @@ describe('MetadataStep', () => {
       expect(fieldOf('#description').classList).not.toContain('field--suggested')
       expect(fieldOf('#discipline').classList).not.toContain('field--suggested')
       expect(store.form.disciplineId).toBe('')
-      expect(wrapper.findAll('.ai-badge')).toHaveLength(3)
+      expect(wrapper.findAll('.ai-badge')).toHaveLength(4)
     })
 
     it('should ignore a suggested area that is not in the catalog', async () => {

@@ -36,6 +36,7 @@ function setSuggestions(suggestions) {
   if (suggestions.project?.id) store.selectProject(suggestions.project.id)
   const areaCode = suggestedAreaCode(suggestions.area)
   store.applySuggestions({
+    projectId: suggestions.project?.id,
     disciplineId: suggestions.discipline?.id,
     documentType: suggestions.document_type?.id,
     title: suggestions.title,
@@ -143,6 +144,7 @@ function back(event) {
         required
         icon="search"
         :error="fieldError('projectId')"
+        :suggested="store.isFieldSuggested('projectId')"
         @focusout="touch('projectId')"
       >
         <select
