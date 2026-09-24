@@ -33,7 +33,6 @@ function suggestedAreaCode(area) {
 
 function setSuggestions(suggestions) {
   if (!suggestions) return
-  if (suggestions.project?.id) store.selectProject(suggestions.project.id)
   const areaCode = suggestedAreaCode(suggestions.area)
   store.applySuggestions({
     projectId: suggestions.project?.id,
@@ -52,11 +51,12 @@ function isFormEmpty() {
 
 const suggestionsStatus = ref('idle')
 
-onMounted(() => {
+onMounted(async () => {
   if (files.value.length === 0) {
     emit('back')
     return
   }
+  if (!store.projects.length || !store.disciplines.length) await store.loadCatalogs()
   if (!isFormEmpty()) return
   const file = files.value.reduce((biggest, current) => {
     return current.size > biggest.size ? current : biggest
