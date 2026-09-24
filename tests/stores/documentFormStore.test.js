@@ -161,11 +161,13 @@ describe('documentFormStore', () => {
       await store.loadCatalogs()
       store.selectProject(1)
       store.form.disciplineId = 1
+      store.suggestedFields.disciplineId = true
 
       store.selectProject('2')
 
       expect(store.form.projectId).toBe('2')
       expect(store.form.disciplineId).toBe('')
+      expect(store.isFieldSuggested('disciplineId')).toBe(false)
     })
 
     it('should keep the discipline when the new project also includes it', async () => {
@@ -208,6 +210,7 @@ describe('documentFormStore', () => {
       store.selectProject(1)
 
       store.applySuggestions({
+        projectId: 1,
         title: 'Desenho da fuselagem central',
         disciplineId: 1,
         documentType: 'DWG',
@@ -216,15 +219,47 @@ describe('documentFormStore', () => {
       })
 
       expect(store.form.title).toBe('Desenho da fuselagem central')
+      expect(store.form.projectId).toBe(1)
       expect(store.form.disciplineId).toBe(1)
       expect(store.form.documentType).toBe('DWG')
       expect(store.form.description).toBe('Gerado pela IA')
       expect(store.form.areas).toEqual(['EST'])
       expect(store.isFieldSuggested('title')).toBe(true)
+      expect(store.isFieldSuggested('projectId')).toBe(true)
       expect(store.isFieldSuggested('disciplineId')).toBe(true)
       expect(store.isFieldSuggested('documentType')).toBe(true)
       expect(store.isFieldSuggested('description')).toBe(true)
       expect(store.isFieldSuggested('areas')).toBe(true)
+    })
+
+    it('should not flag a field whose suggestion is empty or unmatched', async () => {
+      await store.loadCatalogs()
+      store.selectProject(1)
+
+      store.applySuggestions({
+        title: 'Desenho da fuselagem central',
+        description: '',
+        disciplineId: null,
+        documentType: undefined,
+        areas: [],
+      })
+
+      expect(store.isFieldSuggested('title')).toBe(true)
+      expect(store.isFieldSuggested('description')).toBe(false)
+      expect(store.isFieldSuggested('disciplineId')).toBe(false)
+      expect(store.isFieldSuggested('documentType')).toBe(false)
+      expect(store.isFieldSuggested('areas')).toBe(false)
+      expect(store.form.description).toBe('')
+      expect(store.form.disciplineId).toBe('')
+    })
+
+    it('should not apply a project that is not in the catalog', async () => {
+      await store.loadCatalogs()
+
+      store.applySuggestions({ projectId: 999 })
+
+      expect(store.form.projectId).toBe('')
+      expect(store.isFieldSuggested('projectId')).toBe(false)
     })
 
     it('should ignore suggestions for fields outside the suggestible list', () => {

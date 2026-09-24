@@ -23,14 +23,24 @@ const disciplinePlaceholder = computed(() => {
   return 'Selecione a disciplina'
 })
 
+function suggestedAreaCode(area) {
+  const name = String(area?.name ?? '')
+    .trim()
+    .toLowerCase()
+  if (!name) return null
+  return AREAS.find((option) => option.name.toLowerCase() === name)?.code ?? null
+}
+
 function setSuggestions(suggestions) {
   if (!suggestions) return
-  store.selectProject(suggestions.project.id)
+  const areaCode = suggestedAreaCode(suggestions.area)
   store.applySuggestions({
-    disciplineId: suggestions.discipline.id,
-    documentType: suggestions.document_type.id,
+    projectId: suggestions.project?.id,
+    disciplineId: suggestions.discipline?.id,
+    documentType: suggestions.document_type?.id,
     title: suggestions.title,
     description: suggestions.description,
+    areas: areaCode ? [areaCode] : [],
   })
 }
 
@@ -41,11 +51,12 @@ function isFormEmpty() {
 
 const suggestionsStatus = ref('idle')
 
-onMounted(() => {
+onMounted(async () => {
   if (files.value.length === 0) {
     emit('back')
     return
   }
+  if (!store.projects.length || !store.disciplines.length) await store.loadCatalogs()
   if (!isFormEmpty()) return
   const file = files.value.reduce((biggest, current) => {
     return current.size > biggest.size ? current : biggest
@@ -133,6 +144,7 @@ function back(event) {
         required
         icon="search"
         :error="fieldError('projectId')"
+        :suggested="store.isFieldSuggested('projectId')"
         @focusout="touch('projectId')"
       >
         <select

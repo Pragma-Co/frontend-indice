@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import MetadataStep from '../../src/components/document-upload/MetadataStep.vue'
 import { useDocumentFormStore } from '../../src/stores/documentFormStore'
 import { useUploadStore } from '../../src/stores/uploadStore.js'
+import formFieldSource from '../../src/components/common/FormField.vue?raw'
 
 vi.mock('../../src/api/projects', () => ({ listProjects: vi.fn() }))
 vi.mock('../../src/api/disciplines', () => ({ listDisciplines: vi.fn() }))
@@ -20,6 +21,17 @@ import { listDocumentTypes, requestDocumentSuggestions } from '../../src/api/doc
 const PROJECTS = [{ id: 1, code: 'AK-2100', name: 'Aeroestrutura de Fuselagem Central' }]
 const DISCIPLINES = [{ id: 1, code: 'EST', name: 'Estruturas' }]
 const DOCUMENT_TYPES = [{ id: 'DWG', code: 'DWG', name: 'Desenho' }]
+
+function installFormFieldStyles() {
+  const styleContent = formFieldSource.match(/<style scoped>([\s\S]*?)<\/style>/)[1]
+  const style = document.createElement('style')
+  style.textContent = styleContent
+    .replace(/:deep\(([^)]+)\)/g, '$1')
+    .replaceAll('var(--color-danger)', '#dc2626')
+    .replaceAll('var(--color-info-border)', '#cfe0ff')
+  document.head.appendChild(style)
+  return style
+}
 
 function withUploadedFile(uploadStore) {
   uploadStore.uploadedDocuments = [{ id: 'file-1', name: 'planta.pdf', size: 1024 }]
@@ -158,11 +170,16 @@ describe('MetadataStep', () => {
     const wrapper = mount(MetadataStep)
     await wrapper.find('#project').setValue(1)
     await wrapper.find('#discipline').setValue(1)
+    store.suggestedFields.disciplineId = true
 
     await wrapper.find('#project').setValue(2)
 
     expect(store.form.disciplineId).toBe('')
+    expect(store.isFieldSuggested('disciplineId')).toBe(false)
     expect(wrapper.find('#discipline').element.value).toBe('')
+    expect(wrapper.find('#discipline').element.closest('.field').classList).not.toContain(
+      'field--suggested',
+    )
   })
 
   it('should show an inline error only after a required field is left empty', async () => {
@@ -246,6 +263,18 @@ describe('MetadataStep', () => {
     )
   })
 
+  it('should drop the project suggested flag once the user changes it', async () => {
+    store.applySuggestions({ projectId: 1 })
+    const wrapper = mount(MetadataStep)
+
+    await wrapper.find('#project').setValue('')
+
+    expect(store.isFieldSuggested('projectId')).toBe(false)
+    expect(wrapper.find('#project').element.closest('.field').classList).not.toContain(
+      'field--suggested',
+    )
+  })
+
   it('should drop the suggested flag on the areas field when a tag is removed', async () => {
     store.applySuggestions({ areas: ['EST', 'QUA'] })
     const wrapper = mount(MetadataStep)
@@ -291,6 +320,129 @@ describe('MetadataStep', () => {
       expect(requestDocumentSuggestions).toHaveBeenCalledWith('file-2')
       expect(store.form.title).toBe('Título sugerido')
       expect(wrapper.text()).toContain('Sugestões carregadas com sucesso!')
+    })
+
+    it('should flag only the fields the AI actually suggested and map the area by name', async () => {
+      requestDocumentSuggestions.mockResolvedValue({
+        project: { id: 1, name: 'Aeroestrutura de Fuselagem Central' },
+        discipline: { id: null, name: 'Estruturas' },
+        document_type: { id: 'DWG', name: 'Desenho Técnico' },
+        title: 'Título sugerido',
+        description: '',
+        area: { id: 4, name: 'Qualidade e Inspeção' },
+      })
+
+      const wrapper = mount(MetadataStep)
+      await flushPromises()
+
+      const fieldOf = (selector) => wrapper.find(selector).element.closest('.field')
+      expect(fieldOf('#project').classList).toContain('field--suggested')
+      expect(fieldOf('#title').classList).toContain('field--suggested')
+      expect(fieldOf('#document-type').classList).toContain('field--suggested')
+      expect(fieldOf('#areas').classList).toContain('field--suggested')
+      expect(store.form.areas).toEqual(['QUA'])
+      expect(fieldOf('#description').classList).not.toContain('field--suggested')
+      expect(fieldOf('#discipline').classList).not.toContain('field--suggested')
+      expect(store.form.disciplineId).toBe('')
+      expect(wrapper.findAll('.ai-badge')).toHaveLength(4)
+    })
+
+    it('should wait for catalogs before applying suggestions', async () => {
+      let releaseCatalogs
+      const catalogsReady = new Promise((resolve) => {
+        releaseCatalogs = resolve
+      })
+      store.projects = []
+      store.disciplines = []
+      vi.spyOn(store, 'loadCatalogs').mockImplementation(async () => {
+        await catalogsReady
+        store.projects = PROJECTS
+        store.disciplines = DISCIPLINES
+      })
+      requestDocumentSuggestions.mockResolvedValue({
+        project: { id: 1 },
+        discipline: { id: 1 },
+        title: 'Título sugerido',
+      })
+
+      mount(MetadataStep)
+      await flushPromises()
+
+      expect(requestDocumentSuggestions).not.toHaveBeenCalled()
+      expect(store.form.title).toBe('')
+
+      releaseCatalogs()
+      await flushPromises()
+
+      expect(requestDocumentSuggestions).toHaveBeenCalledWith('file-1')
+      expect(store.form.title).toBe('Título sugerido')
+      expect(store.form.projectId).toBe(1)
+      expect(store.form.disciplineId).toBe(1)
+    })
+
+    it('should ignore a suggested project that is not in the catalog', async () => {
+      requestDocumentSuggestions.mockResolvedValue({
+        project: { id: 999 },
+        discipline: { id: 1 },
+        title: 'Título sugerido',
+      })
+
+      mount(MetadataStep)
+      await flushPromises()
+
+      expect(store.form.projectId).toBe('')
+      expect(store.isFieldSuggested('projectId')).toBe(false)
+    })
+
+    it('should ignore a suggested area that is not in the catalog', async () => {
+      requestDocumentSuggestions.mockResolvedValue({
+        project: { id: 1, name: 'Aeroestrutura' },
+        discipline: { id: 1, name: 'Estruturas' },
+        document_type: { id: 'DWG', name: 'Desenho Técnico' },
+        title: 'Título sugerido',
+        description: 'Descrição sugerida',
+        area: { id: null, name: 'Setor inexistente' },
+      })
+
+      mount(MetadataStep)
+      await flushPromises()
+
+      expect(store.form.areas).toEqual([])
+      expect(store.isFieldSuggested('areas')).toBe(false)
+    })
+
+    it('should keep the form untouched and show no indicator when the AI returns nothing usable', async () => {
+      requestDocumentSuggestions.mockResolvedValue({
+        project: { id: null, name: '' },
+        discipline: { id: null, name: '' },
+        document_type: { id: null, name: '' },
+        title: '',
+        description: '',
+        area: { id: null, name: '' },
+      })
+
+      const wrapper = mount(MetadataStep)
+      await flushPromises()
+
+      expect(wrapper.findAll('.ai-badge')).toHaveLength(0)
+      expect(wrapper.findAll('.field--suggested')).toHaveLength(0)
+      expect(store.form.title).toBe('')
+      expect(store.form.projectId).toBe('')
+    })
+
+    it('should still show a validation error on a suggested field', async () => {
+      store.applySuggestions({ title: 'Título sugerido' })
+      store.serverErrors = { title: 'Título deve ter no máximo 255 caracteres.' }
+
+      const wrapper = mount(MetadataStep)
+
+      const titleField = wrapper.find('#title').element.closest('.field')
+      expect(titleField.classList).toContain('field--suggested')
+      expect(titleField.classList).toContain('field--invalid')
+      const style = installFormFieldStyles()
+      expect(getComputedStyle(wrapper.find('#title').element).borderColor).toBe('rgb(220, 38, 38)')
+      style.remove()
+      expect(titleField.textContent).toContain('Título deve ter no máximo 255 caracteres.')
     })
 
     it('should show a loading message while suggestions are being fetched', async () => {

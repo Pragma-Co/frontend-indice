@@ -8,6 +8,8 @@ import { DEFAULT_CONFIDENTIALITY } from '../utils/documentCatalog'
 import { mapServerErrors, publishErrorMessage } from '../utils/publishErrors'
 import { validateDocumentForm } from '../utils/validators'
 
+const catalogRequests = new WeakMap()
+
 export function emptyForm(author = '') {
   return {
     title: '',
@@ -22,7 +24,20 @@ export function emptyForm(author = '') {
   }
 }
 
-const SUGGESTIBLE_FIELDS = ['title', 'description', 'disciplineId', 'documentType', 'areas']
+const SUGGESTIBLE_FIELDS = [
+  'title',
+  'description',
+  'projectId',
+  'disciplineId',
+  'documentType',
+  'areas',
+]
+
+function isEmptySuggestion(value) {
+  if (value === null || value === undefined) return true
+  if (Array.isArray(value)) return value.length === 0
+  return String(value).trim() === ''
+}
 
 export const useDocumentFormStore = defineStore('documentForm', {
   state: () => ({
@@ -69,30 +84,38 @@ export const useDocumentFormStore = defineStore('documentForm', {
 
   actions: {
     async loadCatalogs() {
+      const pendingRequest = catalogRequests.get(this)
+      if (pendingRequest) return pendingRequest
+
       this.catalogsLoading = true
       this.catalogsError = null
-      try {
-        const [projects, disciplines, document_types] = await Promise.all([
-          listProjects(),
-          listDisciplines(),
-          listDocumentTypes(),
-        ])
-        this.projects = Array.isArray(projects) ? projects : []
-        this.disciplines = Array.isArray(disciplines) ? disciplines : []
-        this.documentTypes = Array.isArray(document_types) ? document_types : []
-      } catch (error) {
-        this.catalogsError = error.message || 'Não foi possível carregar as listas do formulário.'
-      } finally {
-        this.catalogsLoading = false
-      }
+      const request = Promise.all([listProjects(), listDisciplines(), listDocumentTypes()])
+        .then(([projects, disciplines, document_types]) => {
+          this.projects = Array.isArray(projects) ? projects : []
+          this.disciplines = Array.isArray(disciplines) ? disciplines : []
+          this.documentTypes = Array.isArray(document_types) ? document_types : []
+        })
+        .catch((error) => {
+          this.catalogsError = error.message || 'Não foi possível carregar as listas do formulário.'
+        })
+        .finally(() => {
+          this.catalogsLoading = false
+          catalogRequests.delete(this)
+        })
+      catalogRequests.set(this, request)
+      return request
     },
 
     selectProject(projectId) {
       this.form.projectId = projectId
+      this.clearSuggestion('projectId')
       const stillValid = this.availableDisciplines.some(
         (d) => String(d.id) === String(this.form.disciplineId),
       )
-      if (!stillValid) this.form.disciplineId = ''
+      if (!stillValid) {
+        this.form.disciplineId = ''
+        this.clearSuggestion('disciplineId')
+      }
     },
 
     setDefaultAuthor(name) {
@@ -109,13 +132,21 @@ export const useDocumentFormStore = defineStore('documentForm', {
     applySuggestions(suggestions = {}) {
       for (const [field, value] of Object.entries(suggestions)) {
         if (!SUGGESTIBLE_FIELDS.includes(field)) continue
+        if (isEmptySuggestion(value)) continue
+        if (
+          field === 'projectId' &&
+          !this.projects.some((project) => String(project.id) === String(value))
+        ) {
+          continue
+        }
         if (
           field === 'disciplineId' &&
           !this.availableDisciplines.some((d) => String(d.id) === String(value))
         ) {
           continue
         }
-        this.form[field] = value
+        if (field === 'projectId') this.selectProject(value)
+        else this.form[field] = value
         this.suggestedFields[field] = true
       }
     },

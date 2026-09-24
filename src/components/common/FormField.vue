@@ -124,16 +124,16 @@ defineProps({
   color: var(--color-text-muted);
 }
 
-.field--invalid :deep(input),
-.field--invalid :deep(select),
-.field--invalid :deep(textarea) {
-  border-color: var(--color-danger);
-}
-
 .field--suggested :deep(input),
 .field--suggested :deep(select),
 .field--suggested :deep(textarea) {
   border-color: var(--color-info-border);
   background: var(--color-info-bg);
+}
+
+.field--invalid :deep(input),
+.field--invalid :deep(select),
+.field--invalid :deep(textarea) {
+  border-color: var(--color-danger);
 }
 </style>
