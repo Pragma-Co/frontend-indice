@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import MetadataStep from '../../src/components/document-upload/MetadataStep.vue'
 import { useDocumentFormStore } from '../../src/stores/documentFormStore'
 import { useUploadStore } from '../../src/stores/uploadStore.js'
+import formFieldSource from '../../src/components/common/FormField.vue?raw'
 
 vi.mock('../../src/api/projects', () => ({ listProjects: vi.fn() }))
 vi.mock('../../src/api/disciplines', () => ({ listDisciplines: vi.fn() }))
@@ -20,6 +21,17 @@ import { listDocumentTypes, requestDocumentSuggestions } from '../../src/api/doc
 const PROJECTS = [{ id: 1, code: 'AK-2100', name: 'Aeroestrutura de Fuselagem Central' }]
 const DISCIPLINES = [{ id: 1, code: 'EST', name: 'Estruturas' }]
 const DOCUMENT_TYPES = [{ id: 'DWG', code: 'DWG', name: 'Desenho' }]
+
+function installFormFieldStyles() {
+  const styleContent = formFieldSource.match(/<style scoped>([\s\S]*?)<\/style>/)[1]
+  const style = document.createElement('style')
+  style.textContent = styleContent
+    .replace(/:deep\(([^)]+)\)/g, '$1')
+    .replaceAll('var(--color-danger)', '#dc2626')
+    .replaceAll('var(--color-info-border)', '#cfe0ff')
+  document.head.appendChild(style)
+  return style
+}
 
 function withUploadedFile(uploadStore) {
   uploadStore.uploadedDocuments = [{ id: 'file-1', name: 'planta.pdf', size: 1024 }]
@@ -330,6 +342,53 @@ describe('MetadataStep', () => {
       expect(wrapper.findAll('.ai-badge')).toHaveLength(4)
     })
 
+    it('should wait for catalogs before applying suggestions', async () => {
+      let releaseCatalogs
+      const catalogsReady = new Promise((resolve) => {
+        releaseCatalogs = resolve
+      })
+      store.projects = []
+      store.disciplines = []
+      vi.spyOn(store, 'loadCatalogs').mockImplementation(async () => {
+        await catalogsReady
+        store.projects = PROJECTS
+        store.disciplines = DISCIPLINES
+      })
+      requestDocumentSuggestions.mockResolvedValue({
+        project: { id: 1 },
+        discipline: { id: 1 },
+        title: 'Título sugerido',
+      })
+
+      mount(MetadataStep)
+      await flushPromises()
+
+      expect(requestDocumentSuggestions).not.toHaveBeenCalled()
+      expect(store.form.title).toBe('')
+
+      releaseCatalogs()
+      await flushPromises()
+
+      expect(requestDocumentSuggestions).toHaveBeenCalledWith('file-1')
+      expect(store.form.title).toBe('Título sugerido')
+      expect(store.form.projectId).toBe(1)
+      expect(store.form.disciplineId).toBe(1)
+    })
+
+    it('should ignore a suggested project that is not in the catalog', async () => {
+      requestDocumentSuggestions.mockResolvedValue({
+        project: { id: 999 },
+        discipline: { id: 1 },
+        title: 'Título sugerido',
+      })
+
+      mount(MetadataStep)
+      await flushPromises()
+
+      expect(store.form.projectId).toBe('')
+      expect(store.isFieldSuggested('projectId')).toBe(false)
+    })
+
     it('should ignore a suggested area that is not in the catalog', async () => {
       requestDocumentSuggestions.mockResolvedValue({
         project: { id: 1, name: 'Aeroestrutura' },
@@ -375,6 +434,9 @@ describe('MetadataStep', () => {
       const titleField = wrapper.find('#title').element.closest('.field')
       expect(titleField.classList).toContain('field--suggested')
       expect(titleField.classList).toContain('field--invalid')
+      const style = installFormFieldStyles()
+      expect(getComputedStyle(wrapper.find('#title').element).borderColor).toBe('rgb(220, 38, 38)')
+      style.remove()
       expect(titleField.textContent).toContain('Título deve ter no máximo 255 caracteres.')
     })
 

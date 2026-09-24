@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onBeforeMount, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import StepIndicator from '@/components/common/StepIndicator.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
@@ -23,9 +23,12 @@ const uploadedFileNames = computed(() =>
   uploadStore.uploadedDocuments.map((document) => document.name),
 )
 
+onBeforeMount(() => {
+  if (!store.projects.length || !store.disciplines.length) store.loadCatalogs()
+})
+
 onMounted(() => {
   store.setDefaultAuthor(auth.currentUser?.name)
-  if (!store.projects.length || !store.disciplines.length) store.loadCatalogs()
 })
 
 function goBackToUpload() {

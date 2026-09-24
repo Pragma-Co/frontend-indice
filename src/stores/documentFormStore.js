@@ -8,6 +8,8 @@ import { DEFAULT_CONFIDENTIALITY } from '../utils/documentCatalog'
 import { mapServerErrors, publishErrorMessage } from '../utils/publishErrors'
 import { validateDocumentForm } from '../utils/validators'
 
+const catalogRequests = new WeakMap()
+
 export function emptyForm(author = '') {
   return {
     title: '',
@@ -82,22 +84,26 @@ export const useDocumentFormStore = defineStore('documentForm', {
 
   actions: {
     async loadCatalogs() {
+      const pendingRequest = catalogRequests.get(this)
+      if (pendingRequest) return pendingRequest
+
       this.catalogsLoading = true
       this.catalogsError = null
-      try {
-        const [projects, disciplines, document_types] = await Promise.all([
-          listProjects(),
-          listDisciplines(),
-          listDocumentTypes(),
-        ])
-        this.projects = Array.isArray(projects) ? projects : []
-        this.disciplines = Array.isArray(disciplines) ? disciplines : []
-        this.documentTypes = Array.isArray(document_types) ? document_types : []
-      } catch (error) {
-        this.catalogsError = error.message || 'Não foi possível carregar as listas do formulário.'
-      } finally {
-        this.catalogsLoading = false
-      }
+      const request = Promise.all([listProjects(), listDisciplines(), listDocumentTypes()])
+        .then(([projects, disciplines, document_types]) => {
+          this.projects = Array.isArray(projects) ? projects : []
+          this.disciplines = Array.isArray(disciplines) ? disciplines : []
+          this.documentTypes = Array.isArray(document_types) ? document_types : []
+        })
+        .catch((error) => {
+          this.catalogsError = error.message || 'Não foi possível carregar as listas do formulário.'
+        })
+        .finally(() => {
+          this.catalogsLoading = false
+          catalogRequests.delete(this)
+        })
+      catalogRequests.set(this, request)
+      return request
     },
 
     selectProject(projectId) {
@@ -125,12 +131,19 @@ export const useDocumentFormStore = defineStore('documentForm', {
         if (!SUGGESTIBLE_FIELDS.includes(field)) continue
         if (isEmptySuggestion(value)) continue
         if (
+          field === 'projectId' &&
+          !this.projects.some((project) => String(project.id) === String(value))
+        ) {
+          continue
+        }
+        if (
           field === 'disciplineId' &&
           !this.availableDisciplines.some((d) => String(d.id) === String(value))
         ) {
           continue
         }
-        this.form[field] = value
+        if (field === 'projectId') this.selectProject(value)
+        else this.form[field] = value
         this.suggestedFields[field] = true
       }
     },

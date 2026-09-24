@@ -251,6 +251,15 @@ describe('documentFormStore', () => {
       expect(store.form.disciplineId).toBe('')
     })
 
+    it('should not apply a project that is not in the catalog', async () => {
+      await store.loadCatalogs()
+
+      store.applySuggestions({ projectId: 999 })
+
+      expect(store.form.projectId).toBe('')
+      expect(store.isFieldSuggested('projectId')).toBe(false)
+    })
+
     it('should ignore suggestions for fields outside the suggestible list', () => {
       store.applySuggestions({ author: 'Robô', confidentiality: 'PUBLIC' })
 
