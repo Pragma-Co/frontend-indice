@@ -1,9 +1,11 @@
 <script setup>
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
+import { renderAsync } from 'docx-preview'
 import { fetchDocumentDetail, requestDocumentAccess } from '@/api/documents.js'
 import { useAuthStore } from '@/stores/authStore.js'
 import { statusBadgeFor } from '@/utils/documentStatus.js'
+import { formatDate } from '@/utils/formatters.js'
 import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
 import Button from '@/components/common/Button.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
@@ -15,37 +17,77 @@ const loading = ref(true)
 const error = ref('')
 const notFound = ref(false)
 const requestingAccess = ref(false)
-const currentPage = ref(1)
-const totalPages = ref(1)
+
+const docxContainer = ref(null)
+const docxLoading = ref(false)
+
+const currentFileIndex = ref(0)
 
 const canRequestAccess = computed(() => document.value?.access_status !== 'APPROVED')
 
 const currentRevision = computed(() => document.value?.revision ?? null)
-const currentFile = computed(() => currentRevision.value?.files?.[0] ?? null)
 
-const canPreview = computed(
-  () => document.value?.access_status === 'APPROVED' && !!currentFile.value,
-)
+const allFiles = computed(() => currentRevision.value?.files ?? [])
 
-const isPdf = computed(() => currentFile.value?.mime_type === 'application/pdf')
-const isImage = computed(() => currentFile.value?.mime_type?.startsWith('image/'))
+const currentFile = computed(() => {
+  const files = allFiles.value
+  if (!files.length) return null
+  const idx = Math.min(currentFileIndex.value, files.length - 1)
+  return files[idx] ?? null
+})
+
+const totalFiles = computed(() => allFiles.value.length)
 
 const userId = computed(() => authStore.user?.id ?? authStore.currentUser?.id ?? null)
 
+const isResponsible = computed(
+  () => userId.value != null && document.value?.responsible?.id === userId.value,
+)
+
+const canPreview = computed(
+  () =>
+    !!currentFile.value && (document.value?.access_status === 'APPROVED' || isResponsible.value),
+)
+
+const isPdf = computed(() => {
+  if (!currentFile.value) return false
+  if (currentFile.value.mime_type === 'application/pdf') return true
+  return currentFile.value.original_name?.toLowerCase().endsWith('.pdf') ?? false
+})
+
+const isImage = computed(() => {
+  if (!currentFile.value) return false
+  if (currentFile.value.mime_type?.startsWith('image/')) return true
+  const name = currentFile.value.original_name?.toLowerCase() ?? ''
+  return /\.(png|jpe?g|gif|webp|svg|bmp)$/.test(name)
+})
+
+const isDocx = computed(() => {
+  if (!currentFile.value) return false
+  const name = currentFile.value.original_name?.toLowerCase() ?? ''
+  return name.endsWith('.docx') || name.endsWith('.doc')
+})
+
 function withUser(url) {
   if (!url) return null
+  if (url.includes('user_id=')) return url
   if (!userId.value) return url
   const sep = url.includes('?') ? '&' : '?'
   return `${url}${sep}user_id=${userId.value}`
 }
 
-const previewUrl = computed(() => {
+const fileUrl = computed(() => {
   if (!currentFile.value) return null
-  const url = withUser(currentFile.value.view_url)
-  return isPdf.value ? `${url}#page=${currentPage.value}` : url
+  return withUser(currentFile.value.view_url)
 })
 
-const imageUrl = computed(() => withUser(currentFile.value?.view_url))
+function prevFile() {
+  if (currentFileIndex.value > 0) currentFileIndex.value--
+}
+
+function nextFile() {
+  if (currentFileIndex.value < totalFiles.value - 1) currentFileIndex.value++
+}
 
 async function loadDocument() {
   loading.value = true
@@ -53,6 +95,7 @@ async function loadDocument() {
   notFound.value = false
   try {
     document.value = await fetchDocumentDetail(route.params.documentId, authStore.user?.id)
+    currentFileIndex.value = 0
   } catch (err) {
     if (err.status === 404) {
       notFound.value = true
@@ -76,13 +119,47 @@ async function handleRequestAccess() {
   }
 }
 
-function prevPage() {
-  if (currentPage.value > 1) currentPage.value--
+async function renderDocx() {
+  if (!docxContainer.value) return
+  if (!canPreview.value || !isDocx.value || !fileUrl.value) return
+
+  docxLoading.value = true
+  docxContainer.value.innerHTML = ''
+
+  try {
+    const res = await fetch(fileUrl.value, { credentials: 'include' })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const blob = await res.blob()
+
+    await renderAsync(blob, docxContainer.value, null, {
+      className: 'docx-preview',
+      inWrapper: true,
+      ignoreWidth: false,
+      ignoreHeight: false,
+      breakPages: true,
+      renderHeaders: true,
+      renderFooters: true,
+    })
+  } catch (e) {
+    console.error('Erro ao renderizar DOCX:', e)
+    error.value = 'Não foi possível renderizar o arquivo .docx.'
+  } finally {
+    docxLoading.value = false
+  }
 }
 
-function nextPage() {
-  if (currentPage.value < totalPages.value) currentPage.value++
-}
+watch(
+  [currentFile, canPreview],
+  async () => {
+    if (docxContainer.value) docxContainer.value.innerHTML = ''
+
+    if (canPreview.value && isDocx.value) {
+      await nextTick()
+      await renderDocx()
+    }
+  },
+  { immediate: false },
+)
 
 onMounted(loadDocument)
 </script>
@@ -100,7 +177,6 @@ onMounted(loadDocument)
         <div class="details-grid">
           <section class="preview-panel" aria-label="Visualização do documento">
             <div class="preview-viewer">
-              <!-- <div v-if="false" class="preview-placeholder"> -->
               <div v-if="!canPreview" class="preview-placeholder">
                 <svg width="42" height="42" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path
@@ -123,32 +199,57 @@ onMounted(loadDocument)
                 <span>{{ document.code }}</span>
               </div>
 
+              <div v-else-if="!totalFiles" class="preview-placeholder">
+                <p>Nenhum arquivo disponível para esta revisão.</p>
+                <span>{{ document.code }}</span>
+              </div>
+
               <iframe
                 v-else-if="isPdf"
-                :src="previewUrl"
+                :key="currentFile.id"
+                :src="fileUrl"
                 class="preview-frame"
                 title="Visualização do PDF"
+                type="application/pdf"
               />
 
               <img
                 v-else-if="isImage"
-                :src="imageUrl"
+                :key="currentFile.id"
+                :src="fileUrl"
                 class="preview-image"
-                :alt="document.title"
+                :alt="currentFile.original_name || document.title"
               />
+
+              <div v-else-if="isDocx" class="preview-docx-wrapper">
+                <p v-if="docxLoading" class="preview-docx-loading">Carregando documento...</p>
+                <div ref="docxContainer" class="preview-docx" />
+              </div>
 
               <div v-else class="preview-placeholder">
                 <p>Formato não suportado para visualização.</p>
+                <span>{{ currentFile?.original_name }}</span>
               </div>
             </div>
 
-            <div class="preview-footer">
-              <button type="button" :disabled="currentPage <= 1" @click="prevPage">
-                Página anterior
+            <div v-if="canPreview && totalFiles > 0" class="preview-footer">
+              <button type="button" :disabled="currentFileIndex <= 0" @click="prevFile">
+                Arquivo anterior
               </button>
-              <strong>Página {{ currentPage }} de {{ totalPages }}</strong>
-              <button type="button" :disabled="currentPage >= totalPages" @click="nextPage">
-                Próxima página
+
+              <div class="preview-footer-info">
+                <strong> Arquivo {{ currentFileIndex + 1 }} de {{ totalFiles }} </strong>
+                <span v-if="currentFile?.original_name" class="preview-footer-name">
+                  {{ currentFile.original_name }}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                :disabled="currentFileIndex >= totalFiles - 1"
+                @click="nextFile"
+              >
+                Próximo arquivo
               </button>
             </div>
           </section>
@@ -183,7 +284,11 @@ onMounted(loadDocument)
               </div>
               <div>
                 <dt>Data de Emissão</dt>
-                <dd>{{ document.revision?.issue_date ?? '-' }}</dd>
+                <dd>
+                  {{
+                    document.revision?.issue_date ? formatDate(document.revision.issue_date) : '-'
+                  }}
+                </dd>
               </div>
               <div>
                 <dt>Responsável</dt>
@@ -230,7 +335,7 @@ onMounted(loadDocument)
                   <dl class="revision-meta">
                     <div>
                       <dt>Data de emissão</dt>
-                      <dd>{{ version.issue_date ?? '-' }}</dd>
+                      <dd>{{ version.issue_date ? formatDate(version.issue_date) : '-' }}</dd>
                     </div>
                     <div>
                       <dt>Autor</dt>
@@ -306,6 +411,43 @@ onMounted(loadDocument)
   object-fit: contain;
 }
 
+.preview-docx-wrapper {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  overflow: auto;
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-sm);
+  position: relative;
+}
+
+.preview-docx {
+  width: 100%;
+  min-height: 100%;
+}
+
+.preview-docx :deep(.docx-wrapper) {
+  background: var(--color-surface-muted);
+  padding: 1rem;
+}
+
+.preview-docx :deep(.docx-wrapper > section.docx) {
+  margin: 0 auto 1rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  background: #fff;
+}
+
+.preview-docx-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
 .preview-placeholder {
   display: flex;
   flex: 1;
@@ -342,6 +484,24 @@ onMounted(loadDocument)
   font-size: 0.78rem;
 }
 
+.preview-footer-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 0;
+  text-align: center;
+}
+
+.preview-footer-name {
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+  max-width: 18rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .preview-footer button {
   padding: 0.45rem 0.65rem;
   border: 1px solid var(--color-border);
@@ -349,6 +509,7 @@ onMounted(loadDocument)
   background: var(--color-surface);
   color: var(--color-text-muted);
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .preview-footer button:disabled {

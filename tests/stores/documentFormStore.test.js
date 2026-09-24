@@ -282,9 +282,9 @@ describe('documentFormStore', () => {
         discipline_id: 1,
         document_type: 'DWG',
         confidentiality: 'CONFIDENTIAL',
-        responsible_id: 44,
+        responsible_id: 12,
         areas: ['EST'],
-        user_id: 44,
+        user_id: 12,
       })
       expect(result).toEqual(CREATED)
       expect(store.publishing).toBe(false)
