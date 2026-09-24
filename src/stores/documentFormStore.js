@@ -22,7 +22,14 @@ export function emptyForm(author = '') {
   }
 }
 
-const SUGGESTIBLE_FIELDS = ['title', 'description', 'disciplineId', 'documentType', 'areas']
+const SUGGESTIBLE_FIELDS = [
+  'title',
+  'description',
+  'projectId',
+  'disciplineId',
+  'documentType',
+  'areas',
+]
 
 function isEmptySuggestion(value) {
   if (value === null || value === undefined) return true
@@ -95,6 +102,7 @@ export const useDocumentFormStore = defineStore('documentForm', {
 
     selectProject(projectId) {
       this.form.projectId = projectId
+      this.clearSuggestion('projectId')
       const stillValid = this.availableDisciplines.some(
         (d) => String(d.id) === String(this.form.disciplineId),
       )
