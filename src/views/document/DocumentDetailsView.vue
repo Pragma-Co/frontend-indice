@@ -38,10 +38,10 @@ const currentFile = computed(() => {
 
 const totalFiles = computed(() => allFiles.value.length)
 
-const userId = computed(() => authStore.user?.id ?? authStore.currentUser?.id ?? null)
+const currentUserId = computed(() => authStore.user?.id ?? authStore.currentUser?.id ?? null)
 
 const isResponsible = computed(
-  () => userId.value != null && document.value?.responsible?.id === userId.value,
+  () => currentUserId.value != null && document.value?.responsible?.id === currentUserId.value,
 )
 
 const canPreview = computed(
@@ -71,9 +71,9 @@ const isDocx = computed(() => {
 function withUser(url) {
   if (!url) return null
   if (url.includes('user_id=')) return url
-  if (!userId.value) return url
+  if (!currentUserId.value) return url
   const sep = url.includes('?') ? '&' : '?'
-  return `${url}${sep}user_id=${userId.value}`
+  return `${url}${sep}user_id=${currentUserId.value}`
 }
 
 const fileUrl = computed(() => {
@@ -94,7 +94,7 @@ async function loadDocument() {
   error.value = ''
   notFound.value = false
   try {
-    document.value = await fetchDocumentDetail(route.params.documentId, authStore.user?.id)
+    document.value = await fetchDocumentDetail(route.params.documentId, currentUserId.value)
     currentFileIndex.value = 0
   } catch (err) {
     if (err.status === 404) {
@@ -110,7 +110,7 @@ async function loadDocument() {
 async function handleRequestAccess() {
   requestingAccess.value = true
   try {
-    await requestDocumentAccess(route.params.documentId, authStore.currentUser?.id)
+    await requestDocumentAccess(route.params.documentId, currentUserId.value)
     await loadDocument()
   } catch {
     error.value = 'Não foi possível solicitar acesso.'
@@ -177,7 +177,12 @@ onMounted(loadDocument)
         <div class="details-grid">
           <section class="preview-panel" aria-label="Visualização do documento">
             <div class="preview-viewer">
-              <div v-if="!canPreview" class="preview-placeholder">
+              <div v-if="!totalFiles" class="preview-placeholder">
+                <p>Nenhum arquivo disponível para esta revisão.</p>
+                <span>{{ document.code }}</span>
+              </div>
+
+              <div v-else-if="!canPreview" class="preview-placeholder">
                 <svg width="42" height="42" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path
                     d="M7 3.5h7l4 4V19a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 19V5a1.5 1.5 0 0 1 1-1.5Z"
@@ -196,11 +201,6 @@ onMounted(loadDocument)
                   Solicite acesso para visualizar o documento.
                 </p>
                 <p v-else>Documento em revisão. Visualização indisponível.</p>
-                <span>{{ document.code }}</span>
-              </div>
-
-              <div v-else-if="!totalFiles" class="preview-placeholder">
-                <p>Nenhum arquivo disponível para esta revisão.</p>
                 <span>{{ document.code }}</span>
               </div>
 
@@ -238,7 +238,7 @@ onMounted(loadDocument)
               </button>
 
               <div class="preview-footer-info">
-                <strong> Arquivo {{ currentFileIndex + 1 }} de {{ totalFiles }} </strong>
+                <strong>Arquivo {{ currentFileIndex + 1 }} de {{ totalFiles }}</strong>
                 <span v-if="currentFile?.original_name" class="preview-footer-name">
                   {{ currentFile.original_name }}
                 </span>
@@ -335,7 +335,9 @@ onMounted(loadDocument)
                   <dl class="revision-meta">
                     <div>
                       <dt>Data de emissão</dt>
-                      <dd>{{ version.issue_date ? formatDate(version.issue_date) : '-' }}</dd>
+                      <dd>
+                        {{ version.issue_date ? formatDate(version.issue_date) : '-' }}
+                      </dd>
                     </div>
                     <div>
                       <dt>Autor</dt>
