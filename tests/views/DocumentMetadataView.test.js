@@ -9,12 +9,18 @@ const push = vi.fn()
 vi.mock('vue-router', () => ({ useRouter: () => ({ push }) }))
 vi.mock('../../src/api/projects', () => ({ listProjects: vi.fn() }))
 vi.mock('../../src/api/disciplines', () => ({ listDisciplines: vi.fn() }))
+vi.mock('../../src/api/documents', async (importOriginal) => ({
+  ...(await importOriginal()),
+  listDocumentTypes: vi.fn(),
+}))
 
 import { listProjects } from '../../src/api/projects'
 import { listDisciplines } from '../../src/api/disciplines'
+import { listDocumentTypes } from '../../src/api/documents'
 
 const PROJECTS = [{ id: 1, code: 'AK-2100', name: 'Aeroestrutura de Fuselagem Central' }]
 const DISCIPLINES = [{ id: 1, code: 'EST', name: 'Estruturas' }]
+const DOCUMENT_TYPES = [{ id: 'DWG', code: 'DWG', name: 'Desenho' }]
 
 describe('DocumentMetadataView', () => {
   let store
@@ -25,6 +31,7 @@ describe('DocumentMetadataView', () => {
     vi.clearAllMocks()
     listProjects.mockResolvedValue(PROJECTS)
     listDisciplines.mockResolvedValue(DISCIPLINES)
+    listDocumentTypes.mockResolvedValue(DOCUMENT_TYPES)
   })
 
   it('should load the catalogs from the API and pre-fill the author on mount', async () => {

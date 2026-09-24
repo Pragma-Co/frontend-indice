@@ -1,17 +1,29 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import MetadataStep from '../../src/components/document-upload/MetadataStep.vue'
 import { useDocumentFormStore } from '../../src/stores/documentFormStore'
+import { useUploadStore } from '../../src/stores/uploadStore.js'
 
 vi.mock('../../src/api/projects', () => ({ listProjects: vi.fn() }))
 vi.mock('../../src/api/disciplines', () => ({ listDisciplines: vi.fn() }))
+vi.mock('../../src/api/documents', async (importOriginal) => ({
+  ...(await importOriginal()),
+  listDocumentTypes: vi.fn(),
+  requestDocumentSuggestions: vi.fn(),
+}))
 
 import { listProjects } from '../../src/api/projects'
 import { listDisciplines } from '../../src/api/disciplines'
+import { listDocumentTypes, requestDocumentSuggestions } from '../../src/api/documents'
 
 const PROJECTS = [{ id: 1, code: 'AK-2100', name: 'Aeroestrutura de Fuselagem Central' }]
 const DISCIPLINES = [{ id: 1, code: 'EST', name: 'Estruturas' }]
+const DOCUMENT_TYPES = [{ id: 'DWG', code: 'DWG', name: 'Desenho' }]
+
+function withUploadedFile(uploadStore) {
+  uploadStore.uploadedDocuments = [{ id: 'file-1', name: 'planta.pdf', size: 1024 }]
+}
 
 function nextButton(wrapper) {
   return wrapper.findAll('button').find((b) => b.text() === 'Próximo Passo')
@@ -28,12 +40,18 @@ async function fillRequiredFields(wrapper) {
 
 describe('MetadataStep', () => {
   let store
+  let uploadStore
 
   beforeEach(async () => {
     setActivePinia(createPinia())
     store = useDocumentFormStore()
+    uploadStore = useUploadStore()
+    withUploadedFile(uploadStore)
+    vi.clearAllMocks()
     listProjects.mockResolvedValue(PROJECTS)
     listDisciplines.mockResolvedValue(DISCIPLINES)
+    listDocumentTypes.mockResolvedValue(DOCUMENT_TYPES)
+    requestDocumentSuggestions.mockResolvedValue(null)
     await store.loadCatalogs()
   })
 
@@ -233,5 +251,77 @@ describe('MetadataStep', () => {
     const wrapper = mount(MetadataStep)
     await wrapper.find('button[aria-label="Remover Qualidade e Inspeção"]').trigger('click')
     expect(store.isFieldSuggested('areas')).toBe(false)
+  })
+
+  describe('AI suggestions', () => {
+    it('should return the user to the upload screen when there are no uploaded files', () => {
+      uploadStore.uploadedDocuments = []
+
+      const wrapper = mount(MetadataStep)
+
+      expect(wrapper.emitted('back')).toHaveLength(1)
+      expect(requestDocumentSuggestions).not.toHaveBeenCalled()
+    })
+
+    it('should not request suggestions when the form is already filled', async () => {
+      store.form.title = 'Título já preenchido'
+
+      mount(MetadataStep)
+      await flushPromises()
+
+      expect(requestDocumentSuggestions).not.toHaveBeenCalled()
+    })
+
+    it('should request suggestions for the largest uploaded file when the form is empty', async () => {
+      uploadStore.uploadedDocuments = [
+        { id: 'file-1', name: 'a.pdf', size: 100 },
+        { id: 'file-2', name: 'b.pdf', size: 500 },
+      ]
+      requestDocumentSuggestions.mockResolvedValue({
+        project: { id: 1 },
+        discipline: { id: 1 },
+        document_type: { id: 'DWG' },
+        title: 'Título sugerido',
+        description: 'Descrição sugerida',
+      })
+
+      const wrapper = mount(MetadataStep)
+      await flushPromises()
+
+      expect(requestDocumentSuggestions).toHaveBeenCalledWith('file-2')
+      expect(store.form.title).toBe('Título sugerido')
+      expect(wrapper.text()).toContain('Sugestões carregadas com sucesso!')
+    })
+
+    it('should show a loading message while suggestions are being fetched', async () => {
+      let resolveRequest
+      requestDocumentSuggestions.mockReturnValue(
+        new Promise((resolve) => {
+          resolveRequest = resolve
+        }),
+      )
+
+      const wrapper = mount(MetadataStep)
+      await wrapper.vm.$nextTick()
+
+      expect(wrapper.text()).toContain('Carregando sugestões da API...')
+
+      resolveRequest(null)
+      await flushPromises()
+
+      expect(wrapper.text()).not.toContain('Carregando sugestões da API...')
+    })
+
+    it('should not show the loading or success message when the request fails', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      requestDocumentSuggestions.mockRejectedValue(new Error('boom'))
+
+      const wrapper = mount(MetadataStep)
+      await flushPromises()
+
+      expect(wrapper.text()).not.toContain('Carregando sugestões da API...')
+      expect(wrapper.text()).not.toContain('Sugestões carregadas com sucesso!')
+      errorSpy.mockRestore()
+    })
   })
 })

@@ -1,13 +1,17 @@
 <script setup>
-import { computed, reactive, watch } from 'vue'
+import { computed, reactive, ref, watch, onMounted } from 'vue'
 import { useDocumentFormStore } from '../../stores/documentFormStore'
-import { AREAS, CONFIDENTIALITY_LEVELS, DOCUMENT_TYPES } from '../../utils/documentCatalog'
+import { useUploadStore } from '@/stores/uploadStore.js'
+import { requestDocumentSuggestions } from '@/api/documents.js'
+import { AREAS, CONFIDENTIALITY_LEVELS } from '../../utils/documentCatalog'
 import Button from '../common/Button.vue'
 import FormField from '../common/FormField.vue'
 import TagMultiSelect from '../common/TagMultiSelect.vue'
 
 const emit = defineEmits(['back', 'next'])
 const store = useDocumentFormStore()
+const uploadStore = useUploadStore()
+const files = computed(() => uploadStore.uploadedDocuments)
 
 const code = computed(() => store.codePreview ?? '')
 const areaOptions = AREAS.map((area) => ({ value: area.code, label: area.name }))
@@ -17,6 +21,45 @@ const disciplinePlaceholder = computed(() => {
   if (store.catalogsLoading) return 'Carregando…'
   if (disciplineLocked.value) return 'Selecione o projeto primeiro'
   return 'Selecione a disciplina'
+})
+
+function setSuggestions(suggestions) {
+  if (!suggestions) return
+  store.selectProject(suggestions.project.id)
+  store.applySuggestions({
+    disciplineId: suggestions.discipline.id,
+    documentType: suggestions.document_type.id,
+    title: suggestions.title,
+    description: suggestions.description,
+  })
+}
+
+function isFormEmpty() {
+  const { projectId, disciplineId, documentType, title, description } = store.form
+  return !projectId && !disciplineId && !documentType && !title && !description
+}
+
+const suggestionsStatus = ref('idle')
+
+onMounted(() => {
+  if (files.value.length === 0) {
+    emit('back')
+    return
+  }
+  if (!isFormEmpty()) return
+  const file = files.value.reduce((biggest, current) => {
+    return current.size > biggest.size ? current : biggest
+  }, files.value[0])
+  suggestionsStatus.value = 'loading'
+  requestDocumentSuggestions(file.id)
+    .then((response) => {
+      setSuggestions(response)
+      suggestionsStatus.value = 'success'
+    })
+    .catch((error) => {
+      console.error('Erro ao buscar sugestões de documentos:', error)
+      suggestionsStatus.value = 'error'
+    })
 })
 
 const touched = reactive({})
@@ -67,6 +110,14 @@ function back(event) {
 <template>
   <form class="card metadata" novalidate @submit.prevent="next">
     <h2 class="metadata__title">Informações do Documento</h2>
+
+    <p v-if="suggestionsStatus === 'loading'" class="metadata__warning" role="alert">
+      Carregando sugestões da API...
+    </p>
+
+    <p v-else-if="suggestionsStatus === 'success'" class="metadata__success" role="alert">
+      Sugestões carregadas com sucesso! Você pode alterar os campos conforme necessário.
+    </p>
 
     <p v-if="store.catalogsError" class="metadata__alert" role="alert">
       {{ store.catalogsError }}
@@ -133,7 +184,7 @@ function back(event) {
       >
         <select id="document-type" v-model="documentType">
           <option value="">Selecione o tipo</option>
-          <option v-for="type in DOCUMENT_TYPES" :key="type.code" :value="type.code">
+          <option v-for="type in store.documentTypes" :key="type.id" :value="type.id">
             {{ type.code }} - {{ type.name }}
           </option>
         </select>
@@ -263,6 +314,30 @@ function back(event) {
   border-radius: var(--radius-sm);
   background: var(--color-danger-bg);
   color: var(--color-danger);
+  font-size: 0.85rem;
+}
+
+.metadata__warning {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  font-size: 0.85rem;
+}
+
+.metadata__success {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-success-bg);
+  color: var(--color-success);
   font-size: 0.85rem;
 }
 

@@ -91,9 +91,17 @@ export function createDocument(payload) {
   return api.post('/documents', payload)
 }
 
+export function listDocumentTypes() {
+  return api.get('/documents/types')
+}
+
 export function fetchDocumentDetail(documentId, userId) {
   const query = userId ? `?user_id=${userId}` : ''
   return api.get(`/documents/${documentId}${query}`)
+}
+
+export function requestDocumentSuggestions(documentId) {
+  return api.post(`/documents/${documentId}/suggestions`)
 }
 
 export function requestDocumentAccess(documentId, userId, justification) {

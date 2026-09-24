@@ -7,12 +7,13 @@ vi.mock('../../src/api/projects', () => ({ listProjects: vi.fn() }))
 vi.mock('../../src/api/disciplines', () => ({ listDisciplines: vi.fn() }))
 vi.mock('../../src/api/documents', async (importOriginal) => ({
   ...(await importOriginal()),
+  listDocumentTypes: vi.fn(),
   createDocument: vi.fn(),
 }))
 
 import { listProjects } from '../../src/api/projects'
 import { listDisciplines } from '../../src/api/disciplines'
-import { createDocument } from '../../src/api/documents'
+import { listDocumentTypes, createDocument } from '../../src/api/documents'
 
 const CREATED = {
   id: 7,
@@ -23,6 +24,7 @@ const CREATED = {
 
 const PROJECTS = [{ id: 1, code: 'AK-2100', name: 'Aeroestrutura de Fuselagem Central' }]
 const DISCIPLINES = [{ id: 1, code: 'EST', name: 'Estruturas' }]
+const DOCUMENT_TYPES = [{ id: 'DWG', code: 'DWG', name: 'Desenho' }]
 
 function fillValidForm(store) {
   store.form.title = 'Desenho da fuselagem central'
@@ -42,6 +44,7 @@ describe('documentFormStore', () => {
     vi.clearAllMocks()
     listProjects.mockResolvedValue(PROJECTS)
     listDisciplines.mockResolvedValue(DISCIPLINES)
+    listDocumentTypes.mockResolvedValue(DOCUMENT_TYPES)
   })
 
   it('should start at version 1 shown as REV01, confidential by default, with an empty form', () => {

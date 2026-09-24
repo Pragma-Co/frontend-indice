@@ -32,6 +32,7 @@ describe('DocumentConfirmationView', () => {
     vi.clearAllMocks()
     store.projects = [{ id: 1, code: 'AK-2100', name: 'Aeroestrutura de Fuselagem Central' }]
     store.disciplines = [{ id: 1, code: 'EST', name: 'Estruturas' }]
+    store.documentTypes = [{ id: 'DWG', code: 'DWG', name: 'Desenho' }]
     Object.assign(store.form, {
       title: 'Desenho da fuselagem central',
       projectId: 1,
