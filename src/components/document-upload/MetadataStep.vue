@@ -25,11 +25,13 @@ const disciplinePlaceholder = computed(() => {
 
 function setSuggestions(suggestions) {
   if (!suggestions) return
-  store.form.projectId = suggestions.project.id
-  store.form.disciplineId = suggestions.discipline.id
-  store.form.documentType = suggestions.document_type.id
-  store.form.title = suggestions.title
-  store.form.description = suggestions.description
+  store.selectProject(suggestions.project.id)
+  store.applySuggestions({
+    disciplineId: suggestions.discipline.id,
+    documentType: suggestions.document_type.id,
+    title: suggestions.title,
+    description: suggestions.description,
+  })
 }
 
 function isFormEmpty() {
