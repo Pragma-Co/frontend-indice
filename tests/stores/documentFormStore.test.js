@@ -287,6 +287,7 @@ describe('documentFormStore', () => {
         confidentiality: 'CONFIDENTIAL',
         responsible_id: 12,
         areas: ['EST'],
+        user_id: 12,
       })
       expect(result).toEqual(CREATED)
       expect(store.publishing).toBe(false)

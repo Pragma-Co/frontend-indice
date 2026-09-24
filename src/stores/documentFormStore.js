@@ -133,6 +133,7 @@ export const useDocumentFormStore = defineStore('documentForm', {
         const payload = toDocumentPayload(this.form, {
           tempFileId,
           responsibleId: auth.currentUser?.id ?? null,
+          userId: auth.currentUser?.id ?? null,
         })
         const document = await createDocument(payload)
         this.form = emptyForm(this.form.author)

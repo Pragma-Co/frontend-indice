@@ -83,7 +83,7 @@ const {
 
 <style scoped>
 .documents-table {
-  height: calc(100vh - 437px);
+  height: calc(100vh - 438px);
 }
 
 .status-message {

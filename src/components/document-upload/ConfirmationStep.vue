@@ -1,13 +1,13 @@
 <script setup>
 import { computed } from 'vue'
-import { useDocumentFormStore } from '../../stores/documentFormStore'
-import { useUploadStore } from '../../stores/uploadStore'
-import { findArea, findConfidentiality } from '../../utils/documentCatalog'
-import { formatDate, formatFileSize } from '../../utils/formatters'
-import Badge from '../common/Badge.vue'
-import Button from '../common/Button.vue'
-import FileTypeIcon from '../common/FileTypeIcon.vue'
-import KeyValue from '../common/KeyValue.vue'
+import { useDocumentFormStore } from '@/stores/documentFormStore'
+import { useUploadStore } from '@/stores/uploadStore'
+import { findArea, findConfidentiality } from '@/utils/documentCatalog'
+import { formatDate, formatFileSize } from '@/utils/formatters'
+import Badge from '@/components/common/Badge.vue'
+import Button from '@/components/common/Button.vue'
+import FileTypeIcon from '@/components/common/FileTypeIcon.vue'
+import KeyValue from '@/components/common/KeyValue.vue'
 
 const emit = defineEmits(['back', 'publish'])
 const store = useDocumentFormStore()
