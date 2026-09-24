@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia'
 import { listProjects } from '../api/projects'
 import { listDisciplines } from '../api/disciplines'
-import { createDocument, toDocumentPayload } from '../api/documents'
+import { createDocument, toDocumentPayload, listDocumentTypes } from '../api/documents'
 import { useAuthStore } from './authStore'
 import { buildDocumentCode, INITIAL_VERSION, revisionLabel } from '../utils/documentCode'
-import { DEFAULT_CONFIDENTIALITY, findDocumentType } from '../utils/documentCatalog'
+import { DEFAULT_CONFIDENTIALITY } from '../utils/documentCatalog'
 import { mapServerErrors, publishErrorMessage } from '../utils/publishErrors'
 import { validateDocumentForm } from '../utils/validators'
 
@@ -29,6 +29,7 @@ export const useDocumentFormStore = defineStore('documentForm', {
     form: emptyForm(),
     projects: [],
     disciplines: [],
+    documentTypes: [],
     catalogsLoading: false,
     catalogsError: null,
     publishing: false,
@@ -49,7 +50,8 @@ export const useDocumentFormStore = defineStore('documentForm', {
       const ids = this.selectedProject?.discipline_ids ?? []
       return this.disciplines.filter((d) => ids.includes(d.id))
     },
-    selectedDocumentType: (state) => findDocumentType(state.form.documentType),
+    selectedDocumentType: (state) =>
+      state.documentTypes.find((t) => t.id === state.form.documentType) ?? null,
     revision: (state) => revisionLabel(state.form.version),
     isFieldSuggested: (state) => (field) => Boolean(state.suggestedFields[field]),
     codePreview() {
@@ -70,9 +72,14 @@ export const useDocumentFormStore = defineStore('documentForm', {
       this.catalogsLoading = true
       this.catalogsError = null
       try {
-        const [projects, disciplines] = await Promise.all([listProjects(), listDisciplines()])
+        const [projects, disciplines, document_types] = await Promise.all([
+          listProjects(),
+          listDisciplines(),
+          listDocumentTypes(),
+        ])
         this.projects = Array.isArray(projects) ? projects : []
         this.disciplines = Array.isArray(disciplines) ? disciplines : []
+        this.documentTypes = Array.isArray(document_types) ? document_types : []
       } catch (error) {
         this.catalogsError = error.message || 'Não foi possível carregar as listas do formulário.'
       } finally {
