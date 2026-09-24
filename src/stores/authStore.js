@@ -1,10 +1,26 @@
 import { defineStore } from 'pinia'
 import { getInitials } from '../utils/formatters'
 
+export const DEV_USER_STORAGE_KEY = 'indice.devUser'
+
+const SEED_USER = { id: 12, name: 'Beatriz Canuto', role: 'Colaborador' }
+
+export function resolveDevelopmentUser(storage = globalThis.localStorage) {
+  if (!import.meta.env.DEV) return SEED_USER
+  try {
+    const stored = JSON.parse(storage?.getItem(DEV_USER_STORAGE_KEY) ?? 'null')
+    if (Number.isInteger(stored?.id) && typeof stored?.name === 'string' && stored.name.trim()) {
+      return { ...SEED_USER, ...stored }
+    }
+  } catch {
+    return SEED_USER
+  }
+  return SEED_USER
+}
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    // User 12 of the backend seed. Replaced by the session user once authentication exists.
-    currentUser: { id: 12, name: 'Beatriz Canuto', role: 'Colaborador' },
+    currentUser: resolveDevelopmentUser(),
   }),
   getters: {
     isAuthenticated: (state) => Boolean(state.currentUser),
