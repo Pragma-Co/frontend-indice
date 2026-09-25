@@ -68,28 +68,21 @@ export function useDocumentUpload({ getUserId = () => undefined } = {}) {
     }
   }
 
-  async function startUpload(item, { forceNewRevision = false } = {}) {
+  async function startUpload(item) {
     item.status = 'uploading'
     item.progress = 0
 
     try {
       const response = await uploadDocument(item.file, {
-        forceNewRevision,
         userId: getUserId(),
         onProgress: (percent) => {
           item.progress = percent
         },
       })
 
-      if (response?.duplicate && !forceNewRevision) {
+      if (response?.duplicate) {
         item.status = 'duplicate'
         item.duplicateInfo = response.document ?? null
-        return
-      }
-
-      if (response?.revision_created) {
-        item.status = 'revision'
-        item.revisionInfo = response.document ?? null
         return
       }
 
@@ -103,12 +96,8 @@ export function useDocumentUpload({ getUserId = () => undefined } = {}) {
     }
   }
 
-  function resolveDuplicate(item, keepAsNewRevision) {
-    if (!keepAsNewRevision) {
-      removeFile(item.id)
-      return
-    }
-    startUpload(item, { forceNewRevision: true })
+  function resolveDuplicate(item) {
+    removeFile(item.id)
   }
 
   function removeFile(id) {

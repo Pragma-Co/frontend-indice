@@ -11,15 +11,9 @@ export function clearDocumentsCache() {
   documentsRequests.clear()
 }
 
-export function uploadDocument(
-  file,
-  { onProgress, forceNewRevision = false, signal, userId } = {},
-) {
+export function uploadDocument(file, { onProgress, signal, userId } = {}) {
   const formData = new FormData()
   formData.append('file', file)
-  if (forceNewRevision) {
-    formData.append('force_new_revision', 'true')
-  }
   if (userId != null) {
     formData.append('user_id', String(userId))
   }
