@@ -46,6 +46,7 @@ const currentFile = computed(() => {
 })
 
 const totalFiles = computed(() => allFiles.value.length)
+const currentFileHistory = computed(() => currentFile.value?.revision_history ?? [])
 
 const currentUserId = computed(() => authStore.currentUser?.id ?? null)
 
@@ -375,12 +376,12 @@ onMounted(loadDocument)
                   {{ revisionUploading ? 'Enviando revisão...' : 'Nova revisão deste arquivo' }}
                 </button>
               </div>
-              <p v-if="!document.versions?.length" class="tag-block-empty">
+              <p v-if="!currentFileHistory.length" class="tag-block-empty">
                 Nenhuma versão registrada.
               </p>
               <ul v-else class="revision-list">
                 <li
-                  v-for="(version, index) in document.versions"
+                  v-for="(version, index) in currentFileHistory"
                   :key="version.id"
                   :class="{ 'is-current': index === 0 }"
                 >
