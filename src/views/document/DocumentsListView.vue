@@ -1,4 +1,6 @@
 <script setup>
+import { onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import Button from '@/components/common/Button.vue'
 import DocumentsTable from '@/views/document/components/DocumentsTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
@@ -7,6 +9,11 @@ import {
   ITEMS_PER_PAGE_OPTIONS,
   useDocumentList,
 } from '@/views/document/composables/useDocumentList.js'
+import { useAuthStore } from '@/stores/authStore.js'
+
+const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
 
 const {
   documents,
@@ -20,7 +27,28 @@ const {
   setItemsPerPage,
   goToUpload,
   handleDocumentAction,
+  loadDocuments,
+  setSkipFirstLoad,
 } = useDocumentList()
+
+setSkipFirstLoad(true)
+
+onMounted(() => {
+  if (authStore.currentUser?.id && !route.query.created_by_id) {
+    router
+      .replace({
+        query: {
+          ...route.query,
+          created_by_id: authStore.currentUser.id,
+        },
+      })
+      .then(() => {
+        loadDocuments()
+      })
+  } else if (route.query.created_by_id) {
+    loadDocuments()
+  }
+})
 </script>
 
 <template>
@@ -34,8 +62,6 @@ const {
     </template>
 
     <section class="card">
-      <h2 class="section-title">Meus documentos</h2>
-
       <p v-if="loading" class="status-message">Carregando documentos...</p>
       <p v-else-if="error" class="status-message error-message">{{ error }}</p>
       <p v-else-if="!documents.length" class="status-message">Nenhum documento encontrado.</p>
@@ -82,21 +108,19 @@ const {
 </template>
 
 <style scoped>
-.documents-table {
-  height: calc(100vh - 438px);
+.documents-table,
+.status-message {
+  height: calc(100vh - 400px);
 }
 
 .status-message {
-  margin: 1.5rem 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--color-text-muted);
 }
 .error-message {
   color: var(--color-warning);
-}
-
-.section-title {
-  font-size: 1.1rem;
-  margin-bottom: 1rem;
 }
 
 .info-banner {
