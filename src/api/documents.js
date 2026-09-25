@@ -65,9 +65,8 @@ export function fetchDocuments(query = {}) {
   return request
 }
 
-export function toDocumentPayload(form, { tempFileId, responsibleId, userId }) {
+export function toDocumentPayload(form, { tempFileIds, tempFileId, responsibleId, userId }) {
   const payload = {
-    temp_file_id: tempFileId,
     title: form.title.trim(),
     description: form.description.trim(),
     project_id: Number(form.projectId),
@@ -77,6 +76,8 @@ export function toDocumentPayload(form, { tempFileId, responsibleId, userId }) {
     responsible_id: responsibleId,
     areas: [...form.areas],
   }
+  if (tempFileIds) payload.temp_file_ids = tempFileIds
+  else payload.temp_file_id = tempFileId
   if (userId != null) payload.user_id = userId
   return payload
 }

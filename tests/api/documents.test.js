@@ -45,6 +45,16 @@ describe('toDocumentPayload', () => {
 
     expect(FORM.areas).toEqual(['EST', 'QUA'])
   })
+
+  it('should map multiple temporary files to one document payload', () => {
+    const payload = toDocumentPayload(FORM, {
+      tempFileIds: ['temp-1', 'temp-2'],
+      responsibleId: 12,
+    })
+
+    expect(payload.temp_file_ids).toEqual(['temp-1', 'temp-2'])
+    expect(payload).not.toHaveProperty('temp_file_id')
+  })
 })
 
 describe('createDocument', () => {

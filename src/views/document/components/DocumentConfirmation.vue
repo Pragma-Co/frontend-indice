@@ -32,9 +32,9 @@ function needsNewUpload(error) {
 }
 
 async function publish() {
-  const tempFileId = uploadStore.uploadedDocuments[0]?.id ?? null
+  const tempFileIds = uploadStore.uploadedDocuments.map((document) => document.id)
   try {
-    const document = await store.publish(tempFileId)
+    const document = await store.publish(tempFileIds)
     uploadStore.reset()
     onPublished(document)
   } catch (error) {

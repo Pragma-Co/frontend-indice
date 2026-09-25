@@ -155,14 +155,14 @@ export const useDocumentFormStore = defineStore('documentForm', {
       if (field in this.suggestedFields) delete this.suggestedFields[field]
     },
 
-    async publish(tempFileId) {
+    async publish(tempFileIds) {
       const auth = useAuthStore()
       this.publishing = true
       this.publishError = null
       this.serverErrors = {}
       try {
         const payload = toDocumentPayload(this.form, {
-          tempFileId,
+          tempFileIds,
           responsibleId: auth.currentUser?.id ?? null,
           userId: auth.currentUser?.id ?? null,
         })
