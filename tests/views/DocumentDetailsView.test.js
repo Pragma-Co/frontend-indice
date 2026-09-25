@@ -98,6 +98,7 @@ describe('DocumentDetailsView', () => {
 
   afterEach(() => {
     mountedViews.splice(0).forEach((wrapper) => wrapper.unmount())
+    vi.unstubAllGlobals()
   })
 
   it('should render the document title and metadata after loading', async () => {
@@ -107,7 +108,7 @@ describe('DocumentDetailsView', () => {
     const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
     await flushPromises()
 
-    expect(fetchDocumentDetail).toHaveBeenCalledWith('23', OTHER_USER_ID)
+    expect(fetchDocumentDetail).toHaveBeenCalledWith('23')
     expect(wrapper.text()).toContain('teste 2 docs')
     expect(wrapper.text()).toContain('AK-3400-EST-NOR-0001')
     expect(wrapper.text()).toContain('Norma Interna')
@@ -194,10 +195,13 @@ describe('DocumentDetailsView', () => {
     })
     fetchDocumentDetail.mockResolvedValue(doc)
 
-    globalThis.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      blob: () => Promise.resolve(new Blob(['fake-docx'])),
-    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        blob: () => Promise.resolve(new Blob(['fake-docx'])),
+      }),
+    )
 
     const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
     await flushPromises()
