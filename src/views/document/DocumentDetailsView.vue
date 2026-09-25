@@ -297,19 +297,6 @@ onMounted(loadDocument)
               </button>
             </div>
 
-            <div v-if="hasAccess && currentFile" class="revision-action">
-              <input
-                ref="revisionInput"
-                class="visually-hidden-input"
-                type="file"
-                accept=".pdf,.doc,.docx,.jpeg,.jpg,.png"
-                @change="handleRevisionFile"
-              />
-              <button type="button" :disabled="revisionUploading" @click="openRevisionPicker">
-                {{ revisionUploading ? 'Enviando revisão...' : 'Nova revisão deste arquivo' }}
-              </button>
-            </div>
-
             <DocumentAccessOverlay
               v-if="!hasAccess"
               :requesting="requestingAccess"
@@ -376,6 +363,18 @@ onMounted(loadDocument)
 
             <div class="revision-block">
               <h2>Histórico de versões</h2>
+              <div v-if="hasAccess && currentFile" class="revision-action">
+                <input
+                  ref="revisionInput"
+                  class="visually-hidden-input"
+                  type="file"
+                  accept=".pdf,.doc,.docx,.jpeg,.jpg,.png"
+                  @change="handleRevisionFile"
+                />
+                <button type="button" :disabled="revisionUploading" @click="openRevisionPicker">
+                  {{ revisionUploading ? 'Enviando revisão...' : 'Nova revisão deste arquivo' }}
+                </button>
+              </div>
               <p v-if="!document.versions?.length" class="tag-block-empty">
                 Nenhuma versão registrada.
               </p>
@@ -423,17 +422,17 @@ onMounted(loadDocument)
 }
 
 .revision-action {
-  display: flex;
-  justify-content: center;
-  padding: 0.75rem;
+  margin: 0.5rem 0 0.85rem;
 }
 
 .revision-action button {
-  padding: 0.55rem 0.9rem;
-  border: 1px solid var(--color-border);
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--color-primary);
   border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text);
+  background: var(--color-primary);
+  color: var(--color-on-primary, #fff);
+  font-weight: 600;
   cursor: pointer;
 }
 
