@@ -3,7 +3,13 @@ import { getInitials } from '../utils/formatters'
 
 export const DEV_USER_STORAGE_KEY = 'indice.devUser'
 
-const SEED_USER = { id: 12, name: 'Beatriz Canuto', role: 'Colaborador' }
+const SEED_USER = {
+  id: 12,
+  name: 'Beatriz Canuto',
+  role: 'Colaborador',
+  department: 'Departamento de Engenharia',
+  area: 'Certificação e Aeronavegabilidade',
+}
 
 export function resolveDevelopmentUser(storage = globalThis.localStorage) {
   if (!import.meta.env.DEV) return SEED_USER
