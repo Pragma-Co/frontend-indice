@@ -1,12 +1,19 @@
 <script setup>
+import { onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import Button from '@/components/common/Button.vue'
 import DocumentsTable from '@/views/document/components/DocumentsTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
+import { useAuthStore } from '@/stores/authStore.js'
 import {
   ITEMS_PER_PAGE_OPTIONS,
   useDocumentList,
 } from '@/views/document/composables/useDocumentList.js'
+
+const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
 
 const {
   documents,
@@ -20,7 +27,28 @@ const {
   setItemsPerPage,
   goToUpload,
   handleDocumentAction,
+  loadDocuments,
+  setSkipFirstLoad,
 } = useDocumentList()
+
+setSkipFirstLoad(true)
+
+onMounted(() => {
+  if (authStore.currentUser?.id && !route.query.created_by_id) {
+    router
+      .replace({
+        query: {
+          ...route.query,
+          created_by_id: authStore.currentUser.id,
+        },
+      })
+      .then(() => {
+        loadDocuments()
+      })
+  } else if (route.query.created_by_id) {
+    loadDocuments()
+  }
+})
 </script>
 
 <template>
@@ -87,7 +115,10 @@ const {
 }
 
 .status-message {
-  margin: 1.5rem 0;
+  height: calc(100vh - 437px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   color: var(--color-text-muted);
 }
 .error-message {

@@ -34,6 +34,7 @@ export function useDocumentList() {
   const totalPages = ref(1)
   const loading = ref(true)
   const error = ref('')
+  const skipFirstLoad = ref(false)
 
   const currentPage = computed(() => toPositiveInteger(route.query.page) ?? 1)
   const itemsPerPage = computed(() => {
@@ -103,7 +104,15 @@ export function useDocumentList() {
     }
   }
 
-  onMounted(loadDocuments)
+  function setSkipFirstLoad(value) {
+    skipFirstLoad.value = value
+  }
+
+  onMounted(() => {
+    if (!skipFirstLoad.value) {
+      loadDocuments()
+    }
+  })
   watch(() => buildDocumentQueryKey(route.query), loadDocuments)
 
   return {
@@ -117,6 +126,7 @@ export function useDocumentList() {
     loadDocuments,
     goToPage,
     setItemsPerPage,
+    setSkipFirstLoad,
     goToUpload,
     goToDocumentDetails,
     handleDocumentAction,

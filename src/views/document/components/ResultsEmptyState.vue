@@ -35,6 +35,7 @@ defineEmits(['clear'])
   align-items: center;
   gap: 0.5rem;
   padding: 3rem 1rem;
+  margin: auto 0;
   text-align: center;
   color: var(--color-text-muted);
 }
