@@ -99,7 +99,7 @@ async function loadDocument() {
   error.value = ''
   notFound.value = false
   try {
-    document.value = await fetchDocumentDetail(route.params.documentId, currentUserId.value)
+    document.value = await fetchDocumentDetail(route.params.documentId)
     currentFileIndex.value = 0
     accessRequested.value = document.value.access_request?.status === 'PENDING'
   } catch (err) {
