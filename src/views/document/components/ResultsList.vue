@@ -84,17 +84,16 @@ onMounted(async () => {
     <ResultsSearchBar :term="filters.q" @search="searchAgain" />
 
     <div class="results-layout">
-      <aside class="results-sidebar">
-        <ResultsFilterPanel
-          :filters="filters"
-          :options="options"
-          :loading="optionsLoading"
-          @apply="applyFilters"
-          @clear="clearFilters"
-        />
-      </aside>
+      <ResultsFilterPanel
+        class="results-content"
+        :filters="filters"
+        :options="options"
+        :loading="optionsLoading"
+        @apply="applyFilters"
+        @clear="clearFilters"
+      />
 
-      <section class="card results-main" aria-live="polite">
+      <section class="card results-main results-content" aria-live="polite">
         <h2 class="results-headline" data-testid="results-headline">{{ headline }}</h2>
 
         <p v-if="loading" class="status-message">Carregando documentos...</p>
@@ -131,7 +130,6 @@ onMounted(async () => {
   display: flex;
   flex-direction: column;
   max-width: 1440px;
-  height: calc(100vh - 56px);
   padding: 1.5rem 1.5rem 1.25rem;
 }
 
@@ -140,13 +138,11 @@ onMounted(async () => {
   grid-template-columns: 240px minmax(0, 1fr);
   gap: 1rem;
   flex: 1;
-  min-height: 0;
   margin-top: 0.75rem;
 }
 
-.results-sidebar {
-  min-height: 0;
-  overflow-y: auto;
+.results-content {
+  max-height: calc(100vh - 250px);
 }
 
 .results-main {
@@ -230,10 +226,6 @@ onMounted(async () => {
 
   .results-layout {
     grid-template-columns: 1fr;
-  }
-
-  .results-sidebar {
-    overflow: visible;
   }
 
   .results-main :deep(.table-scroll) {
