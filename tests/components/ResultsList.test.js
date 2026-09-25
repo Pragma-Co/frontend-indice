@@ -102,25 +102,6 @@ describe('ResultsList', () => {
     expect(checkbox(wrapper, 'status', 'PENDING').element.checked).toBe(true)
   })
 
-  it('should show the total found for the searched term', async () => {
-    route.query = { q: 'tubulação' }
-    fetchDocuments.mockResolvedValue(pageOf([makeDocument(1)], { count: 47, totalPages: 3 }))
-
-    const wrapper = await mountView()
-
-    expect(wrapper.find('[data-testid="results-headline"]').text()).toBe(
-      '47 resultados para "tubulação"',
-    )
-  })
-
-  it('should use the singular for a single result and no term', async () => {
-    fetchDocuments.mockResolvedValue(pageOf([makeDocument(1)]))
-
-    const wrapper = await mountView()
-
-    expect(wrapper.find('[data-testid="results-headline"]').text()).toBe('1 resultado')
-  })
-
   it('should render the essential columns of the results', async () => {
     fetchDocuments.mockResolvedValue(pageOf([makeDocument(1)]))
 

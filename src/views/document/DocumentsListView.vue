@@ -62,8 +62,6 @@ onMounted(() => {
     </template>
 
     <section class="card">
-      <h2 class="section-title">Meus documentos</h2>
-
       <p v-if="loading" class="status-message">Carregando documentos...</p>
       <p v-else-if="error" class="status-message error-message">{{ error }}</p>
       <p v-else-if="!documents.length" class="status-message">Nenhum documento encontrado.</p>
@@ -110,12 +108,12 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.documents-table {
-  height: calc(100vh - 438px);
+.documents-table,
+.status-message {
+  height: calc(100vh - 400px);
 }
 
 .status-message {
-  height: calc(100vh - 437px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -123,11 +121,6 @@ onMounted(() => {
 }
 .error-message {
   color: var(--color-warning);
-}
-
-.section-title {
-  font-size: 1.1rem;
-  margin-bottom: 1rem;
 }
 
 .info-banner {
