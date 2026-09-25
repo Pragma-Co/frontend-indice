@@ -160,11 +160,7 @@ async function handleRevisionFile(event) {
       notifications.error('Este arquivo já existe e não pode ser usado como revisão.')
       return
     }
-    await createDocumentRevision(
-      route.params.documentId,
-      upload.temp_file_id,
-      currentFile.value.id,
-    )
+    await createDocumentRevision(route.params.documentId, upload.temp_file_id, currentFile.value.id)
     notifications.success('Nova revisão criada com sucesso.')
     await loadDocument()
   } catch (err) {
