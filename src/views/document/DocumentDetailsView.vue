@@ -2,7 +2,12 @@
 import { onMounted, ref, computed, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { renderAsync } from 'docx-preview'
-import { fetchDocumentDetail, requestDocumentAccess } from '@/api/documents.js'
+import {
+  createDocumentRevision,
+  fetchDocumentDetail,
+  requestDocumentAccess,
+  uploadDocument,
+} from '@/api/documents.js'
 import { useAuthStore } from '@/stores/authStore.js'
 import { useNotificationStore } from '@/stores/notificationStore.js'
 import { statusBadgeFor } from '@/utils/documentStatus.js'
@@ -21,6 +26,8 @@ const notFound = ref(false)
 const requestingAccess = ref(false)
 const accessRequested = ref(false)
 const requestError = ref('')
+const revisionUploading = ref(false)
+const revisionInput = ref(null)
 
 const docxContainer = ref(null)
 const docxLoading = ref(false)
@@ -133,6 +140,40 @@ async function handleRequestAccess() {
     notifications.error(requestError.value)
   } finally {
     requestingAccess.value = false
+  }
+}
+
+function openRevisionPicker() {
+  revisionInput.value?.click()
+}
+
+async function handleRevisionFile(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file || !currentFile.value) return
+
+  revisionUploading.value = true
+  try {
+    const upload = await uploadDocument(file, { userId: currentUserId.value })
+    if (upload?.duplicate) {
+      notifications.error('Este arquivo já existe e não pode ser usado como revisão.')
+      return
+    }
+    await createDocumentRevision(
+      route.params.documentId,
+      upload.temp_file_id,
+      currentFile.value.id,
+    )
+    notifications.success('Nova revisão criada com sucesso.')
+    await loadDocument()
+  } catch (err) {
+    if (err?.status === 409) {
+      notifications.error('Este arquivo já existe e não pode ser usado como revisão.')
+    } else {
+      notifications.error('Não foi possível criar a nova revisão.')
+    }
+  } finally {
+    revisionUploading.value = false
   }
 }
 
@@ -256,6 +297,19 @@ onMounted(loadDocument)
               </button>
             </div>
 
+            <div v-if="hasAccess && currentFile" class="revision-action">
+              <input
+                ref="revisionInput"
+                class="visually-hidden-input"
+                type="file"
+                accept=".pdf,.doc,.docx,.jpeg,.jpg,.png"
+                @change="handleRevisionFile"
+              />
+              <button type="button" :disabled="revisionUploading" @click="openRevisionPicker">
+                {{ revisionUploading ? 'Enviando revisão...' : 'Nova revisão deste arquivo' }}
+              </button>
+            </div>
+
             <DocumentAccessOverlay
               v-if="!hasAccess"
               :requesting="requestingAccess"
@@ -366,6 +420,34 @@ onMounted(loadDocument)
   min-height: calc(100vh - 56px);
   padding: 1.25rem 2rem 1.25rem;
   background: var(--color-background);
+}
+
+.revision-action {
+  display: flex;
+  justify-content: center;
+  padding: 0.75rem;
+}
+
+.revision-action button {
+  padding: 0.55rem 0.9rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.revision-action button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+
+.visually-hidden-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .details-shell {

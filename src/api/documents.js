@@ -20,6 +20,13 @@ export function uploadDocument(file, { onProgress, signal, userId } = {}) {
   return uploadWithProgress('/documents/upload', formData, { onProgress, signal })
 }
 
+export function createDocumentRevision(documentId, tempFileId, sourceFileId) {
+  return api.post(`/documents/${documentId}/revisions`, {
+    temp_file_id: tempFileId,
+    source_file_id: sourceFileId,
+  })
+}
+
 export async function fetchSimpleFilters() {
   if (simpleFiltersCache) return simpleFiltersCache
   if (!simpleFiltersRequest) {
