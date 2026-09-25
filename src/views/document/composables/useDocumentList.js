@@ -20,7 +20,7 @@ export function normalizeDocument(document) {
     revision: document.revision?.label ?? '-',
     status: document.status ?? null,
     updatedAt: document.updated_at,
-    updatedBy: document.updated_by ?? 'sistema',
+    updatedBy: document.updated_by?.name ?? document.created_by?.name ?? 'sistema',
     action: document.action ?? 'view-details',
   }
 }
