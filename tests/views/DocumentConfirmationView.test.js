@@ -105,7 +105,7 @@ describe('DocumentConfirmationView', () => {
       await flushPromises()
 
       expect(createDocument).toHaveBeenCalledWith(
-        expect.objectContaining({ temp_file_ids: 'temp-1', responsible_id: 12 }),
+        expect.objectContaining({ temp_file_ids: ['temp-1'], responsible_id: 12 }),
       )
       expect(push).toHaveBeenCalledWith({ name: 'document-list' })
       expect(useNotificationStore().items[0]).toMatchObject({
