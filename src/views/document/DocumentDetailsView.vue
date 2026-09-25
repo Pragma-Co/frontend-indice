@@ -624,10 +624,11 @@ onMounted(loadDocument)
 
 .preview-footer button {
   padding: 0.45rem 0.65rem;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-primary);
   border-radius: var(--radius-sm);
-  background: var(--color-surface);
-  color: var(--color-text-muted);
+  background: var(--color-primary);
+  color: var(--color-on-primary, #fff);
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
 }
