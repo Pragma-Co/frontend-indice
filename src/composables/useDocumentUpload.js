@@ -12,6 +12,7 @@ let nextId = 1
 
 export function useDocumentUpload({ getUserId = () => undefined } = {}) {
   const queue = ref([])
+  const seenHashes = new Set()
 
   const hasSucceededFile = computed(() => queue.value.some((item) => item.status === 'success'))
   const allSettled = computed(
@@ -40,7 +41,7 @@ export function useDocumentUpload({ getUserId = () => undefined } = {}) {
     }
   }
 
-  function validateAndQueue(item) {
+  async function validateAndQueue(item) {
     if (!isFileTypeAccepted(item.file, ACCEPTED_EXTENSIONS)) {
       item.status = 'invalid'
       item.error = 'Formato não suportado'
@@ -52,8 +53,28 @@ export function useDocumentUpload({ getUserId = () => undefined } = {}) {
       return
     }
 
-    item.status = 'ready'
-    processQueue()
+    try {
+      const bytes = await item.file.arrayBuffer()
+      const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes)
+      const fileHash = Array.from(new Uint8Array(digest), (byte) =>
+        byte.toString(16).padStart(2, '0'),
+      ).join('')
+
+      if (seenHashes.has(fileHash)) {
+        item.status = 'duplicate'
+        item.duplicateInQueue = true
+        item.error = 'Arquivo repetido nesta seleção'
+        return
+      }
+
+      seenHashes.add(fileHash)
+      item.sha256 = fileHash
+      item.status = 'ready'
+      processQueue()
+    } catch (error) {
+      item.status = 'error'
+      item.error = error.message || 'Não foi possível verificar o arquivo'
+    }
   }
 
   function activeUploadsCount() {
@@ -107,6 +128,7 @@ export function useDocumentUpload({ getUserId = () => undefined } = {}) {
 
   function reset() {
     queue.value = []
+    seenHashes.clear()
   }
 
   function restore(documents) {

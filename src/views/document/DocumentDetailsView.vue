@@ -33,8 +33,16 @@ const docxContainer = ref(null)
 const docxLoading = ref(false)
 
 const currentFileIndex = ref(0)
+const selectedRevisionId = ref(null)
 
-const currentRevision = computed(() => document.value?.revision ?? null)
+const currentRevision = computed(() => {
+  const revisions = document.value?.versions ?? []
+  return (
+    revisions.find((revision) => revision.id === selectedRevisionId.value) ??
+    document.value?.revision ??
+    null
+  )
+})
 
 const allFiles = computed(() => currentRevision.value?.files ?? [])
 
@@ -46,7 +54,6 @@ const currentFile = computed(() => {
 })
 
 const totalFiles = computed(() => allFiles.value.length)
-const currentFileHistory = computed(() => currentFile.value?.revision_history ?? [])
 
 const currentUserId = computed(() => authStore.currentUser?.id ?? null)
 
@@ -102,12 +109,18 @@ function nextFile() {
   if (currentFileIndex.value < totalFiles.value - 1) currentFileIndex.value++
 }
 
+function selectRevision(revision) {
+  selectedRevisionId.value = revision.id
+  currentFileIndex.value = 0
+}
+
 async function loadDocument() {
   loading.value = true
   error.value = ''
   notFound.value = false
   try {
     document.value = await fetchDocumentDetail(route.params.documentId, currentUserId.value)
+    selectedRevisionId.value = document.value.revision?.id ?? null
     currentFileIndex.value = 0
     accessRequested.value = document.value.access_request?.status === 'PENDING'
   } catch (err) {
@@ -149,18 +162,22 @@ function openRevisionPicker() {
 }
 
 async function handleRevisionFile(event) {
-  const file = event.target.files?.[0]
+  const files = Array.from(event.target.files ?? [])
   event.target.value = ''
-  if (!file || !currentFile.value) return
+  if (!files.length) return
 
   revisionUploading.value = true
   try {
-    const upload = await uploadDocument(file, { userId: currentUserId.value })
-    if (upload?.duplicate) {
-      notifications.error('Este arquivo já existe e não pode ser usado como revisão.')
-      return
+    const tempFileIds = []
+    for (const file of files) {
+      const upload = await uploadDocument(file, { userId: currentUserId.value })
+      if (upload?.duplicate) {
+        notifications.error(`O arquivo ${file.name} já existe e não pode ser usado nesta revisão.`)
+        return
+      }
+      tempFileIds.push(upload.temp_file_id)
     }
-    await createDocumentRevision(route.params.documentId, upload.temp_file_id, currentFile.value.id)
+    await createDocumentRevision(route.params.documentId, tempFileIds)
     notifications.success('Nova revisão criada com sucesso.')
     await loadDocument()
   } catch (err) {
@@ -381,31 +398,45 @@ onMounted(loadDocument)
 
             <div class="revision-block">
               <h2>Histórico de versões</h2>
-              <div v-if="hasAccess && currentFile" class="revision-action">
+              <div v-if="hasAccess && document.revision" class="revision-action">
                 <input
                   ref="revisionInput"
                   class="visually-hidden-input"
                   type="file"
+                  multiple
                   accept=".pdf,.doc,.docx,.jpeg,.jpg,.png"
                   @change="handleRevisionFile"
                 />
                 <button type="button" :disabled="revisionUploading" @click="openRevisionPicker">
-                  {{ revisionUploading ? 'Enviando revisão...' : 'Nova revisão deste arquivo' }}
+                  {{ revisionUploading ? 'Enviando revisão...' : 'Adicionar arquivos à nova revisão' }}
                 </button>
               </div>
-              <p v-if="!currentFileHistory.length" class="tag-block-empty">
+              <p v-if="!document.versions?.length" class="tag-block-empty">
                 Nenhuma versão registrada.
               </p>
               <ul v-else class="revision-list">
                 <li
-                  v-for="(version, index) in currentFileHistory"
+                  v-for="version in document.versions"
                   :key="version.id"
-                  :class="{ 'is-current': index === 0 }"
+                  role="button"
+                  tabindex="0"
+                  :aria-pressed="version.id === currentRevision?.id"
+                  :class="{
+                    'is-current': version.id === document.revision?.id,
+                    'is-selected': version.id === currentRevision?.id,
+                  }"
+                  @click="selectRevision(version)"
+                  @keydown.enter.space.prevent="selectRevision(version)"
                 >
                   <div class="revision-header">
-                    <strong>REV{{ version.version }}</strong>
-                    <span v-if="index === 0" class="current-tag">Versão atual</span>
+                    <strong class="revision-select">
+                      REV{{ version.version }}
+                    </strong>
+                    <span v-if="version.id === document.revision?.id" class="current-tag">
+                      Versão atual
+                    </span>
                   </div>
+                  <p class="revision-file-count">{{ version.files?.length ?? 0 }} arquivo(s)</p>
                   <dl class="revision-meta">
                     <div>
                       <dt>Data de emissão</dt>
@@ -766,11 +797,22 @@ dd {
   transition:
     border-color 0.15s ease,
     background 0.15s ease;
+  cursor: pointer;
+}
+
+.revision-list li:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .revision-list li.is-current {
   border-color: var(--color-primary);
   background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-muted));
+}
+
+.revision-list li.is-selected {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
 }
 
 .revision-header {
@@ -780,6 +822,16 @@ dd {
   margin-bottom: 0.4rem;
   font-size: 0.8rem;
   color: var(--color-primary);
+}
+
+.revision-select {
+  color: var(--color-primary);
+}
+
+.revision-file-count {
+  margin: 0.35rem 0;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
 }
 
 .current-tag {
