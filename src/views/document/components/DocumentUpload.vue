@@ -104,8 +104,7 @@ onUnmounted(() => {
       v-if="activeDuplicate"
       :file-name="activeDuplicate.name"
       :existing-document="activeDuplicate.duplicateInfo"
-      @discard="resolveDuplicate(activeDuplicate, false)"
-      @save-as-revision="resolveDuplicate(activeDuplicate, true)"
+      @discard="resolveDuplicate(activeDuplicate)"
     />
   </PageLayout>
 </template>

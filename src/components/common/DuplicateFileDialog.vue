@@ -12,7 +12,7 @@ defineProps({
   },
 })
 
-defineEmits(['discard', 'save-as-revision'])
+defineEmits(['discard'])
 </script>
 
 <template>
@@ -23,13 +23,10 @@ defineEmits(['discard', 'save-as-revision'])
         O arquivo <strong>{{ fileName }}</strong> já existe no sistema<span v-if="existingDocument"
           >, cadastrado como <strong>{{ existingDocument.codigo_ra }}</strong> —
           {{ existingDocument.titulo }}</span
-        >. Deseja salvá-lo como uma nova revisão?
+        >. O upload foi bloqueado para evitar duplicidade.
       </p>
       <div class="dialog-actions">
-        <Button variant="outline" @click="$emit('discard')">Cancelar</Button>
-        <Button variant="primary" @click="$emit('save-as-revision')"
-          >Salvar como nova revisão</Button
-        >
+        <Button variant="primary" @click="$emit('discard')">Entendi</Button>
       </div>
     </div>
   </div>

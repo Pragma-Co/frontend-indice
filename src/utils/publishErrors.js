@@ -1,5 +1,6 @@
 const FORM_FIELD_BY_PAYLOAD_KEY = {
   temp_file_id: 'tempFileId',
+  temp_file_ids: 'tempFileId',
   title: 'title',
   description: 'description',
   project_id: 'projectId',
