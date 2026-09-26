@@ -85,51 +85,58 @@ function clear() {
 
     <p v-if="loading" class="filter-panel-hint">Carregando filtros...</p>
 
-    <fieldset v-for="group in groups" :key="group.name" class="filter-group">
-      <legend>{{ group.title }}</legend>
-      <label v-for="item in group.items" :key="item.value" class="filter-option">
-        <input v-model="draft[group.name]" type="checkbox" :name="group.name" :value="item.value" />
-        <span>{{ item.label }}</span>
-      </label>
-      <p v-if="!loading && !group.items.length" class="filter-panel-hint">
-        Sem opções disponíveis.
-      </p>
-    </fieldset>
+    <div class="filter-scroll">
+      <fieldset v-for="group in groups" :key="group.name" class="filter-group">
+        <legend>{{ group.title }}</legend>
+        <label v-for="item in group.items" :key="item.value" class="filter-option">
+          <input
+            v-model="draft[group.name]"
+            type="checkbox"
+            :name="group.name"
+            :value="item.value"
+          />
+          <span>{{ item.label }}</span>
+        </label>
+        <p v-if="!loading && !group.items.length" class="filter-panel-hint">
+          Sem opções disponíveis.
+        </p>
+      </fieldset>
 
-    <fieldset class="filter-group">
-      <legend>Data de emissão</legend>
-      <label class="filter-field">
-        <span>Período</span>
-        <select name="data" :value="draft.data" @change="choosePreset">
-          <option value="">Qualquer data</option>
-          <option v-for="date in props.options.dates ?? []" :key="date.value" :value="date.value">
-            {{ date.label }}
-          </option>
-        </select>
-      </label>
-      <div class="filter-range">
+      <fieldset class="filter-group">
+        <legend>Data de emissão</legend>
         <label class="filter-field">
-          <span>De</span>
-          <input
-            type="date"
-            name="date_from"
-            :value="draft.dateFrom"
-            :max="draft.dateTo || undefined"
-            @change="chooseRange('dateFrom', $event)"
-          />
+          <span>Período</span>
+          <select name="data" :value="draft.data" @change="choosePreset">
+            <option value="">Qualquer data</option>
+            <option v-for="date in props.options.dates ?? []" :key="date.value" :value="date.value">
+              {{ date.label }}
+            </option>
+          </select>
         </label>
-        <label class="filter-field">
-          <span>Até</span>
-          <input
-            type="date"
-            name="date_to"
-            :value="draft.dateTo"
-            :min="draft.dateFrom || undefined"
-            @change="chooseRange('dateTo', $event)"
-          />
-        </label>
-      </div>
-    </fieldset>
+        <div class="filter-range">
+          <label class="filter-field">
+            <span>De</span>
+            <input
+              type="date"
+              name="date_from"
+              :value="draft.dateFrom"
+              :max="draft.dateTo || undefined"
+              @change="chooseRange('dateFrom', $event)"
+            />
+          </label>
+          <label class="filter-field">
+            <span>Até</span>
+            <input
+              type="date"
+              name="date_to"
+              :value="draft.dateTo"
+              :min="draft.dateFrom || undefined"
+              @change="chooseRange('dateTo', $event)"
+            />
+          </label>
+        </div>
+      </fieldset>
+    </div>
 
     <div class="filter-actions">
       <Button variant="primary">
@@ -147,15 +154,40 @@ function clear() {
   gap: 1.1rem;
   margin-top: 0;
   padding: 1.25rem;
+
+  max-height: calc(100vh - 8rem);
+  min-height: 0;
+  overflow: hidden;
 }
 
 .filter-panel-title {
+  flex-shrink: 0;
   font-size: 0.95rem;
 }
 
 .filter-panel-hint {
   font-size: 0.8rem;
   color: var(--color-text-muted);
+}
+
+.filter-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  padding-right: 0.25rem;
+  scrollbar-gutter: stable;
+}
+
+.filter-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.filter-scroll::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
 }
 
 .filter-group {
@@ -213,8 +245,12 @@ function clear() {
 }
 
 .filter-actions {
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 </style>

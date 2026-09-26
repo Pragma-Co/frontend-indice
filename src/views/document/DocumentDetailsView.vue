@@ -107,7 +107,7 @@ async function loadDocument() {
   error.value = ''
   notFound.value = false
   try {
-    document.value = await fetchDocumentDetail(route.params.documentId, currentUserId.value)
+    document.value = await fetchDocumentDetail(route.params.documentId)
     currentFileIndex.value = 0
     accessRequested.value = document.value.access_request?.status === 'PENDING'
   } catch (err) {
@@ -224,7 +224,28 @@ onMounted(loadDocument)
     <div class="details-shell">
       <Breadcrumbs :title="document?.title ?? 'Documento'" />
 
-      <p v-if="loading" class="status-message">Carregando documento...</p>
+      <div v-if="loading" class="details-grid" aria-busy="true" aria-live="polite">
+        <section class="preview-panel preview-panel--skeleton" aria-label="Carregando documento">
+          <div class="skeleton skeleton-preview" />
+          <span class="skeleton-caption">Carregando pré-visualização…</span>
+        </section>
+
+        <aside class="document-card document-card--skeleton" aria-hidden="true">
+          <div class="skeleton skeleton-line skeleton-line--sm" />
+          <div class="skeleton skeleton-line skeleton-line--lg" />
+          <div class="skeleton skeleton-line skeleton-line--md" />
+
+          <div class="skeleton-metadata">
+            <div v-for="n in 6" :key="n" class="skeleton-metadata-row">
+              <div class="skeleton skeleton-line skeleton-line--xs" />
+              <div class="skeleton skeleton-line skeleton-line--sm" />
+            </div>
+          </div>
+
+          <div class="skeleton skeleton-block" />
+          <div class="skeleton skeleton-block" />
+        </aside>
+      </div>
       <p v-else-if="notFound" class="status-message error-message">Documento não encontrado.</p>
       <p v-else-if="error" class="status-message error-message">{{ error }}</p>
 
@@ -785,6 +806,101 @@ dd {
   gap: 1rem;
 }
 
+.preview-panel--skeleton,
+.document-card--skeleton {
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-sm);
+}
+
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-surface) 70%, transparent),
+    transparent
+  );
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-preview {
+  flex: 1;
+  width: 100%;
+  min-height: 24rem;
+  border-radius: var(--radius-sm);
+}
+
+.skeleton-caption {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  pointer-events: none;
+}
+
+.skeleton-line {
+  height: 0.85rem;
+  border-radius: 999px;
+}
+
+.skeleton-line--xs {
+  width: 30%;
+  height: 0.7rem;
+}
+
+.skeleton-line--sm {
+  width: 45%;
+  height: 0.7rem;
+}
+
+.skeleton-line--md {
+  width: 70%;
+  margin-top: 0.5rem;
+}
+
+.skeleton-line--lg {
+  width: 85%;
+  height: 1.05rem;
+  margin-top: 0.85rem;
+}
+
+.skeleton-metadata {
+  display: grid;
+  gap: 0.8rem;
+  margin-top: 1.25rem;
+}
+
+.skeleton-metadata-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.skeleton-block {
+  height: 4.5rem;
+  margin-top: 1.25rem;
+}
+
 @media (max-width: 900px) {
   .details-page {
     padding: 1rem;
@@ -796,6 +912,12 @@ dd {
 
   .preview-panel {
     min-height: 32rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
   }
 }
 </style>

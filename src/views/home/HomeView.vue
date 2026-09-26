@@ -4,13 +4,16 @@ import { useRouter } from 'vue-router'
 import { fetchSimpleFilters } from '@/api/documents'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import SearchPanel from './components/SearchPanel.vue'
+import { useAuthStore } from '@/stores/authStore.js'
 
 const router = useRouter()
+const auth = useAuthStore()
+
 const user = {
-  name: 'João Silva',
-  role: 'Engenheiro',
-  department: 'Departamento de Engenharia',
-  area: 'Área Operacional Geral',
+  name: auth.currentUser?.name,
+  role: auth.currentUser?.role,
+  department: auth.currentUser?.department,
+  area: auth.currentUser?.area,
 }
 const fallbackFilters = {
   dates: [
