@@ -349,9 +349,10 @@ onMounted(restoreFilters)
   color: white;
 }
 .upload-button {
-  background: grey;
-  color: white;
+  background: transparent;
+  color: var(--color-primary);
   border-radius: var(--radius-sm);
+  border: 1px solid var(--color-primary);
 }
 .quick-filters {
   grid-column: 1 / -1;

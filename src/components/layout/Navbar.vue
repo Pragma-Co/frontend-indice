@@ -1,8 +1,8 @@
 <script setup>
 import { useRoute } from 'vue-router'
-import logo from '../../assets/logo.svg'
-import bellIcon from '../../assets/icons/bell.svg'
-import { useAuthStore } from '../../stores/authStore'
+import logo from '@/assets/logo.svg'
+import bellIcon from '@/assets/icons/bell.svg'
+import { useAuthStore } from '@/stores/authStore'
 
 const route = useRoute()
 const auth = useAuthStore()

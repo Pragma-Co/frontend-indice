@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { reactive } from 'vue'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive, ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 
 const route = reactive({ query: {} })
@@ -15,42 +15,81 @@ vi.mock('vue-router', () => ({
   useRoute: () => route,
   useRouter: () => router,
 }))
-vi.mock('@/api/documents.js', () => ({ fetchDocuments: vi.fn() }))
 
-import { fetchDocuments } from '@/api/documents.js'
+vi.mock('@/stores/authStore.js', () => ({
+  useAuthStore: () => ({
+    currentUser: { id: 12, name: 'Beatriz Canuto' },
+  }),
+}))
+
+const documents = ref([])
+const totalItems = ref(0)
+const totalPages = ref(1)
+const currentPage = ref(1)
+const itemsPerPage = ref(20)
+const loading = ref(false)
+const error = ref('')
+
+const goToPage = vi.fn()
+const setItemsPerPage = vi.fn()
+const goToUpload = vi.fn()
+const handleDocumentAction = vi.fn()
+const loadDocuments = vi.fn()
+const setSkipFirstLoad = vi.fn()
+
+vi.mock('@/views/document/composables/useDocumentList.js', () => ({
+  ITEMS_PER_PAGE_OPTIONS: [10, 20, 50],
+  useDocumentList: () => ({
+    documents,
+    totalItems,
+    totalPages,
+    currentPage,
+    itemsPerPage,
+    loading,
+    error,
+    goToPage,
+    setItemsPerPage,
+    goToUpload,
+    handleDocumentAction,
+    loadDocuments,
+    setSkipFirstLoad,
+  }),
+}))
+
+const stubs = {
+  PageLayout: { template: '<div><slot name="actions" /><slot /></div>' },
+  Button: {
+    props: ['variant'],
+    emits: ['click'],
+    template: '<button type="button" @click="$emit(\'click\')"><slot /></button>',
+  },
+  DocumentsTable: {
+    props: ['documents'],
+    emits: ['action'],
+    template:
+      '<table><tbody><tr v-for="doc in documents" :key="doc.id"><td>{{ doc.title }}</td></tr></tbody></table>',
+  },
+  Pagination: {
+    props: ['currentPage', 'totalPages', 'totalItems', 'itemsPerPage', 'itemsPerPageOptions'],
+    emits: ['change-page', 'change-items-per-page'],
+    template: '<div class="pagination-stub" />',
+  },
+}
+
 import DocumentsListView from '@/views/document/DocumentsListView.vue'
 
-const NEWEST = {
-  id: 33,
-  code: 'AK-2100-MAT-ESP-0004',
-  title: 'Card 31 live',
-  description: '',
-  type: { code: 'ESP', name: 'Especificação Técnica' },
-  discipline: { code: 'MAT', name: 'Materiais e Processos' },
-  areas: [{ acronym: 'EST', name: 'Engenharia Estrutural' }],
-  revision: { version: 1, label: 'REV01' },
-  status: 'PENDING',
-  updated_at: '2026-09-18T21:30:04+00:00',
+function resetState() {
+  documents.value = []
+  totalItems.value = 0
+  totalPages.value = 1
+  currentPage.value = 1
+  itemsPerPage.value = 20
+  loading.value = false
+  error.value = ''
 }
-const OLDER = {
-  ...NEWEST,
-  id: 3,
-  code: 'AK-2100-EST-MEM-0001',
-  title: 'Memorial de cálculo da longarina',
-  revision: null,
-  status: 'APPROVED',
-  updated_at: '2026-09-10T12:00:00+00:00',
-}
-
-function page(results, { count = results.length, totalPages = 1 } = {}) {
-  return { count, total_pages: totalPages, current_page: 1, page_size: 20, results }
-}
-
-const mountedViews = []
 
 async function mountView() {
-  const wrapper = mount(DocumentsListView)
-  mountedViews.push(wrapper)
+  const wrapper = mount(DocumentsListView, { global: { stubs } })
   await flushPromises()
   return wrapper
 }
@@ -58,16 +97,44 @@ async function mountView() {
 describe('DocumentsListView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    resetState()
     route.query = {}
-    fetchDocuments.mockResolvedValue(page([]))
   })
 
-  afterEach(() => {
-    mountedViews.splice(0).forEach((wrapper) => wrapper.unmount())
+  it('should request only the documents created by the current user', async () => {
+    await mountView()
+
+    expect(router.replace).toHaveBeenCalledWith({
+      query: { created_by_id: 12 },
+    })
+    expect(loadDocuments).toHaveBeenCalledTimes(1)
   })
 
-  it('should list the results of the API keeping the newest document on top', async () => {
-    fetchDocuments.mockResolvedValue(page([NEWEST, OLDER], { count: 30, totalPages: 2 }))
+  it('should keep the existing query when adding created_by_id', async () => {
+    route.query = { page: '2' }
+
+    await mountView()
+
+    expect(router.replace).toHaveBeenCalledWith({
+      query: { page: '2', created_by_id: 12 },
+    })
+    expect(loadDocuments).toHaveBeenCalledTimes(1)
+  })
+
+  it('should not rewrite the query when it already carries created_by_id', async () => {
+    route.query = { created_by_id: '12' }
+
+    await mountView()
+
+    expect(router.replace).not.toHaveBeenCalled()
+    expect(loadDocuments).toHaveBeenCalledTimes(1)
+  })
+
+  it('should list the documents provided by the composable', async () => {
+    documents.value = [
+      { id: 33, title: 'Card 31 live' },
+      { id: 3, title: 'Memorial de cálculo da longarina' },
+    ]
 
     const wrapper = await mountView()
 
@@ -77,27 +144,6 @@ describe('DocumentsListView', () => {
     expect(rows[1].text()).toContain('Memorial de cálculo da longarina')
   })
 
-  it('should show a freshly published document as under review with its revision label', async () => {
-    fetchDocuments.mockResolvedValue(page([NEWEST, OLDER], { count: 30, totalPages: 2 }))
-
-    const wrapper = await mountView()
-
-    const [first, second] = wrapper.findAll('tbody tr')
-    expect(first.text()).toContain('Em revisão')
-    expect(first.text()).toContain('REV01')
-    expect(second.text()).toContain('Vigente')
-    expect(second.find('.badge').text()).toBe('-')
-  })
-
-  it('should show the total found by the server, not the size of the page', async () => {
-    fetchDocuments.mockResolvedValue(page([NEWEST, OLDER], { count: 30, totalPages: 2 }))
-
-    const wrapper = await mountView()
-
-    expect(wrapper.text()).toContain('30')
-    expect(fetchDocuments).toHaveBeenCalledWith({ page: 1, page_size: 20 })
-  })
-
   it('should show the empty state when there is no document', async () => {
     const wrapper = await mountView()
 
@@ -105,23 +151,42 @@ describe('DocumentsListView', () => {
     expect(wrapper.find('tbody').exists()).toBe(false)
   })
 
+  it('should show a loading message while the list is being fetched', async () => {
+    loading.value = true
+
+    const wrapper = await mountView()
+
+    expect(wrapper.text()).toContain('Carregando documentos...')
+    expect(wrapper.find('tbody').exists()).toBe(false)
+  })
+
   it('should show a friendly message when the list cannot be loaded', async () => {
-    fetchDocuments.mockRejectedValue(new Error('Documents failed with status 500'))
+    error.value = 'Não foi possível carregar os documentos.'
 
     const wrapper = await mountView()
 
     expect(wrapper.text()).toContain('Não foi possível carregar os documentos.')
-    expect(wrapper.text()).not.toContain('500')
   })
 
   it('should open the upload from the new document button', async () => {
     const wrapper = await mountView()
 
-    await wrapper
+    const newButton = wrapper
       .findAll('button')
       .find((button) => button.text().includes('Novo documento'))
-      .trigger('click')
 
-    expect(router.push).toHaveBeenCalledWith({ name: 'document-upload' })
+    await newButton.trigger('click')
+
+    expect(goToUpload).toHaveBeenCalledTimes(1)
+  })
+
+  it('should forward the action event from the documents table', async () => {
+    documents.value = [{ id: 33, title: 'Card 31 live' }]
+
+    const wrapper = await mountView()
+
+    await wrapper.findComponent(stubs.DocumentsTable).vm.$emit('action', { id: 33, type: 'view' })
+
+    expect(handleDocumentAction).toHaveBeenCalledWith({ id: 33, type: 'view' })
   })
 })
