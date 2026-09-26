@@ -97,8 +97,9 @@ export function listDocumentTypes() {
   return api.get('/documents/types')
 }
 
-export function fetchDocumentDetail(documentId) {
-  return api.get(`/documents/${documentId}`)
+export function fetchDocumentDetail(documentId, userId) {
+  const query = userId ? `?user_id=${userId}` : ''
+  return api.get(`/documents/${documentId}${query}`)
 }
 
 export function requestDocumentSuggestions(documentId) {

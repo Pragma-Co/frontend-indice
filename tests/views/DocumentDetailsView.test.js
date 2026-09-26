@@ -108,7 +108,7 @@ describe('DocumentDetailsView', () => {
     const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
     await flushPromises()
 
-    expect(fetchDocumentDetail).toHaveBeenCalledWith('23')
+    expect(fetchDocumentDetail).toHaveBeenCalledWith('23', OTHER_USER_ID)
     expect(wrapper.text()).toContain('teste 2 docs')
     expect(wrapper.text()).toContain('AK-3400-EST-NOR-0001')
     expect(wrapper.text()).toContain('Norma Interna')
