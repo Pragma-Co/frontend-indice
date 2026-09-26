@@ -408,7 +408,9 @@ onMounted(loadDocument)
                   @change="handleRevisionFile"
                 />
                 <button type="button" :disabled="revisionUploading" @click="openRevisionPicker">
-                  {{ revisionUploading ? 'Enviando revisão...' : 'Adicionar arquivos à nova revisão' }}
+                  {{
+                    revisionUploading ? 'Enviando revisão...' : 'Adicionar arquivos à nova revisão'
+                  }}
                 </button>
               </div>
               <p v-if="!document.versions?.length" class="tag-block-empty">
@@ -429,9 +431,7 @@ onMounted(loadDocument)
                   @keydown.enter.space.prevent="selectRevision(version)"
                 >
                   <div class="revision-header">
-                    <strong class="revision-select">
-                      REV{{ version.version }}
-                    </strong>
+                    <strong class="revision-select"> REV{{ version.version }} </strong>
                     <span v-if="version.id === document.revision?.id" class="current-tag">
                       Versão atual
                     </span>
