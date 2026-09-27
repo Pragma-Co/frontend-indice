@@ -6,7 +6,12 @@ import DocumentDetailsView from '@/views/document/DocumentDetailsView.vue'
 import { ApiError } from '@/api/client.js'
 import { useAuthStore } from '@/stores/authStore.js'
 import { useNotificationStore } from '@/stores/notificationStore.js'
-import { fetchDocumentDetail, requestDocumentAccess } from '@/api/documents.js'
+import {
+  createDocumentRevision,
+  fetchDocumentDetail,
+  requestDocumentAccess,
+  uploadDocument,
+} from '@/api/documents.js'
 
 const routeParams = { documentId: '23' }
 vi.mock('vue-router', () => ({
@@ -18,8 +23,10 @@ vi.mock('docx-preview', () => ({
 }))
 
 vi.mock('@/api/documents.js', () => ({
+  createDocumentRevision: vi.fn(),
   fetchDocumentDetail: vi.fn(),
   requestDocumentAccess: vi.fn(),
+  uploadDocument: vi.fn(),
 }))
 
 const globalStubs = {
@@ -108,7 +115,7 @@ describe('DocumentDetailsView', () => {
     const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
     await flushPromises()
 
-    expect(fetchDocumentDetail).toHaveBeenCalledWith('23')
+    expect(fetchDocumentDetail).toHaveBeenCalledWith('23', OTHER_USER_ID)
     expect(wrapper.text()).toContain('teste 2 docs')
     expect(wrapper.text()).toContain('AK-3400-EST-NOR-0001')
     expect(wrapper.text()).toContain('Norma Interna')
@@ -280,6 +287,67 @@ describe('DocumentDetailsView', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('Arquivo 1 de 2')
+  })
+
+  it('should show the files belonging to the selected revision', async () => {
+    authStore.currentUser = { id: RESPONSIBLE_ID, name: 'Beatriz Canuto' }
+    const current = makeDocument().revision
+    const document = makeDocument({
+      revision: current,
+      versions: [
+        current,
+        {
+          ...current,
+          id: 35,
+          version: 1,
+          files: [
+            {
+              id: 40,
+              original_name: 'rev01-original.pdf',
+              extension: 'pdf',
+              mime_type: 'application/pdf',
+              view_url: '/api/files/40/view',
+            },
+          ],
+        },
+      ],
+    })
+    fetchDocumentDetail.mockResolvedValue(document)
+
+    const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
+    await flushPromises()
+
+    await wrapper
+      .findAll('.revision-list li')
+      .find((revision) => revision.text().includes('REV1'))
+      .trigger('click')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Arquivo 1 de 1')
+    expect(wrapper.text()).toContain('rev01-original.pdf')
+    expect(wrapper.find('iframe.preview-frame').attributes('src')).toContain('/api/files/40/view')
+  })
+
+  it('should upload multiple files together as one new revision', async () => {
+    authStore.currentUser = { id: RESPONSIBLE_ID, name: 'Beatriz Canuto' }
+    fetchDocumentDetail.mockResolvedValue(makeDocument())
+    uploadDocument
+      .mockResolvedValueOnce({ temp_file_id: 'temp-rev-2-a' })
+      .mockResolvedValueOnce({ temp_file_id: 'temp-rev-2-b' })
+
+    const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
+    await flushPromises()
+    const input = wrapper.find('input[type="file"]')
+    Object.defineProperty(input.element, 'files', {
+      configurable: true,
+      value: [new File(['a'], 'a.pdf'), new File(['b'], 'b.pdf')],
+    })
+
+    await input.trigger('change')
+    await flushPromises()
+
+    expect(createDocumentRevision).toHaveBeenCalledWith('23', ['temp-rev-2-a', 'temp-rev-2-b'])
+    expect(uploadDocument).toHaveBeenCalledTimes(2)
   })
 
   it('should disable the navigation buttons when there is only one file', async () => {

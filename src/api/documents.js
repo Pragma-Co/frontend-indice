@@ -11,19 +11,21 @@ export function clearDocumentsCache() {
   documentsRequests.clear()
 }
 
-export function uploadDocument(
-  file,
-  { onProgress, forceNewRevision = false, signal, userId } = {},
-) {
+export function uploadDocument(file, { onProgress, signal, userId } = {}) {
   const formData = new FormData()
   formData.append('file', file)
-  if (forceNewRevision) {
-    formData.append('force_new_revision', 'true')
-  }
   if (userId != null) {
     formData.append('user_id', String(userId))
   }
   return uploadWithProgress('/documents/upload', formData, { onProgress, signal })
+}
+
+export async function createDocumentRevision(documentId, tempFileIds) {
+  const revision = await api.post(`/documents/${documentId}/revisions`, {
+    temp_file_ids: tempFileIds,
+  })
+  clearDocumentsCache()
+  return revision
 }
 
 export async function fetchSimpleFilters() {
@@ -71,9 +73,8 @@ export function fetchDocuments(query = {}) {
   return request
 }
 
-export function toDocumentPayload(form, { tempFileId, responsibleId, userId }) {
+export function toDocumentPayload(form, { tempFileIds, tempFileId, responsibleId, userId }) {
   const payload = {
-    temp_file_id: tempFileId,
     title: form.title.trim(),
     description: form.description.trim(),
     project_id: Number(form.projectId),
@@ -83,6 +84,8 @@ export function toDocumentPayload(form, { tempFileId, responsibleId, userId }) {
     responsible_id: responsibleId,
     areas: [...form.areas],
   }
+  if (tempFileIds) payload.temp_file_ids = tempFileIds
+  else payload.temp_file_id = tempFileId
   if (userId != null) payload.user_id = userId
   return payload
 }
@@ -95,8 +98,9 @@ export function listDocumentTypes() {
   return api.get('/documents/types')
 }
 
-export function fetchDocumentDetail(documentId) {
-  return api.get(`/documents/${documentId}`)
+export function fetchDocumentDetail(documentId, userId) {
+  const query = userId ? `?user_id=${userId}` : ''
+  return api.get(`/documents/${documentId}${query}`)
 }
 
 export function requestDocumentSuggestions(documentId) {

@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import logo from '@/assets/logo.svg'
 import bellIcon from '@/assets/icons/bell.svg'
@@ -9,8 +10,18 @@ const auth = useAuthStore()
 
 const links = [
   { label: 'Início', to: '/home' },
-  { label: 'Documentos', to: '/documents' },
+  { label: 'Documentos', to: '/documents', preserveQuery: true },
 ]
+
+const resolvedLinks = computed(() =>
+  links.map((link) => ({
+    ...link,
+    to: {
+      path: link.to,
+      query: link.preserveQuery ? { ...route.query } : {},
+    },
+  })),
+)
 
 function isActive(to) {
   return route.path === to || route.path.startsWith(`${to}/`)
@@ -25,10 +36,10 @@ function isActive(to) {
 
     <nav class="navbar-links" aria-label="Navegação principal">
       <RouterLink
-        v-for="link in links"
-        :key="link.to"
+        v-for="link in resolvedLinks"
+        :key="link.to.path"
         :to="link.to"
-        :class="['navbar-link', { active: isActive(link.to) }]"
+        :class="['navbar-link', { active: isActive(link.to.path) }]"
       >
         {{ link.label }}
       </RouterLink>

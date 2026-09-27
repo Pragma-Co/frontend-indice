@@ -1,12 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ApiError } from '../../src/api/client'
-import { createDocument, toDocumentPayload } from '../../src/api/documents'
+import {
+  createDocument,
+  createDocumentRevision,
+  fetchDocuments,
+  toDocumentPayload,
+} from '../../src/api/documents'
 
 function mockResponse(body, { status = 200 } = {}) {
   return {
     ok: status >= 200 && status < 300,
     status,
     text: async () => (body === undefined ? '' : JSON.stringify(body)),
+    json: async () => body,
   }
 }
 
@@ -44,6 +50,16 @@ describe('toDocumentPayload', () => {
     payload.areas.push('SIS')
 
     expect(FORM.areas).toEqual(['EST', 'QUA'])
+  })
+
+  it('should map multiple temporary files to one document payload', () => {
+    const payload = toDocumentPayload(FORM, {
+      tempFileIds: ['temp-1', 'temp-2'],
+      responsibleId: 12,
+    })
+
+    expect(payload.temp_file_ids).toEqual(['temp-1', 'temp-2'])
+    expect(payload).not.toHaveProperty('temp_file_id')
   })
 })
 
@@ -121,5 +137,36 @@ describe('createDocument', () => {
     expect(error.status).toBe(500)
     expect(error.message).toBe('Erro interno do servidor. Tente novamente mais tarde.')
     expect(error.message).not.toContain('DatabaseError')
+  })
+})
+
+describe('createDocumentRevision', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('should invalidate cached document rows after creating a revision', async () => {
+    const query = { page: 1, page_size: 20 }
+    globalThis.fetch
+      .mockResolvedValueOnce(
+        mockResponse({ count: 1, results: [{ id: 23, revision: { version: 1 } }] }),
+      )
+      .mockResolvedValueOnce(mockResponse({ id: 37, version: 2 }, { status: 201 }))
+      .mockResolvedValueOnce(
+        mockResponse({ count: 1, results: [{ id: 23, revision: { version: 2 } }] }),
+      )
+
+    const oldList = await fetchDocuments(query)
+    const newRevision = await createDocumentRevision(23, ['temp-a', 'temp-b'])
+    const refreshedList = await fetchDocuments(query)
+
+    expect(oldList.results[0].revision.version).toBe(1)
+    expect(newRevision.version).toBe(2)
+    expect(refreshedList.results[0].revision.version).toBe(2)
+    expect(globalThis.fetch).toHaveBeenCalledTimes(3)
   })
 })

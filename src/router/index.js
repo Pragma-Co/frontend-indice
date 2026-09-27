@@ -49,6 +49,12 @@ const router = createRouter({
   ],
 })
 
+router.beforeEach((to, from) => {
+  if (to.path === from.path && JSON.stringify(to.query) === JSON.stringify(from.query)) {
+    return false
+  }
+})
+
 router.afterEach((to) => {
   document.title = to.meta.title ?? 'Índice'
 })
