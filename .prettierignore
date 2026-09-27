@@ -1,0 +1,9 @@
+dist/
+node_modules/
+package-lock.json
+commitlint.config.mjs
+
+# Markdown fica fora: o Prettier reescreve tabelas e blocos de codigo dos
+# READMEs, o que gera muito ruido em diff sem ganho real. Se um dia voces
+# quiserem a formatacao automatica tambem na documentacao, e so remover.
+*.md

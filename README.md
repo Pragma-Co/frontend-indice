@@ -117,6 +117,10 @@ npm run dev -- --port 5174   # use another port if 5173 is busy
 npm run build                # build the static bundle into dist/
 npm run preview              # serve the dist/ build locally for a final check
 
+# Tests (Vitest + Vue Test Utils)
+npm test                     # run the test suite once
+npm run test:watch           # re-run tests on file changes
+
 # Maintenance
 npm install                  # (re)install dependencies after a git pull
 ```
@@ -139,6 +143,8 @@ npm install                  # (re)install dependencies after a git pull
 
 ## Project structure
 
+See [AGENTS.md](AGENTS.md) for the full layout and conventions. Summary:
+
 ```
 frontend/
 ├── index.html          # HTML shell that loads the Vue app
@@ -147,6 +153,22 @@ frontend/
 ├── package.json        # Dependencies and npm scripts
 └── src/
     ├── main.js         # Application bootstrap
-    ├── style.css       # Global styles
-    └── App.vue         # Root component
+    ├── App.vue         # Root component (layout shell)
+    ├── api/            # Backend integration (HTTP client, per-domain modules)
+    ├── components/     # Reusable components (common/, layout/)
+    ├── composables/    # Reusable composition logic
+    ├── router/         # Route definitions
+    ├── stores/         # Pinia global state
+    ├── styles/         # Global CSS and design tokens
+    ├── utils/          # Pure helper functions
+    ├── views/          # Page-level components
+    └── assets/         # Static icons and images
+tests/                  # Vitest suites (Given/When/Then), mirroring src/
 ```
+
+## Document registration flow
+
+`/documentos/upload` (step 1, Upload) leads to `/documentos/metadados` (step 2, Metadados) and then to
+`/documentos/confirmacao` (step 3, Confirmação), where the user reviews the summary before publishing.
+The metadata form previews the unique code `PROJECT-DISCIPLINE-TYPE-REV` (e.g. `AK-2100-EST-DWG-REV01`); the backend
+generates the definitive value on submission, which is a separate task.

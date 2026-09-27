@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { fileURLToPath, URL } from 'node:url'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
@@ -7,16 +8,24 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [vue()],
+    resolve: {
+      alias: {
+        '@': fileURLToPath(new URL('./src', import.meta.url)),
+      },
+    },
     server: {
       proxy: {
-        // The backend does not send CORS headers, so every API call goes
-        // through this proxy: the browser only ever talks to the dev server.
         '/api': {
           target: `http://localhost:${apiPort}`,
           changeOrigin: true,
           rewrite: (path) => path.replace(/^\/api/, ''),
         },
       },
+    },
+    test: {
+      environment: 'jsdom',
+      globals: true,
+      include: ['tests/**/*.test.js'],
     },
   }
 })

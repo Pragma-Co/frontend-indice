@@ -1,0 +1,14 @@
+# Normaliza o fim de linha para LF no repositorio E no working tree, em
+# qualquer sistema operacional.
+#
+# Sem isso, quem usa Windows com core.autocrlf=true faz checkout em CRLF e o
+# "prettier --check" acusa todos os arquivos como mal formatados na maquina
+# local, enquanto passa no CI (Linux, LF).
+* text=auto eol=lf
+
+# Binarios nunca devem ser convertidos.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.svg text eol=lf

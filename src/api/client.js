@@ -1,0 +1,105 @@
+const API_BASE_URL = '/api'
+
+export function uploadWithProgress(path, formData, { onProgress, signal } = {}) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `${API_BASE_URL}${path}`)
+
+    xhr.upload.addEventListener('progress', (event) => {
+      if (event.lengthComputable && onProgress) {
+        onProgress(Math.round((event.loaded / event.total) * 100))
+      }
+    })
+
+    xhr.addEventListener('load', () => {
+      let body
+      try {
+        body = JSON.parse(xhr.responseText)
+      } catch {
+        body = null
+      }
+
+      const isSuccessOrDuplicate = (xhr.status >= 200 && xhr.status < 300) || xhr.status === 409
+
+      if (isSuccessOrDuplicate) {
+        resolve(body)
+      } else {
+        reject(
+          Object.assign(new Error(`Upload failed with status ${xhr.status}`), {
+            status: xhr.status,
+            body,
+          }),
+        )
+      }
+    })
+
+    xhr.addEventListener('error', () => {
+      reject(new Error('Network error while uploading file'))
+    })
+
+    xhr.addEventListener('abort', () => {
+      reject(Object.assign(new Error('Upload aborted'), { name: 'AbortError' }))
+    })
+
+    if (signal) {
+      signal.addEventListener('abort', () => xhr.abort())
+    }
+
+    xhr.send(formData)
+  })
+}
+
+export class ApiError extends Error {
+  constructor(message, { status = 0, details = null } = {}) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = status
+    this.details = details
+  }
+}
+
+function messageFor(status) {
+  if (status === 400) return 'Dados inválidos. Verifique os campos e tente novamente.'
+  if (status === 401 || status === 403) return 'Você não tem permissão para esta ação.'
+  if (status === 404) return 'Recurso não encontrado.'
+  if (status === 409) return 'Já existe um documento com este código.'
+  if (status >= 500) return 'Erro interno do servidor. Tente novamente mais tarde.'
+  return 'Não foi possível concluir a operação.'
+}
+
+async function parseBody(response) {
+  const text = await response.text()
+  if (!text) return null
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
+}
+
+export async function request(path, { method = 'GET', body, headers = {} } = {}) {
+  const init = { method, headers: { Accept: 'application/json', ...headers } }
+
+  if (body !== undefined) {
+    init.headers['Content-Type'] = 'application/json'
+    init.body = JSON.stringify(body)
+  }
+
+  let response
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, init)
+  } catch {
+    throw new ApiError('Não foi possível conectar ao servidor.', { status: 0 })
+  }
+
+  const data = await parseBody(response)
+  if (!response.ok) {
+    throw new ApiError(messageFor(response.status), { status: response.status, details: data })
+  }
+  return data
+}
+
+export const api = {
+  get: (path) => request(path),
+  post: (path, body) => request(path, { method: 'POST', body }),
+}
