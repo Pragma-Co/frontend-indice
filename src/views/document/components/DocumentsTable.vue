@@ -242,11 +242,12 @@ function startNewRevision(document) {
 .action-tooltip {
   display: none;
   position: absolute;
-  right: 0;
-  bottom: calc(100% + 0.35rem);
+  right: calc(100% + 0.5rem);
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 20;
   width: max-content;
-  max-width: 16rem;
+  max-width: 22rem;
   white-space: normal;
   text-align: left;
   background: var(--color-text);
