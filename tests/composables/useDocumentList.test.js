@@ -205,7 +205,7 @@ describe('useDocumentList', () => {
     expect(list.loading.value).toBe(false)
   })
 
-  it('should open the upload for a new revision and the details for a document', async () => {
+  it('should open the new revision route and the details for a document', async () => {
     const list = await mountList()
 
     list.handleDocumentAction({ document: { id: 7 }, action: 'new-revision' })
@@ -213,7 +213,7 @@ describe('useDocumentList', () => {
     list.handleDocumentAction({ document: { id: 7 }, action: 'unknown' })
 
     expect(router.push).toHaveBeenCalledTimes(2)
-    expect(router.push).toHaveBeenCalledWith({ name: 'document-upload' })
+    expect(router.push).toHaveBeenCalledWith('/documents/7/new-revision')
     expect(router.push).toHaveBeenCalledWith({
       name: 'document-details',
       params: { documentId: 7 },
@@ -247,6 +247,5 @@ describe('normalizeDocument', () => {
 
     expect(document.updatedAt).toBe('2026-09-18T21:30:04+00:00')
     expect(document.updatedBy).toBe('sistema')
-    expect(document.action).toBe('view-details')
   })
 })

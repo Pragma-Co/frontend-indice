@@ -1,7 +1,6 @@
 <script setup>
-import { ref } from 'vue'
 import { formatUpdatedAt } from '@/utils/formatters.js'
-import { statusBadgeFor } from '@/utils/documentStatus.js'
+import { canCreateRevision, statusBadgeFor } from '@/utils/documentStatus.js'
 import Badge from '@/components/common/Badge.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 
@@ -14,35 +13,16 @@ defineProps({
 
 const emit = defineEmits(['action'])
 
-const ACTION_LABELS = {
-  'new-revision': 'Nova revisão',
-  'view-details': 'Ver detalhes',
-  'continue-editing': 'Continuar edição',
-}
-
-const MENU_ITEMS = [
-  { key: 'history', label: 'Ver histórico de revisões' },
-  { key: 'delete', label: 'Excluir documento' },
-  // { key: 'download', label: 'Baixar documento' }, // Download removed: access is view-only in product
-]
-
-const openMenuId = ref(null)
-
-function toggleMenu(id) {
-  openMenuId.value = openMenuId.value === id ? null : id
-}
-
-function closeMenu() {
-  openMenuId.value = null
-}
+const NEW_REVISION_BLOCKED_MESSAGE =
+  'Este documento já possui uma revisão em andamento. Aguarde a conclusão para criar outra.'
 
 function openDetails(document) {
   emit('action', { document, action: 'view-details' })
 }
 
-function handleMenuItem(document, itemKey) {
-  emit('action', { document, action: itemKey })
-  closeMenu()
+function startNewRevision(document) {
+  if (!canCreateRevision(document.status)) return
+  emit('action', { document, action: 'new-revision' })
 }
 </script>
 
@@ -110,40 +90,30 @@ function handleMenuItem(document, itemKey) {
           </td>
           <td class="cell-actions" @click.stop @keydown.enter.stop>
             <div class="actions-inner">
-              <button
-                type="button"
-                class="action-button"
-                @click="emit('action', { document, action: document.action })"
-              >
-                {{ ACTION_LABELS[document.action] }}
-              </button>
-
-              <div class="menu-wrapper">
+              <span class="action-wrapper">
                 <button
                   type="button"
-                  class="menu-trigger"
-                  aria-label="Mais ações"
-                  @click="toggleMenu(document.id)"
+                  class="action-button"
+                  :class="{ 'action-button-disabled': !canCreateRevision(document.status) }"
+                  :aria-disabled="!canCreateRevision(document.status) || undefined"
+                  :aria-describedby="
+                    canCreateRevision(document.status)
+                      ? undefined
+                      : `new-revision-tooltip-${document.id}`
+                  "
+                  @click="startNewRevision(document)"
                 >
-                  ⋯
+                  Nova Revisão
                 </button>
-
-                <template v-if="openMenuId === document.id">
-                  <div class="menu-overlay" @click="closeMenu" />
-                  <div class="menu-dropdown" role="menu">
-                    <button
-                      v-for="item in MENU_ITEMS"
-                      :key="item.key"
-                      type="button"
-                      role="menuitem"
-                      class="menu-item"
-                      @click="handleMenuItem(document, item.key)"
-                    >
-                      {{ item.label }}
-                    </button>
-                  </div>
-                </template>
-              </div>
+                <span
+                  v-if="!canCreateRevision(document.status)"
+                  :id="`new-revision-tooltip-${document.id}`"
+                  class="action-tooltip"
+                  role="tooltip"
+                >
+                  {{ NEW_REVISION_BLOCKED_MESSAGE }}
+                </span>
+              </span>
             </div>
           </td>
         </tr>
@@ -256,60 +226,43 @@ function handleMenuItem(document, itemKey) {
   background: var(--color-info-bg);
 }
 
-.menu-wrapper {
-  position: relative;
-}
-
-.menu-trigger {
-  background: none;
-  border: none;
+.action-button-disabled,
+.action-button-disabled:hover {
+  background: var(--color-surface-muted);
+  border-color: var(--color-border);
   color: var(--color-text-muted);
-  cursor: pointer;
-  font-size: 1.1rem;
-  line-height: 1;
-  padding: 0.4rem 0.5rem;
-  border-radius: var(--radius-sm);
+  cursor: not-allowed;
 }
 
-.menu-trigger:hover {
-  background: var(--color-background);
+.action-wrapper {
+  position: relative;
+  display: inline-flex;
 }
 
-.menu-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 10;
-}
-
-.menu-dropdown {
+.action-tooltip {
+  display: none;
   position: absolute;
-  right: 0;
-  top: calc(100% + 0.25rem);
+  right: calc(100% + 0.5rem);
+  top: 50%;
+  transform: translateY(-50%);
   z-index: 20;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
-  min-width: 200px;
-  padding: 0.35rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.menu-item {
-  background: none;
-  border: none;
+  width: max-content;
+  max-width: 22rem;
+  white-space: normal;
   text-align: left;
-  padding: 0.5rem 0.6rem;
+  background: var(--color-text);
+  color: var(--color-text-inverse);
   border-radius: var(--radius-sm);
-  font-size: 0.85rem;
-  color: var(--color-text);
-  cursor: pointer;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
 }
 
-.menu-item:hover {
-  background: var(--color-background);
+.action-wrapper:hover .action-tooltip,
+.action-wrapper:focus-within .action-tooltip {
+  display: block;
 }
+
 .document-row {
   cursor: pointer;
 }
