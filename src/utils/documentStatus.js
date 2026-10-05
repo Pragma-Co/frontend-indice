@@ -8,3 +8,7 @@ const BADGE_BY_REVISION_STATUS = {
 export function statusBadgeFor(revisionStatus) {
   return BADGE_BY_REVISION_STATUS[revisionStatus] ?? null
 }
+
+export function canCreateRevision(revisionStatus) {
+  return revisionStatus !== 'PENDING'
+}

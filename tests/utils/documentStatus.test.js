@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { statusBadgeFor } from '../../src/utils/documentStatus'
+import { canCreateRevision, statusBadgeFor } from '../../src/utils/documentStatus'
 
 describe('statusBadgeFor', () => {
   it('should show a pending revision as under review', () => {
@@ -15,5 +15,15 @@ describe('statusBadgeFor', () => {
   it('should return null for a missing or unknown status', () => {
     expect(statusBadgeFor(undefined)).toBeNull()
     expect(statusBadgeFor('SOMETHING_ELSE')).toBeNull()
+  })
+})
+
+describe('canCreateRevision', () => {
+  it('should allow a new revision for a document in force', () => {
+    expect(canCreateRevision('APPROVED')).toBe(true)
+  })
+
+  it('should block a new revision while another one is under review', () => {
+    expect(canCreateRevision('PENDING')).toBe(false)
   })
 })

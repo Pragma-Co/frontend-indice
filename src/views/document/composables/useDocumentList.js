@@ -21,7 +21,6 @@ export function normalizeDocument(document) {
     status: document.status ?? null,
     updatedAt: document.updated_at,
     updatedBy: document.updated_by?.name ?? document.created_by?.name ?? 'sistema',
-    action: document.action ?? 'view-details',
   }
 }
 
@@ -96,9 +95,13 @@ export function useDocumentList() {
     router.push({ name: 'document-details', params: { documentId: document.id } })
   }
 
+  function goToNewRevision(document) {
+    router.push(`/documents/${document.id}/new-revision`)
+  }
+
   function handleDocumentAction({ document, action }) {
-    if (action === 'new-revision' || action === 'continue-editing') {
-      goToUpload()
+    if (action === 'new-revision') {
+      goToNewRevision(document)
     } else if (action === 'view-details') {
       goToDocumentDetails(document)
     }
@@ -129,6 +132,7 @@ export function useDocumentList() {
     setSkipFirstLoad,
     goToUpload,
     goToDocumentDetails,
+    goToNewRevision,
     handleDocumentAction,
   }
 }

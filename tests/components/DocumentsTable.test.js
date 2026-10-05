@@ -75,24 +75,44 @@ describe('DocumentsTable', () => {
     expect(wrapper.emitted('action')[0][0].action).toBe('view-details')
   })
 
-  it('should not open the details twice when the action button inside the row is clicked', async () => {
+  it('should not offer the more-actions menu', () => {
+    const wrapper = mount(DocumentsTable, { props: { documents: [makeDocument()] } })
+
+    expect(wrapper.find('.menu-trigger').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="Mais ações"]').exists()).toBe(false)
+    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+  })
+
+  it('should start a new revision without opening the details when the document is in force', async () => {
     const wrapper = mount(DocumentsTable, {
-      props: { documents: [makeDocument({ action: 'new-revision' })] },
+      props: { documents: [makeDocument({ status: 'APPROVED' })] },
     })
+    const button = wrapper.find('.action-button')
 
-    await wrapper.find('.action-button').trigger('click')
+    await button.trigger('click')
 
+    expect(button.text()).toBe('Nova Revisão')
+    expect(button.attributes('aria-disabled')).toBeUndefined()
+    expect(wrapper.find('[role="tooltip"]').exists()).toBe(false)
     expect(wrapper.emitted('action')).toEqual([
       [{ document: expect.objectContaining({ id: 33 }), action: 'new-revision' }],
     ])
   })
 
-  it('should keep the row quiet while the more-actions menu is used', async () => {
-    const wrapper = mount(DocumentsTable, { props: { documents: [makeDocument()] } })
+  it('should disable the new revision button and explain why when the document is under review', async () => {
+    const wrapper = mount(DocumentsTable, {
+      props: { documents: [makeDocument({ status: 'PENDING' })] },
+    })
+    const button = wrapper.find('.action-button')
+    const tooltip = wrapper.find('[role="tooltip"]')
 
-    await wrapper.find('.menu-trigger').trigger('click')
+    await button.trigger('click')
 
+    expect(button.text()).toBe('Nova Revisão')
+    expect(button.attributes('aria-disabled')).toBe('true')
+    expect(button.classes()).toContain('action-button-disabled')
+    expect(tooltip.text()).toContain('revisão em andamento')
+    expect(button.attributes('aria-describedby')).toBe(tooltip.attributes('id'))
     expect(wrapper.emitted('action')).toBeUndefined()
-    expect(wrapper.find('.menu-dropdown').exists()).toBe(true)
   })
 })
