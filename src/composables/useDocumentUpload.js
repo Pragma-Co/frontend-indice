@@ -122,6 +122,8 @@ export function useDocumentUpload({ getUserId = () => undefined } = {}) {
   }
 
   function removeFile(id) {
+    const removed = queue.value.find((item) => item.id === id)
+    if (removed?.sha256) seenHashes.delete(removed.sha256)
     queue.value = queue.value.filter((item) => item.id !== id)
     processQueue()
   }
