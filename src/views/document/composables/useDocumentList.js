@@ -96,7 +96,7 @@ export function useDocumentList() {
   }
 
   function goToNewRevision(document) {
-    router.push(`/documents/${document.id}/new-revision`)
+    router.push({ name: 'document-new-revision', params: { documentId: document.id } })
   }
 
   function handleDocumentAction({ document, action }) {

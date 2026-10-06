@@ -29,6 +29,12 @@ const router = createRouter({
       meta: { title: 'Colaborador - Visualizar documento' },
     },
     {
+      path: '/documents/:documentId/new-revision',
+      name: 'document-new-revision',
+      component: () => import('../views/document/NewRevisionView.vue'),
+      meta: { title: 'Colaborador - Nova revisão' },
+    },
+    {
       path: '/documents/upload',
       name: 'document-upload',
       component: () => import('../views/document/components/DocumentUpload.vue'),
