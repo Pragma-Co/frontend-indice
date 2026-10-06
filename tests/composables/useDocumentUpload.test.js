@@ -33,4 +33,24 @@ describe('useDocumentUpload', () => {
     expect(uploadDocument).toHaveBeenCalledTimes(1)
     expect(queue.value[1].name).toBe('copy.pdf')
   })
+
+  it('should accept a file again after it was removed from the queue', async () => {
+    vi.stubGlobal('crypto', {
+      subtle: {
+        digest: vi.fn(async (_algorithm, content) => content),
+      },
+    })
+    uploadDocument.mockResolvedValue({ temp_file_id: 'temp-1' })
+    const { queue, addFiles, removeFile } = useDocumentUpload()
+    const content = new TextEncoder().encode('revision file').buffer
+    const file = { name: 'report.pdf', size: content.byteLength, arrayBuffer: async () => content }
+    addFiles([file])
+    await flushPromises()
+
+    removeFile(queue.value[0].id)
+    addFiles([file])
+    await flushPromises()
+
+    expect(queue.value.map((item) => item.status)).toEqual(['success'])
+  })
 })

@@ -20,10 +20,10 @@ export function uploadDocument(file, { onProgress, signal, userId } = {}) {
   return uploadWithProgress('/documents/upload', formData, { onProgress, signal })
 }
 
-export async function createDocumentRevision(documentId, tempFileIds) {
-  const revision = await api.post(`/documents/${documentId}/revisions`, {
-    temp_file_ids: tempFileIds,
-  })
+export async function createDocumentRevision(documentId, tempFileIds, { changeDescription } = {}) {
+  const payload = { temp_file_ids: tempFileIds }
+  if (changeDescription) payload.change_description = changeDescription
+  const revision = await api.post(`/documents/${documentId}/revisions`, payload)
   clearDocumentsCache()
   return revision
 }

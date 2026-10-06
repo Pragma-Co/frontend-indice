@@ -6,16 +6,13 @@ import DocumentDetailsView from '@/views/document/DocumentDetailsView.vue'
 import { ApiError } from '@/api/client.js'
 import { useAuthStore } from '@/stores/authStore.js'
 import { useNotificationStore } from '@/stores/notificationStore.js'
-import {
-  createDocumentRevision,
-  fetchDocumentDetail,
-  requestDocumentAccess,
-  uploadDocument,
-} from '@/api/documents.js'
+import { fetchDocumentDetail, requestDocumentAccess } from '@/api/documents.js'
 
 const routeParams = { documentId: '23' }
+const router = { push: vi.fn() }
 vi.mock('vue-router', () => ({
   useRoute: () => ({ params: routeParams }),
+  useRouter: () => router,
 }))
 
 vi.mock('docx-preview', () => ({
@@ -23,10 +20,8 @@ vi.mock('docx-preview', () => ({
 }))
 
 vi.mock('@/api/documents.js', () => ({
-  createDocumentRevision: vi.fn(),
   fetchDocumentDetail: vi.fn(),
   requestDocumentAccess: vi.fn(),
-  uploadDocument: vi.fn(),
 }))
 
 const globalStubs = {
@@ -328,26 +323,36 @@ describe('DocumentDetailsView', () => {
     expect(wrapper.find('iframe.preview-frame').attributes('src')).toContain('/api/files/40/view')
   })
 
-  it('should upload multiple files together as one new revision', async () => {
+  it('should open the new revision screen instead of uploading files in place', async () => {
     authStore.currentUser = { id: RESPONSIBLE_ID, name: 'Beatriz Canuto' }
-    fetchDocumentDetail.mockResolvedValue(makeDocument())
-    uploadDocument
-      .mockResolvedValueOnce({ temp_file_id: 'temp-rev-2-a' })
-      .mockResolvedValueOnce({ temp_file_id: 'temp-rev-2-b' })
-
+    const current = makeDocument().revision
+    fetchDocumentDetail.mockResolvedValue(
+      makeDocument({ revision: { ...current, status: 'APPROVED' } }),
+    )
     const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
     await flushPromises()
-    const input = wrapper.find('input[type="file"]')
-    Object.defineProperty(input.element, 'files', {
-      configurable: true,
-      value: [new File(['a'], 'a.pdf'), new File(['b'], 'b.pdf')],
-    })
 
-    await input.trigger('change')
+    await wrapper.find('.revision-action button').trigger('click')
+
+    expect(wrapper.find('input[type="file"]').exists()).toBe(false)
+    expect(wrapper.find('.revision-action button').text()).toBe('Nova Revisão')
+    expect(router.push).toHaveBeenCalledWith({
+      name: 'document-new-revision',
+      params: { documentId: '23' },
+    })
+  })
+
+  it('should block a new revision while the current one is under review', async () => {
+    authStore.currentUser = { id: RESPONSIBLE_ID, name: 'Beatriz Canuto' }
+    fetchDocumentDetail.mockResolvedValue(makeDocument())
+    const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
     await flushPromises()
 
-    expect(createDocumentRevision).toHaveBeenCalledWith('23', ['temp-rev-2-a', 'temp-rev-2-b'])
-    expect(uploadDocument).toHaveBeenCalledTimes(2)
+    await wrapper.find('.revision-action button').trigger('click')
+
+    expect(wrapper.find('.revision-action button').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('.revision-action-hint').text()).toContain('revisão em andamento')
+    expect(router.push).not.toHaveBeenCalled()
   })
 
   it('should disable the navigation buttons when there is only one file', async () => {

@@ -18,6 +18,14 @@ describe('router', () => {
     expect(router.currentRoute.value.name).toBe('document-list')
   })
 
+  it('should resolve the new revision route of a document', async () => {
+    await router.push('/documents/23/new-revision')
+
+    expect(router.currentRoute.value.name).toBe('document-new-revision')
+    expect(router.currentRoute.value.params.documentId).toBe('23')
+    expect(document.title).toBe('Colaborador - Nova revisão')
+  })
+
   it('should keep every document route under /documents so the navbar marks the Documentos tab', () => {
     const names = ['document-list', 'document-upload', 'document-metadata', 'document-confirmation']
 
