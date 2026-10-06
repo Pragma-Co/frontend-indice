@@ -1,22 +1,18 @@
 <script setup>
 import { onMounted, ref, computed, watch, nextTick } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { renderAsync } from 'docx-preview'
-import {
-  createDocumentRevision,
-  fetchDocumentDetail,
-  requestDocumentAccess,
-  uploadDocument,
-} from '@/api/documents.js'
+import { fetchDocumentDetail, requestDocumentAccess } from '@/api/documents.js'
 import { useAuthStore } from '@/stores/authStore.js'
 import { useNotificationStore } from '@/stores/notificationStore.js'
-import { statusBadgeFor } from '@/utils/documentStatus.js'
+import { canCreateRevision, statusBadgeFor } from '@/utils/documentStatus.js'
 import { formatDate } from '@/utils/formatters.js'
 import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import DocumentAccessOverlay from '@/views/document/components/DocumentAccessOverlay.vue'
 
 const route = useRoute()
+const router = useRouter()
 const authStore = useAuthStore()
 const notifications = useNotificationStore()
 const document = ref(null)
@@ -26,8 +22,6 @@ const notFound = ref(false)
 const requestingAccess = ref(false)
 const accessRequested = ref(false)
 const requestError = ref('')
-const revisionUploading = ref(false)
-const revisionInput = ref(null)
 
 const docxContainer = ref(null)
 const docxLoading = ref(false)
@@ -157,38 +151,8 @@ async function handleRequestAccess() {
   }
 }
 
-function openRevisionPicker() {
-  revisionInput.value?.click()
-}
-
-async function handleRevisionFile(event) {
-  const files = Array.from(event.target.files ?? [])
-  event.target.value = ''
-  if (!files.length) return
-
-  revisionUploading.value = true
-  try {
-    const tempFileIds = []
-    for (const file of files) {
-      const upload = await uploadDocument(file, { userId: currentUserId.value })
-      if (upload?.duplicate) {
-        notifications.error(`O arquivo ${file.name} já existe e não pode ser usado nesta revisão.`)
-        return
-      }
-      tempFileIds.push(upload.temp_file_id)
-    }
-    await createDocumentRevision(route.params.documentId, tempFileIds)
-    notifications.success('Nova revisão criada com sucesso.')
-    await loadDocument()
-  } catch (err) {
-    if (err?.status === 409) {
-      notifications.error('Este arquivo já existe e não pode ser usado como revisão.')
-    } else {
-      notifications.error('Não foi possível criar a nova revisão.')
-    }
-  } finally {
-    revisionUploading.value = false
-  }
+function goToNewRevision() {
+  router.push({ name: 'document-new-revision', params: { documentId: route.params.documentId } })
 }
 
 async function renderDocx() {
@@ -399,19 +363,17 @@ onMounted(loadDocument)
             <div class="revision-block">
               <h2>Histórico de versões</h2>
               <div v-if="hasAccess && document.revision" class="revision-action">
-                <input
-                  ref="revisionInput"
-                  class="visually-hidden-input"
-                  type="file"
-                  multiple
-                  accept=".pdf,.doc,.docx,.jpeg,.jpg,.png"
-                  @change="handleRevisionFile"
-                />
-                <button type="button" :disabled="revisionUploading" @click="openRevisionPicker">
-                  {{
-                    revisionUploading ? 'Enviando revisão...' : 'Adicionar arquivos à nova revisão'
-                  }}
+                <button
+                  type="button"
+                  :disabled="!canCreateRevision(document.revision.status)"
+                  @click="goToNewRevision"
+                >
+                  Nova Revisão
                 </button>
+                <p v-if="!canCreateRevision(document.revision.status)" class="revision-action-hint">
+                  Este documento já possui uma revisão em andamento. Aguarde a conclusão para criar
+                  outra.
+                </p>
               </div>
               <p v-if="!document.versions?.length" class="tag-block-empty">
                 Nenhuma versão registrada.
@@ -486,16 +448,16 @@ onMounted(loadDocument)
 }
 
 .revision-action button:disabled {
-  cursor: wait;
-  opacity: 0.65;
+  background: var(--color-surface-muted);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
 }
 
-.visually-hidden-input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
+.revision-block .revision-action-hint {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: 0.4rem;
 }
 
 .details-shell {
