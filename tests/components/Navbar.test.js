@@ -3,6 +3,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createPinia, setActivePinia } from 'pinia'
 import Navbar from '../../src/components/layout/Navbar.vue'
+import { PROFILES, useAuthStore } from '../../src/stores/authStore'
 
 const Page = { template: '<div />' }
 
@@ -13,11 +14,15 @@ function createTestRouter() {
       { path: '/home', name: 'home', component: Page },
       { path: '/documents', name: 'document-list', component: Page },
       { path: '/documents/upload', name: 'document-upload', component: Page },
+      { path: '/revisions', name: 'revisions', component: Page },
+      { path: '/collaborators', name: 'collaborators', component: Page },
+      { path: '/profile', name: 'profile', component: Page },
     ],
   })
 }
 
-async function mountNavbar(path = '/home') {
+async function mountNavbar(path = '/home', profile = PROFILES.COLLABORATOR) {
+  useAuthStore().login(profile)
   const router = createTestRouter()
   router.push(path)
   await router.isReady()
@@ -27,6 +32,7 @@ async function mountNavbar(path = '/home') {
 
 describe('Navbar', () => {
   beforeEach(() => {
+    localStorage.clear()
     setActivePinia(createPinia())
   })
 
@@ -37,7 +43,7 @@ describe('Navbar', () => {
     expect(brand.find('img').attributes('alt')).toBe('Índice')
   })
 
-  it('should render the Início and Documentos links pointing to their routes', async () => {
+  it('should render only the Início and Documentos links for a collaborator', async () => {
     const { wrapper } = await mountNavbar()
     const links = wrapper.findAll('a.navbar-link')
     expect(links.map((link) => link.text())).toEqual(['Início', 'Documentos'])
@@ -89,4 +95,65 @@ describe('Navbar', () => {
     const { wrapper } = await mountNavbar()
     expect(wrapper.find('header.navbar').exists()).toBe(true)
   })
+
+  it('should render the Início, Revisões and Colaboradores links for a manager', async () => {
+    const { wrapper } = await mountNavbar('/home', PROFILES.MANAGER)
+
+    const links = wrapper.findAll('a.navbar-link')
+
+    expect(links.map((link) => link.text())).toEqual(['Início', 'Revisões', 'Colaboradores'])
+    expect(links.map((link) => link.attributes('href'))).toEqual([
+      '/home',
+      '/revisions',
+      '/collaborators',
+    ])
+  })
+
+  it('should hide the manager tabs from a collaborator', async () => {
+    const { wrapper } = await mountNavbar()
+
+    const labels = wrapper.findAll('a.navbar-link').map((link) => link.text())
+
+    expect(labels).not.toContain('Revisões')
+    expect(labels).not.toContain('Colaboradores')
+  })
+
+  it('should mark Revisões as active on the revisions route for a manager', async () => {
+    const { wrapper } = await mountNavbar('/revisions', PROFILES.MANAGER)
+
+    const [home, revisions, collaborators] = wrapper.findAll('a.navbar-link')
+
+    expect(revisions.classes()).toContain('active')
+    expect(home.classes()).not.toContain('active')
+    expect(collaborators.classes()).not.toContain('active')
+  })
+
+  it('should navigate to the collaborators route when a manager clicks Colaboradores', async () => {
+    const { wrapper, router } = await mountNavbar('/home', PROFILES.MANAGER)
+
+    await wrapper.findAll('a.navbar-link')[2].trigger('click')
+    await flushPromises()
+
+    expect(router.currentRoute.value.path).toBe('/collaborators')
+  })
+
+  it('should show the initials and the name of the manager', async () => {
+    const { wrapper } = await mountNavbar('/home', PROFILES.MANAGER)
+
+    expect(wrapper.find('.navbar-avatar').text()).toBe('JP')
+    expect(wrapper.find('.navbar-user-name').text()).toBe('Joana Prado')
+  })
+
+  it.each([PROFILES.COLLABORATOR, PROFILES.MANAGER])(
+    'should navigate to the profile route when the %s clicks the user name',
+    async (profile) => {
+      const { wrapper, router } = await mountNavbar('/home', profile)
+
+      await wrapper.find('a.navbar-profile').trigger('click')
+      await flushPromises()
+
+      expect(router.currentRoute.value.path).toBe('/profile')
+      expect(wrapper.find('a.navbar-profile').classes()).toContain('active')
+    },
+  )
 })

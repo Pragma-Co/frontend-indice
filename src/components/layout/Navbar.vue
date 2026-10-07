@@ -8,13 +8,21 @@ import { useAuthStore } from '@/stores/authStore'
 const route = useRoute()
 const auth = useAuthStore()
 
-const links = [
+const collaboratorLinks = [
   { label: 'Início', to: '/home' },
   { label: 'Documentos', to: '/documents', preserveQuery: true },
 ]
 
+const managerLinks = [
+  { label: 'Início', to: '/home' },
+  { label: 'Revisões', to: '/revisions' },
+  { label: 'Colaboradores', to: '/collaborators' },
+]
+
+const links = computed(() => (auth.isManager ? managerLinks : collaboratorLinks))
+
 const resolvedLinks = computed(() =>
-  links.map((link) => ({
+  links.value.map((link) => ({
     ...link,
     to: {
       path: link.to,
@@ -49,8 +57,14 @@ function isActive(to) {
       <button class="navbar-notifications" type="button" aria-label="Notificações">
         <img :src="bellIcon" alt="" class="navbar-bell" />
       </button>
-      <span class="navbar-avatar" aria-hidden="true">{{ auth.initials }}</span>
-      <span class="navbar-user-name">{{ auth.currentUser?.name }}</span>
+      <RouterLink
+        to="/profile"
+        :class="['navbar-profile', { active: isActive('/profile') }]"
+        aria-label="Perfil - Gestão do Titular"
+      >
+        <span class="navbar-avatar" aria-hidden="true">{{ auth.initials }}</span>
+        <span class="navbar-user-name">{{ auth.currentUser?.name }}</span>
+      </RouterLink>
     </div>
   </header>
 </template>
@@ -141,6 +155,25 @@ function isActive(to) {
   filter: brightness(0) invert(1);
 }
 
+.navbar-profile {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0.6rem 0.25rem 0.25rem;
+  border-radius: var(--radius-sm);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.navbar-profile:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.navbar-profile.active {
+  background: rgba(255, 255, 255, 0.18);
+}
+
 .navbar-avatar {
   display: inline-flex;
   align-items: center;
@@ -162,6 +195,7 @@ function isActive(to) {
 
 .navbar-brand:focus-visible,
 .navbar-link:focus-visible,
+.navbar-profile:focus-visible,
 .navbar-notifications:focus-visible {
   outline: 2px solid var(--color-text-inverse);
   outline-offset: 2px;
@@ -179,6 +213,10 @@ function isActive(to) {
 
   .navbar-link {
     padding: 0.35rem 0.6rem;
+  }
+
+  .navbar-profile {
+    padding: 0.25rem;
   }
 
   .navbar-user-name {
