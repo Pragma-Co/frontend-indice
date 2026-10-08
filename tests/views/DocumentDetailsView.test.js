@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { RouterLinkStub, flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
 import DocumentDetailsView from '@/views/document/DocumentDetailsView.vue'
@@ -9,10 +9,8 @@ import { useNotificationStore } from '@/stores/notificationStore.js'
 import { fetchDocumentDetail, requestDocumentAccess } from '@/api/documents.js'
 
 const routeParams = { documentId: '23' }
-const router = { push: vi.fn() }
 vi.mock('vue-router', () => ({
   useRoute: () => ({ params: routeParams }),
-  useRouter: () => router,
 }))
 
 vi.mock('docx-preview', () => ({
@@ -25,6 +23,7 @@ vi.mock('@/api/documents.js', () => ({
 }))
 
 const globalStubs = {
+  RouterLink: RouterLinkStub,
   Breadcrumbs: { template: '<nav />' },
   Button: { template: '<button><slot /></button>' },
   StatusBadge: { template: '<span />' },
@@ -69,6 +68,7 @@ function makeDocument(overrides = {}) {
 }
 
 const accessStubs = {
+  RouterLink: RouterLinkStub,
   Breadcrumbs: { template: '<nav />' },
   StatusBadge: { template: '<span />' },
 }
@@ -323,7 +323,7 @@ describe('DocumentDetailsView', () => {
     expect(wrapper.find('iframe.preview-frame').attributes('src')).toContain('/api/files/40/view')
   })
 
-  it('should open the new revision screen instead of uploading files in place', async () => {
+  it('should link to the dedicated new revision screen instead of uploading files in place', async () => {
     authStore.currentUser = { id: RESPONSIBLE_ID, name: 'Beatriz Canuto' }
     const current = makeDocument().revision
     fetchDocumentDetail.mockResolvedValue(
@@ -332,14 +332,29 @@ describe('DocumentDetailsView', () => {
     const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
     await flushPromises()
 
-    await wrapper.find('.revision-action button').trigger('click')
+    const link = wrapper.findComponent(RouterLinkStub)
 
-    expect(wrapper.find('input[type="file"]').exists()).toBe(false)
-    expect(wrapper.find('.revision-action button').text()).toBe('Nova Revisão')
-    expect(router.push).toHaveBeenCalledWith({
+    expect(link.text()).toBe('Nova Revisão')
+    expect(link.props('to')).toEqual({
       name: 'document-new-revision',
       params: { documentId: '23' },
     })
+    expect(wrapper.find('.revision-action button').exists()).toBe(false)
+  })
+
+  it('should keep the details screen read only without upload controls', async () => {
+    authStore.currentUser = { id: RESPONSIBLE_ID, name: 'Beatriz Canuto' }
+    const current = makeDocument().revision
+    fetchDocumentDetail.mockResolvedValue(
+      makeDocument({ revision: { ...current, status: 'APPROVED' } }),
+    )
+    const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
+    await flushPromises()
+
+    expect(wrapper.find('input').exists()).toBe(false)
+    expect(wrapper.find('form').exists()).toBe(false)
+    expect(wrapper.find('.dropzone').exists()).toBe(false)
+    expect(wrapper.text()).not.toMatch(/arraste|enviar arquivos|selecionar arquivos/i)
   })
 
   it('should block a new revision while the current one is under review', async () => {
@@ -348,11 +363,12 @@ describe('DocumentDetailsView', () => {
     const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
     await flushPromises()
 
-    await wrapper.find('.revision-action button').trigger('click')
+    const blocked = wrapper.find('.revision-action-link')
 
-    expect(wrapper.find('.revision-action button').attributes('disabled')).toBeDefined()
+    expect(wrapper.findComponent(RouterLinkStub).exists()).toBe(false)
+    expect(blocked.attributes('aria-disabled')).toBe('true')
+    expect(blocked.text()).toBe('Nova Revisão')
     expect(wrapper.find('.revision-action-hint').text()).toContain('revisão em andamento')
-    expect(router.push).not.toHaveBeenCalled()
   })
 
   it('should disable the navigation buttons when there is only one file', async () => {
