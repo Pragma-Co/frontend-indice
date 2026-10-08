@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
-import { DEV_USER_STORAGE_KEY, resolveDevelopmentUser, useAuthStore } from '@/stores/authStore.js'
+import {
+  DEV_USER_STORAGE_KEY,
+  PROFILE_STORAGE_KEY,
+  PROFILES,
+  resolveDevelopmentUser,
+  resolveStoredProfile,
+  useAuthStore,
+} from '@/stores/authStore.js'
 
 function storageWith(value) {
   return {
@@ -56,15 +63,98 @@ describe('resolveDevelopmentUser', () => {
   })
 })
 
+describe('resolveStoredProfile', () => {
+  function profileStorage(value) {
+    return { getItem: (key) => (key === PROFILE_STORAGE_KEY ? value : null) }
+  }
+
+  it('should restore a known profile', () => {
+    expect(resolveStoredProfile(profileStorage('manager'))).toBe(PROFILES.MANAGER)
+    expect(resolveStoredProfile(profileStorage('collaborator'))).toBe(PROFILES.COLLABORATOR)
+  })
+
+  it('should ignore a missing or unknown profile', () => {
+    expect(resolveStoredProfile(profileStorage(null))).toBeNull()
+    expect(resolveStoredProfile(profileStorage('admin'))).toBeNull()
+    expect(resolveStoredProfile(profileStorage('toString'))).toBeNull()
+  })
+
+  it('should ignore a storage that cannot be read', () => {
+    const brokenStorage = {
+      getItem: () => {
+        throw new Error('blocked')
+      },
+    }
+
+    expect(resolveStoredProfile(brokenStorage)).toBeNull()
+  })
+})
+
 describe('authStore', () => {
   beforeEach(() => {
+    localStorage.clear()
     setActivePinia(createPinia())
   })
 
-  it('should expose the current user with initials', () => {
+  it('should start without a user until a profile is chosen', () => {
     const auth = useAuthStore()
 
+    expect(auth.isAuthenticated).toBe(false)
+    expect(auth.isManager).toBe(false)
+    expect(auth.currentUser).toBeNull()
+  })
+
+  it('should sign in as a collaborator', () => {
+    const auth = useAuthStore()
+
+    const signedIn = auth.login(PROFILES.COLLABORATOR)
+
+    expect(signedIn).toBe(true)
     expect(auth.isAuthenticated).toBe(true)
+    expect(auth.isManager).toBe(false)
+    expect(auth.currentUser).toMatchObject({ id: 12, name: 'Beatriz Canuto', role: 'Colaborador' })
     expect(auth.initials).toBe('BC')
+  })
+
+  it('should sign in as a manager', () => {
+    const auth = useAuthStore()
+
+    auth.login(PROFILES.MANAGER)
+
+    expect(auth.isAuthenticated).toBe(true)
+    expect(auth.isManager).toBe(true)
+    expect(auth.currentUser).toMatchObject({ id: 8, name: 'Joana Prado', role: 'Gestor' })
+    expect(auth.initials).toBe('JP')
+  })
+
+  it('should refuse an unknown profile', () => {
+    const auth = useAuthStore()
+
+    const signedIn = auth.login('admin')
+
+    expect(signedIn).toBe(false)
+    expect(auth.isAuthenticated).toBe(false)
+    expect(localStorage.getItem(PROFILE_STORAGE_KEY)).toBeNull()
+  })
+
+  it('should keep the chosen profile after the page is reloaded', () => {
+    useAuthStore().login(PROFILES.MANAGER)
+
+    setActivePinia(createPinia())
+    const reloaded = useAuthStore()
+
+    expect(reloaded.isManager).toBe(true)
+    expect(reloaded.currentUser.name).toBe('Joana Prado')
+  })
+
+  it('should switch the user when another profile signs in', () => {
+    const auth = useAuthStore()
+    auth.login(PROFILES.MANAGER)
+
+    auth.login(PROFILES.COLLABORATOR)
+
+    expect(auth.isManager).toBe(false)
+    expect(auth.currentUser.name).toBe('Beatriz Canuto')
+    expect(localStorage.getItem(PROFILE_STORAGE_KEY)).toBe(PROFILES.COLLABORATOR)
   })
 })

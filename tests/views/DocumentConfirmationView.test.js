@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import DocumentConfirmationView from '../../src/views/document/components/DocumentConfirmation.vue'
+import { PROFILES, useAuthStore } from '../../src/stores/authStore'
 import { useDocumentFormStore } from '../../src/stores/documentFormStore'
 import { useNotificationStore } from '../../src/stores/notificationStore'
 import { useUploadStore } from '../../src/stores/uploadStore'
@@ -28,6 +29,7 @@ describe('DocumentConfirmationView', () => {
 
   beforeEach(() => {
     setActivePinia(createPinia())
+    useAuthStore().login(PROFILES.COLLABORATOR)
     store = useDocumentFormStore()
     vi.clearAllMocks()
     store.projects = [{ id: 1, code: 'AK-2100', name: 'Aeroestrutura de Fuselagem Central' }]
