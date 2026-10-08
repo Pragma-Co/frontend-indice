@@ -43,6 +43,8 @@ function makeDocument(overrides = {}) {
     code: 'AK-3100-EST-ESP-0001',
     title: 'Pylon structural verification report',
     revision: { id: 5, version: 1, status: 'APPROVED' },
+    access_status: 'APPROVED',
+    responsible: { id: 12, name: 'Beatriz Canuto' },
     ...overrides,
   }
 }
@@ -172,7 +174,42 @@ describe('useNewRevision', () => {
     await revision.submit()
 
     expect(revision.revisionBlocked.value).toBe(true)
+    expect(revision.revisionBlockedMessage.value).toContain('revisão em andamento')
     expect(createDocumentRevision).not.toHaveBeenCalled()
+  })
+
+  it('should block a document the user has no permission to see', async () => {
+    fetchDocumentDetail.mockResolvedValue(
+      makeDocument({ access_status: 'PENDING', responsible: { id: 3, name: 'Caio Bertoni' } }),
+    )
+    const revision = await mountRevision()
+    queue.value = [makeFile()]
+    revision.justification.value = VALID_JUSTIFICATION
+
+    await revision.submit()
+
+    expect(revision.revisionBlocked.value).toBe(true)
+    expect(revision.revisionBlockedMessage.value).toContain('não tem permissão')
+    expect(revision.canSubmit.value).toBe(false)
+    expect(createDocumentRevision).not.toHaveBeenCalled()
+  })
+
+  it('should allow the responsible even without an explicit access grant', async () => {
+    fetchDocumentDetail.mockResolvedValue(makeDocument({ access_status: 'PENDING' }))
+
+    const revision = await mountRevision()
+
+    expect(revision.revisionBlocked.value).toBe(false)
+  })
+
+  it('should allow a user with granted access who is not the responsible', async () => {
+    fetchDocumentDetail.mockResolvedValue(
+      makeDocument({ responsible: { id: 3, name: 'Caio Bertoni' } }),
+    )
+
+    const revision = await mountRevision()
+
+    expect(revision.revisionBlocked.value).toBe(false)
   })
 
   it('should send the uploaded files with the justification and return to the list', async () => {

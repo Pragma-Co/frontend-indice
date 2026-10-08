@@ -5,7 +5,13 @@ import { renderAsync } from 'docx-preview'
 import { fetchDocumentDetail, requestDocumentAccess } from '@/api/documents.js'
 import { useAuthStore } from '@/stores/authStore.js'
 import { useNotificationStore } from '@/stores/notificationStore.js'
-import { canCreateRevision, statusBadgeFor } from '@/utils/documentStatus.js'
+import {
+  REVISION_BLOCK_MESSAGES,
+  REVISION_BLOCK_REASONS,
+  hasDocumentAccess,
+  revisionBlockReason,
+  statusBadgeFor,
+} from '@/utils/documentStatus.js'
 import { formatDate } from '@/utils/formatters.js'
 import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
@@ -50,12 +56,14 @@ const totalFiles = computed(() => allFiles.value.length)
 
 const currentUserId = computed(() => authStore.currentUser?.id ?? null)
 
-const isResponsible = computed(
-  () => currentUserId.value != null && document.value?.responsible?.id === currentUserId.value,
+const hasAccess = computed(() => hasDocumentAccess(document.value, currentUserId.value))
+
+const newRevisionBlockReason = computed(() =>
+  revisionBlockReason(document.value, currentUserId.value),
 )
 
-const hasAccess = computed(
-  () => document.value?.access_status === 'APPROVED' || isResponsible.value,
+const newRevisionInProgress = computed(
+  () => newRevisionBlockReason.value === REVISION_BLOCK_REASONS.IN_PROGRESS,
 )
 
 const newRevisionRoute = computed(() => ({
@@ -364,7 +372,7 @@ onMounted(loadDocument)
               <h2>Histórico de versões</h2>
               <div v-if="hasAccess && document.revision" class="revision-action">
                 <RouterLink
-                  v-if="canCreateRevision(document.revision.status)"
+                  v-if="!newRevisionBlockReason"
                   :to="newRevisionRoute"
                   class="revision-action-link"
                 >
@@ -373,9 +381,8 @@ onMounted(loadDocument)
                 <span v-else class="revision-action-link is-disabled" aria-disabled="true">
                   Nova Revisão
                 </span>
-                <p v-if="!canCreateRevision(document.revision.status)" class="revision-action-hint">
-                  Este documento já possui uma revisão em andamento. Aguarde a conclusão para criar
-                  outra.
+                <p v-if="newRevisionInProgress" class="revision-action-hint">
+                  {{ REVISION_BLOCK_MESSAGES[REVISION_BLOCK_REASONS.IN_PROGRESS] }}
                 </p>
               </div>
               <p v-if="!document.versions?.length" class="tag-block-empty">

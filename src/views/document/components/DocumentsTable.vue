@@ -1,6 +1,11 @@
 <script setup>
 import { formatUpdatedAt } from '@/utils/formatters.js'
-import { canCreateRevision, statusBadgeFor } from '@/utils/documentStatus.js'
+import {
+  REVISION_BLOCK_MESSAGES,
+  REVISION_BLOCK_REASONS,
+  canCreateRevision,
+  statusBadgeFor,
+} from '@/utils/documentStatus.js'
 import Badge from '@/components/common/Badge.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 
@@ -13,8 +18,7 @@ defineProps({
 
 const emit = defineEmits(['action'])
 
-const NEW_REVISION_BLOCKED_MESSAGE =
-  'Este documento já possui uma revisão em andamento. Aguarde a conclusão para criar outra.'
+const NEW_REVISION_BLOCKED_MESSAGE = REVISION_BLOCK_MESSAGES[REVISION_BLOCK_REASONS.IN_PROGRESS]
 
 function openDetails(document) {
   emit('action', { document, action: 'view-details' })

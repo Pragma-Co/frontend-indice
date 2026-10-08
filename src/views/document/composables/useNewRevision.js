@@ -5,7 +5,7 @@ import { useDocumentUpload } from '@/composables/useDocumentUpload.js'
 import { useAuthStore } from '@/stores/authStore.js'
 import { useNotificationStore } from '@/stores/notificationStore.js'
 import { revisionLabel } from '@/utils/documentCode.js'
-import { canCreateRevision } from '@/utils/documentStatus.js'
+import { REVISION_BLOCK_MESSAGES, revisionBlockReason } from '@/utils/documentStatus.js'
 
 export const JUSTIFICATION_MIN_LENGTH = 20
 export const JUSTIFICATION_MAX_LENGTH = 255
@@ -39,9 +39,13 @@ export function useNewRevision() {
     currentVersion.value ? revisionLabel(currentVersion.value) : null,
   )
   const nextRevisionLabel = computed(() => revisionLabel(currentVersion.value + 1))
-  const revisionBlocked = computed(
-    () => !!parentDocument.value && !canCreateRevision(parentDocument.value.revision?.status),
+  const blockReason = computed(() =>
+    parentDocument.value
+      ? revisionBlockReason(parentDocument.value, authStore.currentUser?.id)
+      : null,
   )
+  const revisionBlocked = computed(() => blockReason.value !== null)
+  const revisionBlockedMessage = computed(() => REVISION_BLOCK_MESSAGES[blockReason.value] ?? '')
 
   const uploadedFiles = computed(() => queue.value.filter((item) => item.status === 'success'))
   const activeDuplicate = computed(() => queue.value.find((item) => item.status === 'duplicate'))
@@ -115,6 +119,7 @@ export function useNewRevision() {
     currentRevisionLabel,
     nextRevisionLabel,
     revisionBlocked,
+    revisionBlockedMessage,
     activeDuplicate,
     totalSize,
     hasFile,

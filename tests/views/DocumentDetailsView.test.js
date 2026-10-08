@@ -342,6 +342,17 @@ describe('DocumentDetailsView', () => {
     expect(wrapper.find('.revision-action button').exists()).toBe(false)
   })
 
+  it('should not offer the new revision shortcut to a user without access', async () => {
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
+    const current = makeDocument().revision
+    const wrapper = await mountAsStranger(
+      makeDocument({ access_status: 'PENDING', revision: { ...current, status: 'APPROVED' } }),
+    )
+
+    expect(wrapper.findComponent(RouterLinkStub).exists()).toBe(false)
+    expect(wrapper.find('.revision-action').exists()).toBe(false)
+  })
+
   it('should keep the details screen read only without upload controls', async () => {
     authStore.currentUser = { id: RESPONSIBLE_ID, name: 'Beatriz Canuto' }
     const current = makeDocument().revision

@@ -25,6 +25,7 @@ const {
   currentRevisionLabel,
   nextRevisionLabel,
   revisionBlocked,
+  revisionBlockedMessage,
   activeDuplicate,
   totalSize,
   hasFile,
@@ -66,10 +67,7 @@ onUnmounted(() => {
 
     <template v-else-if="loadError || revisionBlocked">
       <p class="card status-message" role="alert">
-        {{
-          loadError ||
-          'Este documento já possui uma revisão em andamento. Aguarde a conclusão para criar outra.'
-        }}
+        {{ loadError || revisionBlockedMessage }}
       </p>
       <footer class="page-footer">
         <Button variant="outline" @click="goToDocumentList">
