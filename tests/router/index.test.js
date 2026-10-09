@@ -1,7 +1,16 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { createPinia, setActivePinia } from 'pinia'
 import router from '../../src/router'
+import { PROFILES, useAuthStore } from '../../src/stores/authStore'
 
 describe('router', () => {
+  beforeEach(async () => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+    useAuthStore().login(PROFILES.COLLABORATOR)
+    await router.push('/login')
+  })
+
   it('should resolve the home route to the home view', async () => {
     await router.push('/home')
     expect(router.currentRoute.value.name).toBe('home')
@@ -38,4 +47,55 @@ describe('router', () => {
       '/documents/confirmation',
     ])
   })
+
+  it('should send a visitor without a profile to the login screen', async () => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+
+    await router.push('/documents')
+
+    expect(router.currentRoute.value.name).toBe('login')
+    expect(document.title).toBe('Índice - Entrar')
+  })
+
+  it('should keep the login screen reachable to switch profiles', async () => {
+    await router.push('/home')
+
+    await router.push('/login')
+
+    expect(router.currentRoute.value.name).toBe('login')
+  })
+
+  it.each(['/revisions', '/collaborators'])(
+    'should send a collaborator back to the home route when opening %s',
+    async (path) => {
+      await router.push(path)
+
+      expect(router.currentRoute.value.name).toBe('home')
+    },
+  )
+
+  it('should open the manager routes for a manager', async () => {
+    useAuthStore().login(PROFILES.MANAGER)
+
+    await router.push('/revisions')
+    const revisionsRoute = router.currentRoute.value.name
+    await router.push('/collaborators')
+
+    expect(revisionsRoute).toBe('revisions')
+    expect(router.currentRoute.value.name).toBe('collaborators')
+    expect(document.title).toBe('Gestor - Colaboradores')
+  })
+
+  it.each([PROFILES.COLLABORATOR, PROFILES.MANAGER])(
+    'should open the profile route for the %s',
+    async (profile) => {
+      useAuthStore().login(profile)
+
+      await router.push('/profile')
+
+      expect(router.currentRoute.value.name).toBe('profile')
+      expect(document.title).toBe('Índice - Gestão do Titular')
+    },
+  )
 })

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import DocumentMetadataView from '../../src/views/document/components/DocumentMetadata.vue'
+import { PROFILES, useAuthStore } from '../../src/stores/authStore'
 import { useDocumentFormStore } from '../../src/stores/documentFormStore'
 import { useUploadStore } from '../../src/stores/uploadStore'
 
@@ -27,6 +28,7 @@ describe('DocumentMetadataView', () => {
 
   beforeEach(() => {
     setActivePinia(createPinia())
+    useAuthStore().login(PROFILES.COLLABORATOR)
     store = useDocumentFormStore()
     vi.clearAllMocks()
     listProjects.mockResolvedValue(PROJECTS)
