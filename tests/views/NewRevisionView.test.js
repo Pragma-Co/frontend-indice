@@ -9,6 +9,7 @@ const justification = ref('')
 const submitting = ref(false)
 const queue = ref([])
 const revisionBlocked = ref(false)
+const revisionBlockedMessage = ref('')
 const canSubmit = ref(false)
 const formValid = ref(false)
 const hasFile = ref(false)
@@ -34,6 +35,7 @@ vi.mock('@/views/document/composables/useNewRevision.js', () => ({
     currentRevisionLabel: ref('REV01'),
     nextRevisionLabel: ref('REV02'),
     revisionBlocked,
+    revisionBlockedMessage,
     activeDuplicate: computed(() => queue.value.find((item) => item.status === 'duplicate')),
     totalSize: computed(() => queue.value.reduce((total, item) => total + item.size, 0)),
     hasFile,
@@ -77,6 +79,7 @@ describe('NewRevisionView', () => {
     submitting.value = false
     queue.value = []
     revisionBlocked.value = false
+    revisionBlockedMessage.value = ''
     canSubmit.value = false
     formValid.value = false
     hasFile.value = false
@@ -187,10 +190,23 @@ describe('NewRevisionView', () => {
 
   it('should not offer the form when the document already has a revision under review', () => {
     revisionBlocked.value = true
+    revisionBlockedMessage.value = 'Este documento já possui uma revisão em andamento.'
 
     const wrapper = mount(NewRevisionView)
 
     expect(wrapper.find('[role="alert"]').text()).toContain('revisão em andamento')
     expect(wrapper.find('#revision-justification').exists()).toBe(false)
+  })
+
+  it('should not offer the form when the user has no permission to see the document', () => {
+    revisionBlocked.value = true
+    revisionBlockedMessage.value = 'Você não tem permissão para criar uma revisão deste documento.'
+
+    const wrapper = mount(NewRevisionView)
+
+    expect(wrapper.find('[role="alert"]').text()).toContain('não tem permissão')
+    expect(wrapper.find('#revision-justification').exists()).toBe(false)
+    expect(wrapper.find('input[type="file"]').exists()).toBe(false)
+    expect(findButton(wrapper, 'Voltar para a listagem')).toBeDefined()
   })
 })

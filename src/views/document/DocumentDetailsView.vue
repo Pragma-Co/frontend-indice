@@ -1,18 +1,23 @@
 <script setup>
 import { onMounted, ref, computed, watch, nextTick } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { renderAsync } from 'docx-preview'
 import { fetchDocumentDetail, requestDocumentAccess } from '@/api/documents.js'
 import { useAuthStore } from '@/stores/authStore.js'
 import { useNotificationStore } from '@/stores/notificationStore.js'
-import { canCreateRevision, statusBadgeFor } from '@/utils/documentStatus.js'
+import {
+  REVISION_BLOCK_MESSAGES,
+  REVISION_BLOCK_REASONS,
+  hasDocumentAccess,
+  revisionBlockReason,
+  statusBadgeFor,
+} from '@/utils/documentStatus.js'
 import { formatDate } from '@/utils/formatters.js'
 import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import DocumentAccessOverlay from '@/views/document/components/DocumentAccessOverlay.vue'
 
 const route = useRoute()
-const router = useRouter()
 const authStore = useAuthStore()
 const notifications = useNotificationStore()
 const document = ref(null)
@@ -51,13 +56,20 @@ const totalFiles = computed(() => allFiles.value.length)
 
 const currentUserId = computed(() => authStore.currentUser?.id ?? null)
 
-const isResponsible = computed(
-  () => currentUserId.value != null && document.value?.responsible?.id === currentUserId.value,
+const hasAccess = computed(() => hasDocumentAccess(document.value, currentUserId.value))
+
+const newRevisionBlockReason = computed(() =>
+  revisionBlockReason(document.value, currentUserId.value),
 )
 
-const hasAccess = computed(
-  () => document.value?.access_status === 'APPROVED' || isResponsible.value,
+const newRevisionInProgress = computed(
+  () => newRevisionBlockReason.value === REVISION_BLOCK_REASONS.IN_PROGRESS,
 )
+
+const newRevisionRoute = computed(() => ({
+  name: 'document-new-revision',
+  params: { documentId: route.params.documentId },
+}))
 
 const accessRejected = computed(() => document.value?.access_request?.status === 'REJECTED')
 
@@ -149,10 +161,6 @@ async function handleRequestAccess() {
   } finally {
     requestingAccess.value = false
   }
-}
-
-function goToNewRevision() {
-  router.push({ name: 'document-new-revision', params: { documentId: route.params.documentId } })
 }
 
 async function renderDocx() {
@@ -363,16 +371,18 @@ onMounted(loadDocument)
             <div class="revision-block">
               <h2>Histórico de versões</h2>
               <div v-if="hasAccess && document.revision" class="revision-action">
-                <button
-                  type="button"
-                  :disabled="!canCreateRevision(document.revision.status)"
-                  @click="goToNewRevision"
+                <RouterLink
+                  v-if="!newRevisionBlockReason"
+                  :to="newRevisionRoute"
+                  class="revision-action-link"
                 >
                   Nova Revisão
-                </button>
-                <p v-if="!canCreateRevision(document.revision.status)" class="revision-action-hint">
-                  Este documento já possui uma revisão em andamento. Aguarde a conclusão para criar
-                  outra.
+                </RouterLink>
+                <span v-else class="revision-action-link is-disabled" aria-disabled="true">
+                  Nova Revisão
+                </span>
+                <p v-if="newRevisionInProgress" class="revision-action-hint">
+                  {{ REVISION_BLOCK_MESSAGES[REVISION_BLOCK_REASONS.IN_PROGRESS] }}
                 </p>
               </div>
               <p v-if="!document.versions?.length" class="tag-block-empty">
@@ -436,8 +446,11 @@ onMounted(loadDocument)
   margin: 0.5rem 0 0.85rem;
 }
 
-.revision-action button {
+.revision-action-link {
+  display: block;
   width: 100%;
+  text-align: center;
+  text-decoration: none;
   padding: 0.7rem 1rem;
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-sm);
@@ -447,7 +460,17 @@ onMounted(loadDocument)
   cursor: pointer;
 }
 
-.revision-action button:disabled {
+.revision-action-link:hover:not(.is-disabled) {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
+}
+
+.revision-action-link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.revision-action-link.is-disabled {
   background: var(--color-surface-muted);
   border-color: var(--color-border);
   color: var(--color-text-muted);
