@@ -8,6 +8,7 @@ import formFieldSource from '../../src/components/common/FormField.vue?raw'
 
 vi.mock('../../src/api/projects', () => ({ listProjects: vi.fn() }))
 vi.mock('../../src/api/disciplines', () => ({ listDisciplines: vi.fn() }))
+vi.mock('../../src/api/areas', () => ({ listAreas: vi.fn() }))
 vi.mock('../../src/api/documents', async (importOriginal) => ({
   ...(await importOriginal()),
   listDocumentTypes: vi.fn(),
@@ -16,9 +17,14 @@ vi.mock('../../src/api/documents', async (importOriginal) => ({
 
 import { listProjects } from '../../src/api/projects'
 import { listDisciplines } from '../../src/api/disciplines'
+import { listAreas } from '../../src/api/areas'
 import { listDocumentTypes, requestDocumentSuggestions } from '../../src/api/documents'
 
 const PROJECTS = [{ id: 1, code: 'AK-2100', name: 'Aeroestrutura de Fuselagem Central' }]
+const AREAS = [
+  { id: 1, acronym: 'EST', name: 'Engenharia Estrutural' },
+  { id: 2, acronym: 'QUA', name: 'Qualidade e Inspeção' },
+]
 const DISCIPLINES = [{ id: 1, code: 'EST', name: 'Estruturas' }]
 const DOCUMENT_TYPES = [{ id: 'DWG', code: 'DWG', name: 'Desenho' }]
 
@@ -62,6 +68,7 @@ describe('MetadataStep', () => {
     vi.clearAllMocks()
     listProjects.mockResolvedValue(PROJECTS)
     listDisciplines.mockResolvedValue(DISCIPLINES)
+    listAreas.mockResolvedValue(AREAS)
     listDocumentTypes.mockResolvedValue(DOCUMENT_TYPES)
     requestDocumentSuggestions.mockResolvedValue(null)
     await store.loadCatalogs()

@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useDocumentFormStore } from '@/stores/documentFormStore'
 import { useUploadStore } from '@/stores/uploadStore'
-import { findArea, findConfidentiality } from '@/utils/documentCatalog'
+import { findConfidentiality } from '@/utils/documentCatalog'
 import { formatDate, formatFileSize } from '@/utils/formatters'
 import Badge from '@/components/common/Badge.vue'
 import Button from '@/components/common/Button.vue'
@@ -28,7 +28,7 @@ const discipline = computed(() => {
 })
 const confidentiality = computed(() => findConfidentiality(store.form.confidentiality))
 const areas = computed(() =>
-  store.form.areas.map((code) => ({ code, name: findArea(code)?.name ?? code })),
+  store.form.areas.map((code) => ({ code, name: store.areas.find((a) => a.acronym === code)?.name ?? code })),
 )
 const canPublish = computed(() => store.isValid && !store.publishing)
 const files = computed(() => uploadStore.uploadedDocuments)

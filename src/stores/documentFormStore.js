@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { listProjects } from '../api/projects'
+import { listAreas } from '../api/areas'
 import { listDisciplines } from '../api/disciplines'
 import { createDocument, toDocumentPayload, listDocumentTypes } from '../api/documents'
 import { useAuthStore } from './authStore'
@@ -44,6 +45,7 @@ export const useDocumentFormStore = defineStore('documentForm', {
     form: emptyForm(),
     projects: [],
     disciplines: [],
+    areas: [],
     documentTypes: [],
     catalogsLoading: false,
     catalogsError: null,
@@ -89,10 +91,16 @@ export const useDocumentFormStore = defineStore('documentForm', {
 
       this.catalogsLoading = true
       this.catalogsError = null
-      const request = Promise.all([listProjects(), listDisciplines(), listDocumentTypes()])
-        .then(([projects, disciplines, document_types]) => {
+      const request = Promise.all([
+        listProjects(),
+        listDisciplines(),
+        listDocumentTypes(),
+        listAreas(),
+      ])
+        .then(([projects, disciplines, document_types, areas]) => {
           this.projects = Array.isArray(projects) ? projects : []
           this.disciplines = Array.isArray(disciplines) ? disciplines : []
+          this.areas = Array.isArray(areas) ? areas : []
           this.documentTypes = Array.isArray(document_types) ? document_types : []
         })
         .catch((error) => {
