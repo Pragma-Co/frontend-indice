@@ -28,7 +28,10 @@ const discipline = computed(() => {
 })
 const confidentiality = computed(() => findConfidentiality(store.form.confidentiality))
 const areas = computed(() =>
-  store.form.areas.map((code) => ({ code, name: store.areas.find((a) => a.acronym === code)?.name ?? code })),
+  store.form.areas.map((code) => ({
+    code,
+    name: store.areas.find((a) => a.acronym === code)?.name ?? code,
+  })),
 )
 const canPublish = computed(() => store.isValid && !store.publishing)
 const files = computed(() => uploadStore.uploadedDocuments)
