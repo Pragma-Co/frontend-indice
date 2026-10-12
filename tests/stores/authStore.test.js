@@ -32,6 +32,7 @@ describe('resolveDevelopmentUser', () => {
     expect(resolveDevelopmentUser(EMPTY_STORAGE)).toEqual({
       id: 12,
       name: 'Beatriz Canuto',
+      email: 'beatriz.canuto@akaer.local',
       role: 'Colaborador',
       department: 'Departamento de Engenharia',
       area: 'Certificação e Aeronavegabilidade',
@@ -44,6 +45,7 @@ describe('resolveDevelopmentUser', () => {
     expect(user).toEqual({
       id: 3,
       name: 'Caio Bertoni',
+      email: 'beatriz.canuto@akaer.local',
       role: 'Colaborador',
       department: 'Departamento de Engenharia',
       area: 'Certificação e Aeronavegabilidade',

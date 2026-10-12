@@ -1,26 +1,56 @@
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { ExternalLink, Info, Lock, Save, ShieldCheck, Trash2, User } from '@lucide/vue'
 import Button from '@/components/common/Button.vue'
 import FormField from '@/components/common/FormField.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
+import {
+  fetchCurrentUser,
+  requestAccountDeletion as requestAccountDeletionApi,
+  updateCurrentUser,
+} from '@/api/users.js'
 import { useAuthStore } from '@/stores/authStore.js'
+import { useNotificationStore } from '@/stores/notificationStore.js'
 
+const router = useRouter()
 const authStore = useAuthStore()
-const user = computed(() => authStore.currentUser ?? {})
+const notifications = useNotificationStore()
+
+const user = ref({})
+const loading = ref(true)
+const loadError = ref('')
+const saving = ref(false)
+const fieldErrors = reactive({ name: '', email: '' })
+
+const saved = ref({ firstName: '', lastName: '', email: '' })
+const form = reactive({ ...saved.value })
+
+const isDirty = computed(() => Object.keys(form).some((key) => form[key] !== saved.value[key]))
+const lastUpdate = ref('')
 
 function splitName(fullName = '') {
   const [first = '', ...rest] = fullName.trim().split(/\s+/)
   return { firstName: first, lastName: rest.join(' ') }
 }
 
-const saved = ref({ ...splitName(user.value.name), email: user.value.email ?? '' })
-const form = reactive({ ...saved.value })
+function applyUser(data) {
+  user.value = data
+  saved.value = { ...splitName(data.name), email: data.email ?? '' }
+  Object.assign(form, saved.value)
+}
 
-const isDirty = computed(() => Object.keys(form).some((key) => form[key] !== saved.value[key]))
-const lastUpdate = ref('')
+onMounted(async () => {
+  try {
+    applyUser(await fetchCurrentUser())
+  } catch (error) {
+    loadError.value = error.message
+  } finally {
+    loading.value = false
+  }
+})
 
-// TODO: replace with API data once the consent endpoints exist.
+// TODO: replace with API data once a consent history endpoint exists.
 const consents = [
   {
     id: 1,
@@ -42,19 +72,46 @@ const consents = [
 
 function cancel() {
   Object.assign(form, saved.value)
+  fieldErrors.name = ''
+  fieldErrors.email = ''
 }
 
-function save() {
-  // TODO: persist through the API once available.
-  saved.value = { ...form }
-  lastUpdate.value = new Date().toLocaleString('pt-BR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  })
+async function save() {
+  fieldErrors.name = ''
+  fieldErrors.email = ''
+  saving.value = true
+  try {
+    const name = [form.firstName, form.lastName].filter(Boolean).join(' ')
+    const updated = await updateCurrentUser({ name, email: form.email })
+    applyUser(updated)
+    authStore.currentUser = { ...authStore.currentUser, name: updated.name, email: updated.email }
+    lastUpdate.value = new Date().toLocaleString('pt-BR', {
+      dateStyle: 'short',
+      timeStyle: 'short',
+    })
+    notifications.success('Dados atualizados com sucesso.')
+  } catch (error) {
+    const errors = error.details?.errors
+    if (errors?.name || errors?.email) {
+      fieldErrors.name = errors.name ?? ''
+      fieldErrors.email = errors.email ?? ''
+    } else {
+      notifications.error(error.message)
+    }
+  } finally {
+    saving.value = false
+  }
 }
 
-function requestAccountDeletion() {
-  // TODO: call the account deletion request endpoint.
+async function requestAccountDeletion() {
+  if (!window.confirm('Tem certeza que deseja solicitar a exclusão da sua conta?')) return
+  try {
+    await requestAccountDeletionApi()
+    authStore.logout()
+    router.push('/login')
+  } catch (error) {
+    notifications.error(error.message)
+  }
 }
 </script>
 
@@ -71,8 +128,10 @@ function requestAccountDeletion() {
         </div>
       </header>
 
-      <form class="form-grid" @submit.prevent="save">
-        <FormField label="Nome" html-for="first-name">
+      <p v-if="loading" class="muted">Carregando dados...</p>
+      <p v-else-if="loadError" class="muted load-error">{{ loadError }}</p>
+      <form v-else class="form-grid" @submit.prevent="save">
+        <FormField label="Nome" html-for="first-name" :error="fieldErrors.name">
           <input id="first-name" v-model="form.firstName" class="input" type="text" />
         </FormField>
         <FormField label="Sobrenome" html-for="last-name">
@@ -80,7 +139,7 @@ function requestAccountDeletion() {
         </FormField>
 
         <div>
-          <FormField label="E-mail Corporativo" html-for="email">
+          <FormField label="E-mail Corporativo" html-for="email" :error="fieldErrors.email">
             <input id="email" v-model="form.email" class="input" type="email" />
           </FormField>
           <p class="hint">Usado para login e notificações</p>
@@ -91,13 +150,7 @@ function requestAccountDeletion() {
         </FormField>
 
         <FormField label="Departamento / Área" html-for="department">
-          <input
-            id="department"
-            class="input"
-            type="text"
-            :value="[user.department, user.area].filter(Boolean).join(' - ')"
-            readonly
-          />
+          <input id="department" class="input" type="text" :value="user.area?.name" readonly />
           <span class="readonly-tag">Somente leitura</span>
         </FormField>
         <aside class="protected-box">
@@ -118,8 +171,10 @@ function requestAccountDeletion() {
             Última atualização: {{ lastUpdate }}
           </p>
           <div class="form-actions">
-            <Button variant="outline" :disabled="!isDirty" @click="cancel">Cancelar</Button>
-            <Button variant="primary" :disabled="!isDirty" @click="save">
+            <Button variant="outline" :disabled="!isDirty || saving" @click="cancel"
+              >Cancelar</Button
+            >
+            <Button variant="primary" :disabled="!isDirty" :loading="saving" @click="save">
               <Save :size="14" aria-hidden="true" />
               Salvar Alterações
             </Button>
@@ -215,6 +270,10 @@ function requestAccountDeletion() {
   border-radius: var(--radius-sm);
   background: var(--color-primary-bg);
   color: var(--color-primary);
+}
+
+.load-error {
+  color: var(--color-warning);
 }
 
 .muted {

@@ -82,7 +82,7 @@ describe('Navbar', () => {
     const { wrapper } = await mountNavbar()
     const bell = wrapper.find('.navbar-user button[aria-label="Notificações"]')
     expect(bell.exists()).toBe(true)
-    expect(bell.find('img').exists()).toBe(true)
+    expect(bell.find('svg').exists()).toBe(true)
   })
 
   it('should show the initials and the name of the current user', async () => {
