@@ -12,6 +12,7 @@ export const PROFILES = {
 const SEED_USER = {
   id: 12,
   name: 'Beatriz Canuto',
+  email: 'beatriz.canuto@akaer.local',
   role: 'Colaborador',
   department: 'Departamento de Engenharia',
   area: 'Certificação e Aeronavegabilidade',
@@ -20,6 +21,7 @@ const SEED_USER = {
 const SEED_MANAGER = {
   id: 8,
   name: 'Joana Prado',
+  email: 'joana.prado@akaer.local',
   role: 'Gestor',
   department: 'Departamento de Engenharia',
   area: 'Manufatura e Montagem',

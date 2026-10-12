@@ -74,8 +74,8 @@ const router = createRouter({
     {
       path: '/profile',
       name: 'profile',
-      component: () => import('../views/UnderConstructionView.vue'),
-      meta: { title: 'Índice - Gestão do Titular', heading: 'Gestão do Titular' },
+      component: () => import('../views/user-management/UserManagementView.vue'),
+      meta: { title: 'Índice - Gestão do Titular' },
     },
   ],
 })
