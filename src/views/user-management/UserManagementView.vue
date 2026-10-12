@@ -3,6 +3,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ExternalLink, Info, Lock, Save, ShieldCheck, Trash2, User } from '@lucide/vue'
 import Button from '@/components/common/Button.vue'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import FormField from '@/components/common/FormField.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import {
@@ -21,6 +22,8 @@ const user = ref({})
 const loading = ref(true)
 const loadError = ref('')
 const saving = ref(false)
+const confirmingDeletion = ref(false)
+const deleting = ref(false)
 const fieldErrors = reactive({ name: '', email: '' })
 
 const saved = ref({ firstName: '', lastName: '', email: '' })
@@ -104,13 +107,18 @@ async function save() {
 }
 
 async function requestAccountDeletion() {
-  if (!window.confirm('Tem certeza que deseja solicitar a exclusão da sua conta?')) return
+  deleting.value = true
   try {
     await requestAccountDeletionApi()
+    confirmingDeletion.value = false
     authStore.logout()
-    router.push('/login')
+    await router.push('/login')
+    notifications.success('Solicitação de exclusão da conta enviada com sucesso.')
   } catch (error) {
+    confirmingDeletion.value = false
     notifications.error(error.message)
+  } finally {
+    deleting.value = false
   }
 }
 </script>
@@ -162,7 +170,7 @@ async function requestAccountDeletion() {
         </aside>
 
         <footer class="form-footer">
-          <button type="button" class="btn-danger" @click="requestAccountDeletion">
+          <button type="button" class="btn-danger" @click="confirmingDeletion = true">
             <Trash2 :size="14" aria-hidden="true" />
             Solicitar Exclusão da Conta
           </button>
@@ -234,6 +242,17 @@ async function requestAccountDeletion() {
         regulatória.
       </p>
     </section>
+
+    <ConfirmDialog
+      v-if="confirmingDeletion"
+      title="Solicitar exclusão da conta?"
+      message="Seus dados pessoais serão removidos e você perderá o acesso ao sistema. Esta ação não pode ser desfeita."
+      confirm-label="Solicitar exclusão"
+      variant="danger"
+      :loading="deleting"
+      @confirm="requestAccountDeletion"
+      @cancel="confirmingDeletion = false"
+    />
   </PageLayout>
 </template>
 
