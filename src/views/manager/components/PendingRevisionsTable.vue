@@ -35,7 +35,14 @@ const emit = defineEmits(['evaluate'])
         </tr>
       </thead>
       <tbody>
-        <tr v-for="revision in revisions" :key="revision.id">
+        <tr
+          v-for="revision in revisions"
+          :key="revision.id"
+          class="revision-row"
+          tabindex="0"
+          @click="emit('evaluate', revision)"
+          @keydown.enter="emit('evaluate', revision)"
+        >
           <td class="cell-code">{{ revision.code }}</td>
           <td class="cell-title">{{ revision.title }}</td>
           <td>
@@ -53,7 +60,7 @@ const emit = defineEmits(['evaluate'])
           <td>
             <PendingStatusBadge />
           </td>
-          <td class="cell-actions">
+          <td class="cell-actions" @click.stop @keydown.enter.stop>
             <Button class="evaluate-button" @click="emit('evaluate', revision)">
               Avaliar Revisão
             </Button>
@@ -95,7 +102,21 @@ const emit = defineEmits(['evaluate'])
   width: 12%;
 }
 
+.revision-row {
+  cursor: pointer;
+}
+
+.revision-row:hover {
+  background: var(--color-surface-muted);
+}
+
+.revision-row:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+
 .pill-transition {
+  white-space: nowrap;
   border-color: var(--color-info-border);
   background: var(--color-info-bg);
   color: var(--color-primary);

@@ -59,16 +59,19 @@
 }
 
 .pill {
-  display: inline-block;
+  display: -webkit-inline-box;
   max-width: 100%;
   overflow: hidden;
-  text-overflow: ellipsis;
   vertical-align: middle;
   padding: 0.2rem 0.6rem;
   border: 1px solid var(--color-border);
-  border-radius: 999px;
+  border-radius: var(--radius-md);
   background: var(--color-surface-muted);
   color: var(--color-text-muted);
   font-size: 0.75rem;
-  white-space: nowrap;
+  line-height: 1.3;
+  overflow-wrap: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
 }

@@ -79,4 +79,32 @@ describe('PendingRevisionsTable', () => {
 
     expect(wrapper.emitted('evaluate')).toEqual([[REVISIONS[1]]])
   })
+
+  it('should ask to evaluate the revision when its row is clicked', async () => {
+    const wrapper = mount(PendingRevisionsTable, { props: { revisions: REVISIONS } })
+
+    await wrapper.findAll('tbody tr')[0].trigger('click')
+
+    expect(wrapper.emitted('evaluate')).toEqual([[REVISIONS[0]]])
+  })
+
+  it('should ask to evaluate the focused row on Enter', async () => {
+    const wrapper = mount(PendingRevisionsTable, { props: { revisions: REVISIONS } })
+    const row = wrapper.findAll('tbody tr')[1]
+
+    await row.trigger('keydown', { key: 'Enter' })
+
+    expect(row.attributes('tabindex')).toBe('0')
+    expect(wrapper.emitted('evaluate')).toEqual([[REVISIONS[1]]])
+  })
+
+  it('should ask only once when the button inside the row is used', async () => {
+    const wrapper = mount(PendingRevisionsTable, { props: { revisions: REVISIONS } })
+    const button = wrapper.findAll('tbody button')[0]
+
+    await button.trigger('click')
+    await button.trigger('keydown', { key: 'Enter' })
+
+    expect(wrapper.emitted('evaluate')).toHaveLength(1)
+  })
 })

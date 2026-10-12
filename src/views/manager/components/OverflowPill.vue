@@ -9,7 +9,7 @@ const truncated = ref(false)
 
 function detectTruncation(event) {
   const pill = event.currentTarget
-  truncated.value = pill.scrollWidth > pill.clientWidth
+  truncated.value = pill.scrollHeight > pill.clientHeight || pill.scrollWidth > pill.clientWidth
 }
 </script>
 
