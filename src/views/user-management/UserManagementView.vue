@@ -80,6 +80,7 @@ function cancel() {
 }
 
 async function save() {
+  if (!isDirty.value || saving.value) return
   fieldErrors.name = ''
   fieldErrors.email = ''
   saving.value = true
@@ -138,7 +139,7 @@ async function requestAccountDeletion() {
 
       <p v-if="loading" class="muted">Carregando dados...</p>
       <p v-else-if="loadError" class="muted load-error">{{ loadError }}</p>
-      <form v-else class="form-grid" @submit.prevent="save">
+      <form v-else class="form-grid" novalidate @submit.prevent="save">
         <FormField label="Nome" html-for="first-name" :error="fieldErrors.name">
           <input id="first-name" v-model="form.firstName" class="input" type="text" />
         </FormField>
@@ -179,10 +180,10 @@ async function requestAccountDeletion() {
             Última atualização: {{ lastUpdate }}
           </p>
           <div class="form-actions">
-            <Button variant="outline" :disabled="!isDirty || saving" @click="cancel"
+            <Button type="button" variant="outline" :disabled="!isDirty || saving" @click="cancel"
               >Cancelar</Button
             >
-            <Button variant="primary" :disabled="!isDirty" :loading="saving" @click="save">
+            <Button type="submit" variant="primary" :disabled="!isDirty" :loading="saving">
               <Save :size="14" aria-hidden="true" />
               Salvar Alterações
             </Button>
