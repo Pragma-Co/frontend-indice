@@ -9,6 +9,7 @@ import Button from '@/components/common/Button.vue'
 const props = defineProps({
   filters: { type: Object, required: true },
   filtersLoading: { type: Boolean, required: true },
+  showViewAll: { type: Boolean, default: true },
 })
 
 const emit = defineEmits(['search', 'view-all'])
@@ -290,7 +291,7 @@ onMounted(restoreFilters)
 
     <div class="search-actions">
       <Button variant="outline" type="button" @click="resetFilters">Limpar filtros</Button>
-      <button type="button" class="all-documents" @click="emit('view-all')">
+      <button v-if="showViewAll" type="button" class="all-documents" @click="emit('view-all')">
         Ver todos os documentos
         <ArrowRight :size="16" aria-hidden="true" />
       </button>

@@ -16,9 +16,9 @@ const OPTIONS = {
   types: [{ code: 'DWG', name: 'Desenho Técnico' }],
 }
 
-async function mountPanel() {
+async function mountPanel(extraProps = {}) {
   const wrapper = mount(SearchPanel, {
-    props: { filters: OPTIONS, filtersLoading: false },
+    props: { filters: OPTIONS, filtersLoading: false, ...extraProps },
     global: { stubs: { RouterLink: { template: '<a><slot /></a>' } } },
   })
   await flushPromises()
@@ -32,6 +32,18 @@ describe('SearchPanel', () => {
     setActivePinia(createPinia())
     searchStore = useSearchStore()
     route.query = {}
+  })
+
+  it('should show the view all documents button by default', async () => {
+    const wrapper = await mountPanel()
+
+    expect(wrapper.find('.all-documents').exists()).toBe(true)
+  })
+
+  it('should hide the view all documents button when it is not allowed', async () => {
+    const wrapper = await mountPanel({ showViewAll: false })
+
+    expect(wrapper.find('.all-documents').exists()).toBe(false)
   })
 
   it('should remember the search when it is fired', async () => {

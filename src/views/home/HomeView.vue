@@ -55,6 +55,7 @@ onMounted(async () => {
     <SearchPanel
       :filters="filters"
       :filters-loading="filtersLoading"
+      :show-view-all="!auth.isManager"
       @search="search"
       @view-all="viewAll"
     />
