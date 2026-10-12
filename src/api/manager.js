@@ -13,3 +13,12 @@ export function fetchPendingRevisions(options) {
 export function fetchPendingAccessRequests(options) {
   return api.get(`/manager/pending-access-requests?${pageQuery(options)}`)
 }
+
+export const REVISION_DECISIONS = {
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+}
+
+export function submitRevisionDecision(revisionId, { decision, justification = '' }) {
+  return api.post(`/manager/revisions/${revisionId}/decision`, { decision, justification })
+}

@@ -8,6 +8,7 @@ import PanelEmptyState from '@/views/manager/components/PanelEmptyState.vue'
 import PanelTableSkeleton from '@/views/manager/components/PanelTableSkeleton.vue'
 import PanelTabs from '@/views/manager/components/PanelTabs.vue'
 import PendingRevisionsTable from '@/views/manager/components/PendingRevisionsTable.vue'
+import RevisionReviewModal from '@/views/manager/components/RevisionReviewModal.vue'
 import {
   PANEL_PAGE_SIZE_OPTIONS,
   PANEL_TABS,
@@ -15,8 +16,18 @@ import {
 } from '@/views/manager/composables/useReviewPanel.js'
 import { formatTime } from '@/utils/formatters.js'
 
-const { tabs, activeTab, revisions, accessRequests, selectTab, openRevisionReview } =
-  useReviewPanel()
+const {
+  tabs,
+  activeTab,
+  revisions,
+  accessRequests,
+  revisionUnderReview,
+  selectTab,
+  openRevisionReview,
+  closeRevisionReview,
+  handleRevisionDecided,
+  handleRevisionUnavailable,
+} = useReviewPanel()
 
 const SECTIONS = {
   [PANEL_TABS.REVISIONS]: {
@@ -122,6 +133,15 @@ const updatedLabel = computed(() =>
         />
       </footer>
     </section>
+
+    <RevisionReviewModal
+      v-if="revisionUnderReview"
+      :key="revisionUnderReview.id"
+      :revision="revisionUnderReview"
+      @close="closeRevisionReview"
+      @decided="handleRevisionDecided"
+      @unavailable="handleRevisionUnavailable"
+    />
   </PageLayout>
 </template>
 
