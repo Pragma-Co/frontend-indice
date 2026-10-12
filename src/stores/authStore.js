@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { startDevelopmentSession } from '../api/auth'
 import { getInitials } from '../utils/formatters'
 
 export const DEV_USER_STORAGE_KEY = 'indice.devUser'
@@ -18,11 +19,11 @@ const SEED_USER = {
 }
 
 const SEED_MANAGER = {
-  id: 8,
-  name: 'Joana Prado',
+  id: 10,
+  name: 'Thiago Serpa',
   role: 'Gestor',
   department: 'Departamento de Engenharia',
-  area: 'Manufatura e Montagem',
+  area: 'Qualidade e Inspeção',
 }
 
 const PROFILE_USERS = {
@@ -80,6 +81,16 @@ export const useAuthStore = defineStore('auth', {
       this.currentUser = resolveProfileUser(profile, storage)
       try {
         storage?.setItem(PROFILE_STORAGE_KEY, profile)
+      } catch {
+        return true
+      }
+      return true
+    },
+    async signIn(profile, storage = globalThis.localStorage) {
+      if (!this.login(profile, storage)) return false
+      if (!import.meta.env.DEV) return true
+      try {
+        await startDevelopmentSession(this.currentUser.id)
       } catch {
         return true
       }

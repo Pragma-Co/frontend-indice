@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
+import { startDevelopmentSession } from '@/api/auth.js'
 import {
   DEV_USER_STORAGE_KEY,
   PROFILE_STORAGE_KEY,
@@ -8,6 +9,8 @@ import {
   resolveStoredProfile,
   useAuthStore,
 } from '@/stores/authStore.js'
+
+vi.mock('@/api/auth.js', () => ({ startDevelopmentSession: vi.fn() }))
 
 function storageWith(value) {
   return {
@@ -123,8 +126,8 @@ describe('authStore', () => {
 
     expect(auth.isAuthenticated).toBe(true)
     expect(auth.isManager).toBe(true)
-    expect(auth.currentUser).toMatchObject({ id: 8, name: 'Joana Prado', role: 'Gestor' })
-    expect(auth.initials).toBe('JP')
+    expect(auth.currentUser).toMatchObject({ id: 10, name: 'Thiago Serpa', role: 'Gestor' })
+    expect(auth.initials).toBe('TS')
   })
 
   it('should refuse an unknown profile', () => {
@@ -144,7 +147,7 @@ describe('authStore', () => {
     const reloaded = useAuthStore()
 
     expect(reloaded.isManager).toBe(true)
-    expect(reloaded.currentUser.name).toBe('Joana Prado')
+    expect(reloaded.currentUser.name).toBe('Thiago Serpa')
   })
 
   it('should switch the user when another profile signs in', () => {
@@ -156,5 +159,67 @@ describe('authStore', () => {
     expect(auth.isManager).toBe(false)
     expect(auth.currentUser.name).toBe('Beatriz Canuto')
     expect(localStorage.getItem(PROFILE_STORAGE_KEY)).toBe(PROFILES.COLLABORATOR)
+  })
+})
+
+describe('authStore signIn', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+    vi.stubEnv('DEV', true)
+    startDevelopmentSession.mockResolvedValue({ id: 10 })
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('should open a backend session for the manager user', async () => {
+    const auth = useAuthStore()
+
+    const signedIn = await auth.signIn(PROFILES.MANAGER)
+
+    expect(signedIn).toBe(true)
+    expect(auth.isManager).toBe(true)
+    expect(startDevelopmentSession).toHaveBeenCalledWith(10)
+  })
+
+  it('should open a backend session for the collaborator user', async () => {
+    const auth = useAuthStore()
+
+    await auth.signIn(PROFILES.COLLABORATOR)
+
+    expect(auth.isManager).toBe(false)
+    expect(startDevelopmentSession).toHaveBeenCalledWith(12)
+  })
+
+  it('should still sign in on the frontend when the backend session fails', async () => {
+    startDevelopmentSession.mockRejectedValue(new Error('offline'))
+    const auth = useAuthStore()
+
+    const signedIn = await auth.signIn(PROFILES.MANAGER)
+
+    expect(signedIn).toBe(true)
+    expect(auth.isAuthenticated).toBe(true)
+  })
+
+  it('should not ask for a backend session for an unknown profile', async () => {
+    const auth = useAuthStore()
+
+    const signedIn = await auth.signIn('admin')
+
+    expect(signedIn).toBe(false)
+    expect(startDevelopmentSession).not.toHaveBeenCalled()
+  })
+
+  it('should not ask for a backend session outside development mode', async () => {
+    vi.stubEnv('DEV', false)
+    const auth = useAuthStore()
+
+    const signedIn = await auth.signIn(PROFILES.MANAGER)
+
+    expect(signedIn).toBe(true)
+    expect(startDevelopmentSession).not.toHaveBeenCalled()
   })
 })

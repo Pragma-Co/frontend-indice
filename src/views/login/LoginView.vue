@@ -1,4 +1,5 @@
 <script setup>
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import logo from '@/assets/logo.svg'
 import Button from '@/components/common/Button.vue'
@@ -22,9 +23,17 @@ const profileOptions = [
   },
 ]
 
-function enterAs(profile) {
-  auth.login(profile)
-  router.push({ name: 'home' })
+const signingInAs = ref(null)
+
+async function enterAs(profile) {
+  if (signingInAs.value) return
+  signingInAs.value = profile
+  try {
+    await auth.signIn(profile)
+    router.push({ name: 'home' })
+  } finally {
+    signingInAs.value = null
+  }
 }
 </script>
 
@@ -41,6 +50,8 @@ function enterAs(profile) {
             class="login-button"
             :variant="option.variant"
             :data-profile="option.profile"
+            :loading="signingInAs === option.profile"
+            :disabled="signingInAs !== null"
             @click="enterAs(option.profile)"
           >
             {{ option.label }}
