@@ -9,6 +9,7 @@ export const PANEL_TABS = {
   HISTORY: 'history',
 }
 
+export const PANEL_PAGE_SIZE_OPTIONS = [5, 10, 20, 50]
 export const PANEL_PAGE_SIZE = 20
 
 const PERMISSION_ERROR_MESSAGE = 'Você não tem permissão para acessar o painel de gestão.'
@@ -52,6 +53,7 @@ function usePendingList(fetchPage, normalize, errorMessage) {
   const count = ref(null)
   const totalPages = ref(1)
   const currentPage = ref(1)
+  const pageSize = ref(PANEL_PAGE_SIZE)
   const loading = ref(true)
   const error = ref('')
   const updatedAt = ref(null)
@@ -62,7 +64,7 @@ function usePendingList(fetchPage, normalize, errorMessage) {
     loading.value = true
     error.value = ''
     try {
-      const response = await fetchPage({ page, pageSize: PANEL_PAGE_SIZE })
+      const response = await fetchPage({ page, pageSize: pageSize.value })
       if (request !== latestRequest) return
       items.value = (response?.results ?? []).map(normalize)
       count.value = response?.count ?? items.value.length
@@ -87,16 +89,24 @@ function usePendingList(fetchPage, normalize, errorMessage) {
     load(target)
   }
 
+  function setPageSize(size) {
+    if (!PANEL_PAGE_SIZE_OPTIONS.includes(size) || size === pageSize.value) return
+    pageSize.value = size
+    load(1)
+  }
+
   return reactive({
     items,
     count,
     totalPages,
     currentPage,
+    pageSize,
     loading,
     error,
     updatedAt,
     load,
     goToPage,
+    setPageSize,
   })
 }
 

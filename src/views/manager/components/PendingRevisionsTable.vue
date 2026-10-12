@@ -1,5 +1,6 @@
 <script setup>
 import Button from '@/components/common/Button.vue'
+import OverflowPill from '@/views/manager/components/OverflowPill.vue'
 import PendingStatusBadge from '@/views/manager/components/PendingStatusBadge.vue'
 import { formatDateTime } from '@/utils/formatters.js'
 
@@ -38,7 +39,7 @@ const emit = defineEmits(['evaluate'])
           <td class="cell-code">{{ revision.code }}</td>
           <td class="cell-title">{{ revision.title }}</td>
           <td>
-            <span class="pill">{{ revision.discipline }}</span>
+            <OverflowPill :text="revision.discipline" />
           </td>
           <td>
             <span class="pill pill-transition">

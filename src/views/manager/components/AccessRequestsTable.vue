@@ -1,4 +1,5 @@
 <script setup>
+import OverflowPill from '@/views/manager/components/OverflowPill.vue'
 import PendingStatusBadge from '@/views/manager/components/PendingStatusBadge.vue'
 import { formatDateTime } from '@/utils/formatters.js'
 
@@ -33,7 +34,7 @@ defineProps({
           <td class="cell-code">{{ request.code }}</td>
           <td class="cell-title">{{ request.title }}</td>
           <td>
-            <span class="pill">{{ request.discipline }}</span>
+            <OverflowPill :text="request.discipline" />
           </td>
           <td>
             <span class="cell-primary">{{ request.requesterName }}</span>

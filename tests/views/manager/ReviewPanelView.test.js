@@ -8,11 +8,13 @@ function makeList(overrides = {}) {
     count: 0,
     totalPages: 1,
     currentPage: 1,
+    pageSize: 20,
     loading: false,
     error: '',
     updatedAt: new Date(2026, 8, 26, 14, 36),
     load: vi.fn(),
     goToPage: vi.fn(),
+    setPageSize: vi.fn(),
     ...overrides,
   })
 }
@@ -49,6 +51,7 @@ let revisions
 let accessRequests
 
 vi.mock('@/views/manager/composables/useReviewPanel.js', () => ({
+  PANEL_PAGE_SIZE_OPTIONS: [5, 10, 20, 50],
   PANEL_TABS: { REVISIONS: 'revisions', ACCESS_REQUESTS: 'access-requests', HISTORY: 'history' },
   useReviewPanel: () => ({
     tabs: ref([
@@ -171,21 +174,55 @@ describe('ReviewPanelView', () => {
     expect(wrapper.find('table').exists()).toBe(false)
   })
 
-  it('should page through the list only when there is more than one page', async () => {
-    revisions = makeList({ items: [REVISION], count: 45, totalPages: 3, currentPage: 2 })
+  it('should always show the pagination of the list with its own item name', () => {
     const wrapper = mount(ReviewPanelView)
-    const [previous, next] = wrapper.findAll('.panel-pagination button')
 
-    await previous.trigger('click')
-    await next.trigger('click')
+    const pagination = wrapper.find('.panel-pagination')
 
-    expect(wrapper.find('.panel-pagination').text()).toContain('Página 2 de 3')
-    expect(revisions.goToPage.mock.calls).toEqual([[1], [3]])
+    expect(pagination.find('.pagination-summary').text()).toBe('Mostrando 1 a 1 de 1 revisões')
+    expect(pagination.find('select').element.value).toBe('20')
   })
 
-  it('should hide the pagination for a single page', () => {
+  it('should keep the table in its own scrolling area above the pagination', () => {
     const wrapper = mount(ReviewPanelView)
 
+    const children = wrapper.find('[role="tabpanel"]').element.children
+    const tableArea = wrapper.find('.table-scroll')
+
+    expect(tableArea.classes()).toContain('panel-content')
+    expect(children[children.length - 1].classList.contains('panel-pagination')).toBe(true)
+  })
+
+  it('should page through the list and change the page size', async () => {
+    revisions = makeList({ items: [REVISION], count: 45, totalPages: 3, currentPage: 2 })
+    const wrapper = mount(ReviewPanelView)
+    const pagination = wrapper.find('.panel-pagination')
+
+    await pagination.find('.page-nav').trigger('click')
+    await pagination.findAll('.page-number')[2].trigger('click')
+    await pagination.find('select').setValue('50')
+
+    expect(pagination.find('.pagination-summary').text()).toBe('Mostrando 21 a 40 de 45 revisões')
+    expect(revisions.goToPage.mock.calls).toEqual([[1], [3]])
+    expect(revisions.setPageSize).toHaveBeenCalledWith(50)
+  })
+
+  it('should name the access requests in their pagination', async () => {
+    const wrapper = mount(ReviewPanelView)
+
+    await findTab(wrapper, 'Pedidos de Acesso').trigger('click')
+
+    expect(wrapper.find('.pagination-summary').text()).toBe('Mostrando 1 a 1 de 1 pedidos')
+  })
+
+  it('should hide the pagination on the history tab and when the list fails', async () => {
+    revisions = makeList({ error: 'Não foi possível carregar as revisões pendentes.' })
+    const wrapper = mount(ReviewPanelView)
+    const shownOnError = wrapper.find('.panel-pagination').exists()
+
+    await findTab(wrapper, 'Histórico').trigger('click')
+
+    expect(shownOnError).toBe(false)
     expect(wrapper.find('.panel-pagination').exists()).toBe(false)
   })
 })

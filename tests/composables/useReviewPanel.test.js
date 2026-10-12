@@ -271,6 +271,31 @@ describe('useReviewPanel', () => {
     expect(panel.revisions.totalPages).toBe(3)
   })
 
+  it('should reload from the first page with the chosen page size', async () => {
+    fetchPendingRevisions.mockResolvedValue(page([makeRevision()], { count: 45, total_pages: 3 }))
+    const panel = await mountPanel()
+    panel.revisions.goToPage(2)
+    await flushPromises()
+
+    panel.revisions.setPageSize(50)
+    await flushPromises()
+
+    expect(fetchPendingRevisions).toHaveBeenLastCalledWith({ page: 1, pageSize: 50 })
+    expect(panel.revisions.pageSize).toBe(50)
+    expect(panel.revisions.currentPage).toBe(1)
+  })
+
+  it('should ignore a page size that is not offered or is already in use', async () => {
+    const panel = await mountPanel()
+
+    panel.revisions.setPageSize(33)
+    panel.revisions.setPageSize(20)
+    await flushPromises()
+
+    expect(fetchPendingRevisions).toHaveBeenCalledTimes(1)
+    expect(panel.revisions.pageSize).toBe(20)
+  })
+
   it('should ignore a page outside the available range', async () => {
     const panel = await mountPanel()
 

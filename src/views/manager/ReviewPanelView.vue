@@ -1,13 +1,18 @@
 <script setup>
 import { computed } from 'vue'
 import Button from '@/components/common/Button.vue'
+import Pagination from '@/components/common/Pagination.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import AccessRequestsTable from '@/views/manager/components/AccessRequestsTable.vue'
 import PanelEmptyState from '@/views/manager/components/PanelEmptyState.vue'
 import PanelTableSkeleton from '@/views/manager/components/PanelTableSkeleton.vue'
 import PanelTabs from '@/views/manager/components/PanelTabs.vue'
 import PendingRevisionsTable from '@/views/manager/components/PendingRevisionsTable.vue'
-import { PANEL_TABS, useReviewPanel } from '@/views/manager/composables/useReviewPanel.js'
+import {
+  PANEL_PAGE_SIZE_OPTIONS,
+  PANEL_TABS,
+  useReviewPanel,
+} from '@/views/manager/composables/useReviewPanel.js'
 import { formatTime } from '@/utils/formatters.js'
 
 const { tabs, activeTab, revisions, accessRequests, selectTab, openRevisionReview } =
@@ -18,6 +23,7 @@ const SECTIONS = {
     title: 'Revisões aguardando decisão técnica',
     loadingLabel: 'Carregando revisões pendentes',
     columns: 7,
+    itemLabel: 'revisões',
     emptyTitle: 'Nenhuma revisão pendente',
     emptyDescription: 'Não há revisões aguardando decisão técnica no momento.',
   },
@@ -25,6 +31,7 @@ const SECTIONS = {
     title: 'Pedidos de acesso aguardando decisão',
     loadingLabel: 'Carregando pedidos de acesso',
     columns: 6,
+    itemLabel: 'pedidos',
     emptyTitle: 'Nenhum pedido de acesso pendente',
     emptyDescription: 'Não há pedidos de acesso a documentos restritos no momento.',
   },
@@ -70,59 +77,60 @@ const updatedLabel = computed(() =>
 
       <PanelEmptyState
         v-if="!activeList"
+        class="panel-content"
         title="Histórico ainda não disponível"
         description="As decisões já tomadas serão listadas aqui quando o histórico for liberado."
       />
 
       <PanelTableSkeleton
         v-else-if="activeList.loading"
+        class="panel-content"
         :columns="section.columns"
         :label="section.loadingLabel"
       />
 
-      <div v-else-if="activeList.error" class="panel-error" role="alert">
+      <div v-else-if="activeList.error" class="panel-content panel-error" role="alert">
         <p>{{ activeList.error }}</p>
         <Button variant="outline" @click="activeList.load()">Tentar novamente</Button>
       </div>
 
       <PanelEmptyState
         v-else-if="!activeList.items.length"
+        class="panel-content"
         :title="section.emptyTitle"
         :description="section.emptyDescription"
       />
 
-      <template v-else>
-        <PendingRevisionsTable
-          v-if="activeTab === PANEL_TABS.REVISIONS"
-          :revisions="activeList.items"
-          @evaluate="openRevisionReview"
-        />
-        <AccessRequestsTable v-else :requests="activeList.items" />
+      <PendingRevisionsTable
+        v-else-if="activeTab === PANEL_TABS.REVISIONS"
+        class="panel-content"
+        :revisions="activeList.items"
+        @evaluate="openRevisionReview"
+      />
+      <AccessRequestsTable v-else class="panel-content" :requests="activeList.items" />
 
-        <footer v-if="activeList.totalPages > 1" class="panel-pagination">
-          <Button
-            variant="outline"
-            :disabled="activeList.currentPage <= 1"
-            @click="activeList.goToPage(activeList.currentPage - 1)"
-          >
-            Anterior
-          </Button>
-          <span>Página {{ activeList.currentPage }} de {{ activeList.totalPages }}</span>
-          <Button
-            variant="outline"
-            :disabled="activeList.currentPage >= activeList.totalPages"
-            @click="activeList.goToPage(activeList.currentPage + 1)"
-          >
-            Próxima
-          </Button>
-        </footer>
-      </template>
+      <footer v-if="activeList && !activeList.error" class="panel-pagination">
+        <Pagination
+          :current-page="activeList.currentPage"
+          :total-pages="activeList.totalPages"
+          :total-items="activeList.count ?? 0"
+          :items-per-page="activeList.pageSize"
+          :items-per-page-options="PANEL_PAGE_SIZE_OPTIONS"
+          :item-label="section.itemLabel"
+          @change-page="activeList.goToPage"
+          @change-items-per-page="activeList.setPageSize"
+        />
+      </footer>
     </section>
   </PageLayout>
 </template>
 
 <style scoped>
 .panel-card {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 300px);
+  min-height: 24rem;
   margin-top: 1rem;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -130,8 +138,15 @@ const updatedLabel = computed(() =>
   overflow: hidden;
 }
 
+.panel-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
 .panel-card-header {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
@@ -166,6 +181,7 @@ const updatedLabel = computed(() =>
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 1rem;
   padding: 3rem 1rem;
   color: var(--color-warning);
@@ -173,13 +189,11 @@ const updatedLabel = computed(() =>
 }
 
 .panel-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 1rem;
-  padding: 0.85rem 1rem;
-  border-top: 1px solid var(--color-border);
-  color: var(--color-text-muted);
-  font-size: 0.82rem;
+  flex-shrink: 0;
+  padding: 0 1rem 1rem;
+}
+
+.panel-pagination :deep(.pagination) {
+  margin-top: 0;
 }
 </style>
