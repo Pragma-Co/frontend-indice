@@ -85,5 +85,14 @@ export const useAuthStore = defineStore('auth', {
       }
       return true
     },
+    logout(storage = globalThis.localStorage) {
+      this.profile = null
+      this.currentUser = null
+      try {
+        storage?.removeItem(PROFILE_STORAGE_KEY)
+      } catch (error) {
+        console.error(error)
+      }
+    },
   },
 })

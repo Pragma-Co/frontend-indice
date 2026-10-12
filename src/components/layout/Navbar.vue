@@ -1,11 +1,13 @@
 <script setup>
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import logo from '@/assets/logo.svg'
 import bellIcon from '@/assets/icons/bell.svg'
+import logoutIcon from '@/assets/icons/logout.svg'
 import { useAuthStore } from '@/stores/authStore'
 
 const route = useRoute()
+const router = useRouter()
 const auth = useAuthStore()
 
 const collaboratorLinks = [
@@ -30,6 +32,11 @@ const resolvedLinks = computed(() =>
     },
   })),
 )
+
+function logout() {
+  auth.logout()
+  router.push('/login')
+}
 
 function isActive(to) {
   return route.path === to || route.path.startsWith(`${to}/`)
@@ -65,6 +72,9 @@ function isActive(to) {
         <span class="navbar-avatar" aria-hidden="true">{{ auth.initials }}</span>
         <span class="navbar-user-name">{{ auth.currentUser?.name }}</span>
       </RouterLink>
+      <button class="navbar-notifications" type="button" aria-label="Sair" @click="logout">
+        <img :src="logoutIcon" alt="" class="navbar-bell" />
+      </button>
     </div>
   </header>
 </template>
