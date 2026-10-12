@@ -1,5 +1,6 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
+import { ExternalLink, Info, Lock, Save, ShieldCheck, Trash2, User } from '@lucide/vue'
 import Button from '@/components/common/Button.vue'
 import FormField from '@/components/common/FormField.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
@@ -62,12 +63,9 @@ function requestAccountDeletion() {
     <section class="card">
       <header class="section-header">
         <span class="section-icon" aria-hidden="true">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            <circle cx="12" cy="8" r="4" stroke-width="1.6" />
-            <path d="M4 20c0-4 3.6-6 8-6s8 2 8 6" stroke-width="1.6" stroke-linecap="round" />
-          </svg>
+          <User :size="18" />
         </span>
-        <div>
+        <div class="section-header-text">
           <h2>Informações Pessoais</h2>
           <p class="muted">Mantenha seus dados de contato e identificação atualizados.</p>
         </div>
@@ -103,14 +101,7 @@ function requestAccountDeletion() {
           <span class="readonly-tag">Somente leitura</span>
         </FormField>
         <aside class="protected-box">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path
-              d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6l-7-3Z"
-              stroke="currentColor"
-              stroke-width="1.6"
-              stroke-linejoin="round"
-            />
-          </svg>
+          <ShieldCheck :size="16" aria-hidden="true" />
           <div class="protected-box-text">
             <strong>Dados organizacionais protegidos</strong>
             <p class="muted">Cargo e área são sincronizados pelo administrador da organização.</p>
@@ -119,12 +110,19 @@ function requestAccountDeletion() {
 
         <footer class="form-footer">
           <button type="button" class="btn-danger" @click="requestAccountDeletion">
+            <Trash2 :size="14" aria-hidden="true" />
             Solicitar Exclusão da Conta
           </button>
-          <p v-if="lastUpdate" class="muted last-update">Última atualização: {{ lastUpdate }}</p>
+          <p v-if="lastUpdate" class="muted last-update">
+            <Info :size="14" aria-hidden="true" />
+            Última atualização: {{ lastUpdate }}
+          </p>
           <div class="form-actions">
             <Button variant="outline" :disabled="!isDirty" @click="cancel">Cancelar</Button>
-            <Button variant="primary" :disabled="!isDirty" @click="save">Salvar Alterações</Button>
+            <Button variant="primary" :disabled="!isDirty" @click="save">
+              <Save :size="14" aria-hidden="true" />
+              Salvar Alterações
+            </Button>
           </div>
         </footer>
       </form>
@@ -165,7 +163,10 @@ function requestAccountDeletion() {
                 <span class="status-pill">{{ consent.status }}</span>
               </td>
               <td>
-                <a href="#" class="link" @click.prevent>Visualizar Termo Completo ↗</a>
+                <a href="#" class="link" @click.prevent>
+                  Visualizar Termo Completo
+                  <ExternalLink :size="13" aria-hidden="true" />
+                </a>
               </td>
             </tr>
           </tbody>
@@ -173,6 +174,7 @@ function requestAccountDeletion() {
       </div>
 
       <p class="muted audit-note">
+        <Lock :size="13" aria-hidden="true" />
         Registros de aceite são mantidos para fins de auditoria, rastreabilidade e conformidade
         regulatória.
       </p>
@@ -196,6 +198,12 @@ function requestAccountDeletion() {
 .section-header h2 {
   font-size: 1.05rem;
   font-weight: 700;
+}
+
+.section-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .section-icon {
@@ -294,7 +302,18 @@ function requestAccountDeletion() {
 
 .last-update {
   flex: 1;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.btn-danger,
+.link,
+.audit-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .form-actions {

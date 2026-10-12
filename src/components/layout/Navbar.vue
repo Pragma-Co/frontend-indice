@@ -2,8 +2,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import logo from '@/assets/logo.svg'
-import bellIcon from '@/assets/icons/bell.svg'
-import logoutIcon from '@/assets/icons/logout.svg'
+import { Bell, LogOut } from '@lucide/vue'
 import { useAuthStore } from '@/stores/authStore'
 
 const route = useRoute()
@@ -62,7 +61,7 @@ function isActive(to) {
 
     <div class="navbar-user">
       <button class="navbar-notifications" type="button" aria-label="Notificações">
-        <img :src="bellIcon" alt="" class="navbar-bell" />
+        <Bell :size="18" class="navbar-bell" aria-hidden="true" />
       </button>
       <RouterLink
         to="/profile"
@@ -73,7 +72,7 @@ function isActive(to) {
         <span class="navbar-user-name">{{ auth.currentUser?.name }}</span>
       </RouterLink>
       <button class="navbar-notifications" type="button" aria-label="Sair" @click="logout">
-        <img :src="logoutIcon" alt="" class="navbar-bell" />
+        <LogOut :size="18" class="navbar-bell" aria-hidden="true" />
       </button>
     </div>
   </header>
@@ -160,9 +159,7 @@ function isActive(to) {
 }
 
 .navbar-bell {
-  width: 18px;
-  height: 18px;
-  filter: brightness(0) invert(1);
+  color: var(--color-text-inverse);
 }
 
 .navbar-profile {
