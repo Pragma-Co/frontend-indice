@@ -22,6 +22,10 @@ const props = defineProps({
     type: Array,
     required: true,
   },
+  itemLabel: {
+    type: String,
+    default: 'documentos',
+  },
 })
 
 const emit = defineEmits(['change-page', 'change-items-per-page'])
@@ -39,7 +43,7 @@ function onItemsPerPageChange(event) {
 <template>
   <div class="pagination">
     <p class="pagination-summary">
-      Mostrando {{ rangeStart }} a {{ rangeEnd }} de {{ totalItems }} documentos
+      Mostrando {{ rangeStart }} a {{ rangeEnd }} de {{ totalItems }} {{ itemLabel }}
     </p>
 
     <div class="pagination-pages">

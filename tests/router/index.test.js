@@ -87,6 +87,15 @@ describe('router', () => {
     expect(document.title).toBe('Gestor - Colaboradores')
   })
 
+  it('should open the review panel on the revisions route', async () => {
+    useAuthStore().login(PROFILES.MANAGER)
+
+    await router.push('/revisions')
+
+    expect(router.currentRoute.value.name).toBe('revisions')
+    expect(document.title).toBe('Gestor - Painel de gestão')
+  })
+
   it.each([PROFILES.COLLABORATOR, PROFILES.MANAGER])(
     'should open the profile route for the %s',
     async (profile) => {
