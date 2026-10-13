@@ -33,6 +33,10 @@ describe('ConfirmationStep', () => {
     store = useDocumentFormStore()
     store.projects = [{ id: 1, code: 'AK-2100', name: 'Aeroestrutura de Fuselagem Central' }]
     store.disciplines = [{ id: 1, code: 'EST', name: 'Estruturas' }]
+    store.areas = [
+      { id: 1, acronym: 'EST', name: 'Engenharia Estrutural' },
+      { id: 2, acronym: 'QUA', name: 'Qualidade e Inspeção' },
+    ]
     store.documentTypes = [{ id: 'DWG', code: 'DWG', name: 'Desenho Técnico' }]
     vi.useFakeTimers()
     vi.setSystemTime(new Date(2026, 8, 15))
