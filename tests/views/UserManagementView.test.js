@@ -3,7 +3,12 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import UserManagementView from '../../src/views/user-management/UserManagementView.vue'
 import { ApiError } from '../../src/api/client'
-import { fetchCurrentUser, requestAccountDeletion, updateCurrentUser } from '../../src/api/users'
+import {
+  fetchCurrentUser,
+  fetchLegalAcceptances,
+  requestAccountDeletion,
+  updateCurrentUser,
+} from '../../src/api/users'
 import { PROFILES, useAuthStore } from '../../src/stores/authStore'
 import { useNotificationStore } from '../../src/stores/notificationStore'
 
@@ -13,6 +18,7 @@ vi.mock('../../src/api/users', () => ({
   fetchCurrentUser: vi.fn(),
   updateCurrentUser: vi.fn(),
   requestAccountDeletion: vi.fn(),
+  fetchLegalAcceptances: vi.fn(),
 }))
 
 const USER = {
@@ -40,6 +46,32 @@ describe('UserManagementView', () => {
     vi.clearAllMocks()
     useAuthStore().login(PROFILES.COLLABORATOR)
     fetchCurrentUser.mockResolvedValue(USER)
+    fetchLegalAcceptances.mockResolvedValue({ count: 0, results: [] })
+  })
+
+  it('should show the terms history loaded from the API instead of fixed records', async () => {
+    fetchLegalAcceptances.mockResolvedValue({
+      count: 1,
+      results: [
+        {
+          id: 4,
+          accepted_at: '2026-10-05T14:32:00',
+          revoked_at: null,
+          document: { slug: 'termo-tratamento-dados', title: 'Termo de Adesão' },
+          version: { id: 1, version: 1 },
+          consents: [{ clause_id: 1, is_required: true, accepted: true }],
+        },
+      ],
+    })
+
+    const wrapper = await mountView()
+
+    const history = wrapper.find('.terms-history')
+    expect(fetchLegalAcceptances).toHaveBeenCalledTimes(1)
+    expect(history.find('h2').text()).toBe('Histórico de Termos e Consentimentos')
+    expect(history.findAll('tbody tr')).toHaveLength(1)
+    expect(history.text()).toContain('Termo de Adesão')
+    expect(history.text()).not.toContain('Termos de Uso e Política de Privacidade')
   })
 
   it('should fill the form with the user returned by the API', async () => {

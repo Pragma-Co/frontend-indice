@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   formatDate,
+  formatDateAtTime,
   formatDateTime,
   formatFileSize,
   formatTime,
@@ -70,5 +71,16 @@ describe('formatDateTime', () => {
   it('should show a single dash for a missing or invalid value', () => {
     expect(formatDateTime(null)).toBe('—')
     expect(formatDateTime('not a date')).toBe('—')
+  })
+})
+
+describe('formatDateAtTime', () => {
+  it('should write the date and the time joined by "às"', () => {
+    expect(formatDateAtTime('2026-09-24T14:32:00')).toBe('24/09/2026 às 14:32')
+  })
+
+  it('should show a single dash for a missing or invalid value', () => {
+    expect(formatDateAtTime(null)).toBe('—')
+    expect(formatDateAtTime('not a date')).toBe('—')
   })
 })
