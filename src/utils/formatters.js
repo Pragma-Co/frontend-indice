@@ -63,3 +63,8 @@ export function formatDateTime(value) {
   const date = formatDate(value)
   return date === '—' ? date : `${date} • ${formatTime(value)}`
 }
+
+export function formatDateAtTime(value) {
+  const date = formatDate(value)
+  return date === '—' ? date : `${date} às ${formatTime(value)}`
+}
