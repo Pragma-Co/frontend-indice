@@ -75,6 +75,22 @@ describe('router', () => {
     },
   )
 
+  it('should send a manager back to the home route when opening the documents list', async () => {
+    useAuthStore().login(PROFILES.MANAGER)
+
+    await router.push('/documents')
+
+    expect(router.currentRoute.value.name).toBe('home')
+  })
+
+  it('should open the documents list for a collaborator', async () => {
+    useAuthStore().login(PROFILES.COLLABORATOR)
+
+    await router.push('/documents')
+
+    expect(router.currentRoute.value.name).toBe('document-list')
+  })
+
   it('should open the manager routes for a manager', async () => {
     useAuthStore().login(PROFILES.MANAGER)
 

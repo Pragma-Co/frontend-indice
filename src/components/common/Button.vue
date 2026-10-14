@@ -3,7 +3,8 @@ defineProps({
   variant: {
     type: String,
     default: 'primary',
-    validator: (value) => ['primary', 'outline', 'success', 'danger-outline'].includes(value),
+    validator: (value) =>
+      ['primary', 'outline', 'success', 'danger', 'danger-outline'].includes(value),
   },
   disabled: {
     type: Boolean,
@@ -106,5 +107,14 @@ defineEmits(['click'])
 
 .btn-danger-outline:hover:not(:disabled) {
   background: var(--color-danger-bg);
+}
+
+.btn-danger {
+  background: var(--color-danger);
+  color: var(--color-text-inverse);
+}
+
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(0.9);
 }
 </style>

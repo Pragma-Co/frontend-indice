@@ -27,7 +27,7 @@ const router = createRouter({
       path: '/documents',
       name: 'document-list',
       component: () => import('../views/document/DocumentsListView.vue'),
-      meta: { title: 'Colaborador - Documentos' },
+      meta: { title: 'Colaborador - Documentos', collaboratorOnly: true },
     },
     {
       path: '/documents/:documentId',
@@ -74,8 +74,8 @@ const router = createRouter({
     {
       path: '/profile',
       name: 'profile',
-      component: () => import('../views/UnderConstructionView.vue'),
-      meta: { title: 'Índice - Gestão do Titular', heading: 'Gestão do Titular' },
+      component: () => import('../views/user-management/UserManagementView.vue'),
+      meta: { title: 'Índice - Gestão do Titular' },
     },
   ],
 })
@@ -88,6 +88,7 @@ router.beforeEach((to, from) => {
   const auth = useAuthStore()
   if (!to.meta.public && !auth.isAuthenticated) return { name: 'login' }
   if (to.meta.managerOnly && !auth.isManager) return { name: 'home' }
+  if (to.meta.collaboratorOnly && auth.isManager) return { name: 'home' }
 })
 
 router.afterEach((to) => {

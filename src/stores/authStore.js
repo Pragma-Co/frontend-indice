@@ -13,6 +13,7 @@ export const PROFILES = {
 const SEED_USER = {
   id: 12,
   name: 'Beatriz Canuto',
+  email: 'beatriz.canuto@akaer.local',
   role: 'Colaborador',
   department: 'Departamento de Engenharia',
   area: 'Certificação e Aeronavegabilidade',
@@ -21,6 +22,7 @@ const SEED_USER = {
 const SEED_MANAGER = {
   id: 10,
   name: 'Thiago Serpa',
+  email: 'thiago.serpa@akaer.local',
   role: 'Gestor',
   department: 'Departamento de Engenharia',
   area: 'Qualidade e Inspeção',
@@ -95,6 +97,15 @@ export const useAuthStore = defineStore('auth', {
         return true
       }
       return true
+    },
+    logout(storage = globalThis.localStorage) {
+      this.profile = null
+      this.currentUser = null
+      try {
+        storage?.removeItem(PROFILE_STORAGE_KEY)
+      } catch (error) {
+        console.error(error)
+      }
     },
   },
 })
