@@ -46,7 +46,15 @@ const activeTab = ref('revisions')
 const selectTab = vi.fn((tab) => {
   activeTab.value = tab
 })
-const openRevisionReview = vi.fn()
+const revisionUnderReview = ref(null)
+const openRevisionReview = vi.fn((revision) => {
+  revisionUnderReview.value = revision
+})
+const closeRevisionReview = vi.fn(() => {
+  revisionUnderReview.value = null
+})
+const handleRevisionDecided = vi.fn()
+const handleRevisionUnavailable = vi.fn()
 let revisions
 let accessRequests
 
@@ -66,9 +74,22 @@ vi.mock('@/views/manager/composables/useReviewPanel.js', () => ({
     activeTab,
     revisions,
     accessRequests,
+    revisionUnderReview,
     selectTab,
     openRevisionReview,
+    closeRevisionReview,
+    handleRevisionDecided,
+    handleRevisionUnavailable,
   }),
+}))
+
+vi.mock('@/views/manager/components/RevisionReviewModal.vue', () => ({
+  default: {
+    name: 'RevisionReviewModal',
+    props: ['revision'],
+    emits: ['close', 'decided', 'unavailable'],
+    template: '<div class="review-modal-stub">{{ revision.code }}</div>',
+  },
 }))
 
 import ReviewPanelView from '@/views/manager/ReviewPanelView.vue'
@@ -81,6 +102,7 @@ describe('ReviewPanelView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     activeTab.value = 'revisions'
+    revisionUnderReview.value = null
     revisions = makeList({ items: [REVISION], count: 1 })
     accessRequests = makeList({ items: [ACCESS_REQUEST], count: 1 })
   })
@@ -110,6 +132,39 @@ describe('ReviewPanelView', () => {
     await wrapper.find('tbody button').trigger('click')
 
     expect(openRevisionReview).toHaveBeenCalledWith(REVISION)
+  })
+
+  it('should keep the evaluation modal closed until a revision is chosen', () => {
+    const wrapper = mount(ReviewPanelView)
+
+    expect(wrapper.find('.review-modal-stub').exists()).toBe(false)
+  })
+
+  it('should open the evaluation modal for the chosen revision', async () => {
+    const wrapper = mount(ReviewPanelView)
+
+    await wrapper.find('tbody button').trigger('click')
+
+    expect(wrapper.find('.review-modal-stub').text()).toBe('AK-3100-EST-ESP-0001')
+  })
+
+  it('should forward what happens in the modal to the panel', async () => {
+    const wrapper = mount(ReviewPanelView)
+    await wrapper.find('tbody button').trigger('click')
+    const modal = wrapper.findComponent({ name: 'RevisionReviewModal' })
+    const outcome = { revision: REVISION, decision: 'APPROVED' }
+
+    modal.vm.$emit('decided', outcome)
+    modal.vm.$emit('unavailable', 'Esta revisão já foi avaliada por outro gestor.')
+    modal.vm.$emit('close')
+    await wrapper.vm.$nextTick()
+
+    expect(handleRevisionDecided).toHaveBeenCalledWith(outcome)
+    expect(handleRevisionUnavailable).toHaveBeenCalledWith(
+      'Esta revisão já foi avaliada por outro gestor.',
+    )
+    expect(closeRevisionReview).toHaveBeenCalled()
+    expect(wrapper.find('.review-modal-stub').exists()).toBe(false)
   })
 
   it('should show a skeleton while the revisions are loading', () => {

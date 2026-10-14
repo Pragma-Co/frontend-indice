@@ -1,6 +1,12 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { fetchPendingAccessRequests, fetchPendingRevisions } from '@/api/manager.js'
+import {
+  REVISION_DECISIONS,
+  fetchPendingAccessRequests,
+  fetchPendingRevisions,
+} from '@/api/manager.js'
+import { useNotificationStore } from '@/stores/notificationStore.js'
+import { findConfidentiality } from '@/utils/documentCatalog.js'
 import { revisionLabel } from '@/utils/documentCode.js'
 
 export const PANEL_TABS = {
@@ -24,6 +30,10 @@ export function normalizePendingRevision(revision) {
     code: revision.document?.code ?? '-',
     title: revision.document?.title ?? '-',
     discipline: revision.document?.discipline?.name ?? '-',
+    program: revision.document?.project?.code ?? '-',
+    confidentiality: findConfidentiality(revision.document?.confidentiality_level)?.label ?? '-',
+    changeDescription: revision.change_description?.trim() ?? '',
+    files: revision.files ?? [],
     fromRevision: revisionLabel(version - 1),
     toRevision: revision.revision ?? revisionLabel(version),
     authorName: revision.author?.name ?? '-',
@@ -95,6 +105,12 @@ function usePendingList(fetchPage, normalize, errorMessage) {
     load(1)
   }
 
+  async function refresh() {
+    await load(currentPage.value)
+    const emptiedLastPage = !error.value && !items.value.length && currentPage.value > 1
+    if (emptiedLastPage) await load(Math.min(currentPage.value - 1, totalPages.value))
+  }
+
   return reactive({
     items,
     count,
@@ -107,12 +123,14 @@ function usePendingList(fetchPage, normalize, errorMessage) {
     load,
     goToPage,
     setPageSize,
+    refresh,
   })
 }
 
 export function useReviewPanel() {
   const route = useRoute()
   const router = useRouter()
+  const notifications = useNotificationStore()
 
   const revisions = usePendingList(
     fetchPendingRevisions,
@@ -157,6 +175,19 @@ export function useReviewPanel() {
     revisionUnderReview.value = null
   }
 
+  function handleRevisionDecided({ revision, decision }) {
+    const outcome = decision === REVISION_DECISIONS.APPROVED ? 'aprovada' : 'recusada'
+    closeRevisionReview()
+    notifications.success(`Revisão ${revision.toRevision} de ${revision.code} ${outcome}.`)
+    return revisions.refresh()
+  }
+
+  function handleRevisionUnavailable(message) {
+    closeRevisionReview()
+    notifications.error(message)
+    return revisions.refresh()
+  }
+
   onMounted(() => {
     revisions.load(1)
     accessRequests.load(1)
@@ -171,5 +202,7 @@ export function useReviewPanel() {
     selectTab,
     openRevisionReview,
     closeRevisionReview,
+    handleRevisionDecided,
+    handleRevisionUnavailable,
   }
 }

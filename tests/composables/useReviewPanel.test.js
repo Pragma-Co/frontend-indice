@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent, h, reactive } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 
 const route = reactive({ query: {} })
 const router = {
@@ -14,11 +15,13 @@ vi.mock('vue-router', () => ({
 }))
 
 vi.mock('@/api/manager.js', () => ({
+  REVISION_DECISIONS: { APPROVED: 'APPROVED', REJECTED: 'REJECTED' },
   fetchPendingRevisions: vi.fn(),
   fetchPendingAccessRequests: vi.fn(),
 }))
 
 import { fetchPendingAccessRequests, fetchPendingRevisions } from '@/api/manager.js'
+import { useNotificationStore } from '@/stores/notificationStore.js'
 import {
   PANEL_TABS,
   normalizeAccessRequest,
@@ -39,9 +42,11 @@ function makeRevision(overrides = {}) {
       id: 23,
       code: 'AK-3100-EST-ESP-0001',
       title: 'Relatório de verificação estrutural do pilone',
+      confidentiality_level: 'CONFIDENTIAL',
+      project: { code: 'AK-3100', name: 'Pilone' },
       discipline: { code: 'EST', name: 'Estruturas' },
     },
-    files: [],
+    files: [{ id: 58, original_name: 'memorial.pdf', extension: 'pdf', size_bytes: 2048 }],
     ...overrides,
   }
 }
@@ -113,6 +118,17 @@ describe('normalizePendingRevision', () => {
     })
   })
 
+  it('should expose what the reviewer needs to evaluate the revision', () => {
+    const revision = normalizePendingRevision(makeRevision({ change_description: '  Updates.  ' }))
+
+    expect(revision).toMatchObject({
+      program: 'AK-3100',
+      confidentiality: 'Confidencial',
+      changeDescription: 'Updates.',
+      files: [{ id: 58, original_name: 'memorial.pdf', extension: 'pdf', size_bytes: 2048 }],
+    })
+  })
+
   it('should start the transition at REV00 for the first revision of a document', () => {
     const revision = normalizePendingRevision(makeRevision({ version: 1, revision: 'REV01' }))
 
@@ -128,6 +144,10 @@ describe('normalizePendingRevision', () => {
       title: '-',
       discipline: '-',
       authorName: '-',
+      program: '-',
+      confidentiality: '-',
+      changeDescription: '',
+      files: [],
       fromRevision: 'REV02',
       toRevision: 'REV03',
     })
@@ -150,6 +170,7 @@ describe('normalizeAccessRequest', () => {
 
 describe('useReviewPanel', () => {
   beforeEach(() => {
+    setActivePinia(createPinia())
     vi.clearAllMocks()
     route.query = {}
     fetchPendingRevisions.mockResolvedValue(page([makeRevision()]))
@@ -315,5 +336,65 @@ describe('useReviewPanel', () => {
 
     expect(opened).toEqual(revision)
     expect(panel.revisionUnderReview.value).toBeNull()
+  })
+
+  it('should close the review, confirm the approval and reload the list', async () => {
+    const panel = await mountPanel()
+    const [revision] = panel.revisions.items
+    panel.openRevisionReview(revision)
+    fetchPendingRevisions.mockResolvedValue(page([]))
+
+    await panel.handleRevisionDecided({ revision, decision: 'APPROVED' })
+
+    expect(panel.revisionUnderReview.value).toBeNull()
+    expect(useNotificationStore().items.at(-1)).toMatchObject({
+      type: 'success',
+      message: 'Revisão REV02 de AK-3100-EST-ESP-0001 aprovada.',
+    })
+    expect(fetchPendingRevisions).toHaveBeenCalledTimes(2)
+    expect(panel.revisions.items).toEqual([])
+    expect(panel.tabs.value[0].count).toBe(0)
+  })
+
+  it('should confirm a refusal with its own message', async () => {
+    const panel = await mountPanel()
+    const [revision] = panel.revisions.items
+
+    await panel.handleRevisionDecided({ revision, decision: 'REJECTED' })
+
+    expect(useNotificationStore().items.at(-1).message).toBe(
+      'Revisão REV02 de AK-3100-EST-ESP-0001 recusada.',
+    )
+  })
+
+  it('should go back one page when the decided revision was the last of its page', async () => {
+    fetchPendingRevisions.mockResolvedValue(page([makeRevision()], { count: 21, total_pages: 2 }))
+    const panel = await mountPanel()
+    panel.revisions.goToPage(2)
+    await flushPromises()
+    const [revision] = panel.revisions.items
+    fetchPendingRevisions
+      .mockResolvedValueOnce(page([], { count: 20, total_pages: 1 }))
+      .mockResolvedValueOnce(page([makeRevision({ id: 5 })], { count: 20, total_pages: 1 }))
+
+    await panel.handleRevisionDecided({ revision, decision: 'APPROVED' })
+
+    expect(fetchPendingRevisions).toHaveBeenLastCalledWith({ page: 1, pageSize: 20 })
+    expect(panel.revisions.currentPage).toBe(1)
+    expect(panel.revisions.items).toHaveLength(1)
+  })
+
+  it('should close the review, warn and reload when the revision is no longer available', async () => {
+    const panel = await mountPanel()
+    panel.openRevisionReview(panel.revisions.items[0])
+
+    await panel.handleRevisionUnavailable('Esta revisão já foi avaliada por outro gestor.')
+
+    expect(panel.revisionUnderReview.value).toBeNull()
+    expect(useNotificationStore().items.at(-1)).toMatchObject({
+      type: 'error',
+      message: 'Esta revisão já foi avaliada por outro gestor.',
+    })
+    expect(fetchPendingRevisions).toHaveBeenCalledTimes(2)
   })
 })
