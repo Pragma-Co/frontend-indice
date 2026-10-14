@@ -62,8 +62,8 @@ const router = createRouter({
     {
       path: '/revisions',
       name: 'revisions',
-      component: () => import('../views/UnderConstructionView.vue'),
-      meta: { title: 'Gestor - Revisões', heading: 'Revisões', managerOnly: true },
+      component: () => import('../views/manager/ReviewPanelView.vue'),
+      meta: { title: 'Gestor - Painel de gestão', managerOnly: true },
     },
     {
       path: '/collaborators',

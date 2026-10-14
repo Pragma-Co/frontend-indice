@@ -140,8 +140,8 @@ describe('Navbar', () => {
   it('should show the initials and the name of the manager', async () => {
     const { wrapper } = await mountNavbar('/home', PROFILES.MANAGER)
 
-    expect(wrapper.find('.navbar-avatar').text()).toBe('JP')
-    expect(wrapper.find('.navbar-user-name').text()).toBe('Joana Prado')
+    expect(wrapper.find('.navbar-avatar').text()).toBe('TS')
+    expect(wrapper.find('.navbar-user-name').text()).toBe('Thiago Serpa')
   })
 
   it.each([PROFILES.COLLABORATOR, PROFILES.MANAGER])(

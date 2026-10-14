@@ -51,3 +51,15 @@ export function formatUpdatedAt(isoDate) {
   })
   return `${formatDate(isoDate)} ${timePart}`
 }
+
+export function formatTime(value) {
+  if (value === null || value === undefined || value === '') return '—'
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+}
+
+export function formatDateTime(value) {
+  const date = formatDate(value)
+  return date === '—' ? date : `${date} • ${formatTime(value)}`
+}
