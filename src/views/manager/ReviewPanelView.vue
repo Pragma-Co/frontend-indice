@@ -129,7 +129,7 @@ const updatedLabel = computed(() =>
 .panel-card {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 300px);
+  height: calc(100vh - 278px);
   min-height: 24rem;
   margin-top: 1rem;
   background: var(--color-surface);

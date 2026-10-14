@@ -88,16 +88,6 @@ export const useAuthStore = defineStore('auth', {
       }
       return true
     },
-<<<<<<< HEAD
-    logout(storage = globalThis.localStorage) {
-      this.profile = null
-      this.currentUser = null
-      try {
-        storage?.removeItem(PROFILE_STORAGE_KEY)
-      } catch (error) {
-        console.error(error)
-      }
-=======
     async signIn(profile, storage = globalThis.localStorage) {
       if (!this.login(profile, storage)) return false
       if (!import.meta.env.DEV) return true
@@ -107,7 +97,15 @@ export const useAuthStore = defineStore('auth', {
         return true
       }
       return true
->>>>>>> develop
+    },
+    logout(storage = globalThis.localStorage) {
+      this.profile = null
+      this.currentUser = null
+      try {
+        storage?.removeItem(PROFILE_STORAGE_KEY)
+      } catch (error) {
+        console.error(error)
+      }
     },
   },
 })
