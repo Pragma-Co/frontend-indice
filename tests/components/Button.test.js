@@ -28,4 +28,12 @@ describe('Button', () => {
     await wrapper.trigger('click')
     expect(wrapper.emitted('click')).toHaveLength(1)
   })
+
+  it('should style the success and the danger outline variants', () => {
+    const approve = mount(Button, { props: { variant: 'success' } })
+    const reject = mount(Button, { props: { variant: 'danger-outline' } })
+
+    expect(approve.classes()).toContain('btn-success')
+    expect(reject.classes()).toContain('btn-danger-outline')
+  })
 })

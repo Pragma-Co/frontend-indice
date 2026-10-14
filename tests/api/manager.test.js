@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fetchPendingAccessRequests, fetchPendingRevisions } from '../../src/api/manager'
+import {
+  fetchPendingAccessRequests,
+  fetchPendingRevisions,
+  submitRevisionDecision,
+} from '../../src/api/manager'
 
 function jsonResponse(status, body) {
   return { ok: status >= 200 && status < 300, status, text: async () => JSON.stringify(body) }
@@ -47,5 +51,45 @@ describe('manager api', () => {
     globalThis.fetch.mockResolvedValue(jsonResponse(403, { error: 'PermissionDenied' }))
 
     await expect(fetchPendingRevisions()).rejects.toMatchObject({ status: 403 })
+  })
+
+  it('should send the decision and the opinion of the reviewer', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(200, { id: 91, status: 'REJECTED' }))
+
+    const result = await submitRevisionDecision(91, {
+      decision: 'REJECTED',
+      justification: 'Furação diverge do ensaio aprovado.',
+    })
+
+    const [url, init] = globalThis.fetch.mock.calls[0]
+    expect(url).toBe('/api/manager/revisions/91/decision')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual({
+      decision: 'REJECTED',
+      justification: 'Furação diverge do ensaio aprovado.',
+    })
+    expect(result).toEqual({ id: 91, status: 'REJECTED' })
+  })
+
+  it('should send an empty opinion when approving without comments', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(200, { id: 91, status: 'APPROVED' }))
+
+    await submitRevisionDecision(91, { decision: 'APPROVED' })
+
+    expect(JSON.parse(globalThis.fetch.mock.calls[0][1].body)).toEqual({
+      decision: 'APPROVED',
+      justification: '',
+    })
+  })
+
+  it('should expose the backend error of a refused decision', async () => {
+    globalThis.fetch.mockResolvedValue(
+      jsonResponse(409, { error: 'RevisionAlreadyDecided', status: 'APPROVED' }),
+    )
+
+    await expect(submitRevisionDecision(91, { decision: 'APPROVED' })).rejects.toMatchObject({
+      status: 409,
+      details: { error: 'RevisionAlreadyDecided' },
+    })
   })
 })
