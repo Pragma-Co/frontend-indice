@@ -8,11 +8,16 @@ vi.mock('@/api/users.js', () => ({
   revokeLegalAcceptance: vi.fn(),
   acceptLegalTerms: vi.fn(),
 }))
+vi.mock('@/api/legal.js', () => ({ fetchLegalDocuments: vi.fn() }))
 
+import { fetchLegalDocuments } from '@/api/legal.js'
 import { acceptLegalTerms, fetchLegalAcceptances, revokeLegalAcceptance } from '@/api/users.js'
 import { useNotificationStore } from '@/stores/notificationStore.js'
 import {
+  TERM_STATES,
   normalizeAcceptance,
+  normalizePendingDocument,
+  pendingDocuments,
   sortByMostRecent,
   useTermsAcceptanceHistory,
 } from '@/views/user-management/composables/useTermsAcceptanceHistory.js'
@@ -23,11 +28,27 @@ function makeAcceptance(overrides = {}) {
     accepted_at: '2026-09-24T14:32:00',
     revoked_at: null,
     document: { slug: 'termos-de-uso', title: 'Termos de Uso e Política de Privacidade' },
-    version: { id: 7, version: 2, content_hash: 'abc', published_at: '2026-09-01T00:00:00' },
+    version: { id: 7, version: 2 },
     consents: [
       { clause_id: 1, code: 'uso', is_required: true, accepted: true },
       { clause_id: 2, code: 'marketing', is_required: false, accepted: false },
     ],
+    ...overrides,
+  }
+}
+
+function makeDocument(overrides = {}) {
+  return {
+    slug: 'termos-de-uso',
+    title: 'Termos de Uso e Política de Privacidade',
+    current_version: {
+      id: 7,
+      version: 2,
+      clauses: [
+        { id: 1, code: 'uso', position: 1, title: 'Uso', is_required: true },
+        { id: 2, code: 'marketing', position: 2, title: 'Comunicados', is_required: false },
+      ],
+    },
     ...overrides,
   }
 }
@@ -54,28 +75,36 @@ async function mountHistory() {
   return history
 }
 
+function failure(status, details) {
+  return Object.assign(new Error('failed'), { status, details })
+}
+
 describe('normalizeAcceptance', () => {
   it('should describe the accepted term, its version and when it was accepted', () => {
     expect(normalizeAcceptance(makeAcceptance())).toEqual({
+      key: 'acceptance-4',
       id: 4,
-      versionId: 7,
-      decisions: [
-        { clause_id: 1, accepted: true },
-        { clause_id: 2, accepted: false },
-      ],
+      state: TERM_STATES.ACCEPTED,
+      slug: 'termos-de-uso',
       title: 'Termos de Uso e Política de Privacidade',
+      versionId: 7,
       versionLabel: 'v2',
       condition: 'Obrigatório',
       acceptedAt: '2026-09-24T14:32:00',
       revokedAt: null,
       revoked: false,
       status: 'Aceito',
+      decisions: [
+        { clause_id: 1, accepted: true },
+        { clause_id: 2, accepted: false },
+      ],
+      clauseIds: [],
     })
   })
 
   it('should call a term without required clauses optional', () => {
     const acceptance = makeAcceptance({
-      consents: [{ clause_id: 2, code: 'marketing', is_required: false, accepted: true }],
+      consents: [{ clause_id: 2, is_required: false, accepted: true }],
     })
 
     expect(normalizeAcceptance(acceptance).condition).toBe('Opcional')
@@ -84,9 +113,12 @@ describe('normalizeAcceptance', () => {
   it('should mark a revoked acceptance', () => {
     const acceptance = normalizeAcceptance(makeAcceptance({ revoked_at: '2026-10-01T10:00:00' }))
 
-    expect(acceptance.revoked).toBe(true)
-    expect(acceptance.revokedAt).toBe('2026-10-01T10:00:00')
-    expect(acceptance.status).toBe('Revogado')
+    expect(acceptance).toMatchObject({
+      state: TERM_STATES.REVOKED,
+      revoked: true,
+      revokedAt: '2026-10-01T10:00:00',
+      status: 'Revogado',
+    })
   })
 
   it('should show dashes when the payload misses data', () => {
@@ -100,25 +132,62 @@ describe('normalizeAcceptance', () => {
   })
 })
 
-describe('sortByMostRecent', () => {
-  it('should order the acceptances from the most recent to the oldest', () => {
-    const acceptances = [
-      { id: 1, acceptedAt: '2026-03-12T09:15:00' },
-      { id: 2, acceptedAt: '2026-09-24T14:32:00' },
-      { id: 3, acceptedAt: '2026-06-01T08:00:00' },
-    ]
+describe('normalizePendingDocument', () => {
+  it('should describe a term that was never accepted with its current version', () => {
+    expect(normalizePendingDocument(makeDocument())).toMatchObject({
+      key: 'pending-termos-de-uso',
+      id: null,
+      state: TERM_STATES.PENDING,
+      title: 'Termos de Uso e Política de Privacidade',
+      versionId: 7,
+      versionLabel: 'v2',
+      condition: 'Obrigatório',
+      acceptedAt: null,
+      status: 'Não aceito',
+      clauseIds: [1, 2],
+    })
+  })
+})
 
-    expect(sortByMostRecent(acceptances).map((acceptance) => acceptance.id)).toEqual([2, 3, 1])
-    expect(acceptances.map((acceptance) => acceptance.id)).toEqual([1, 2, 3])
+describe('pendingDocuments', () => {
+  it('should keep only the documents whose current version is not accepted', () => {
+    const accepted = normalizeAcceptance(makeAcceptance())
+    const documents = [makeDocument(), makeDocument({ slug: 'politica', title: 'Política' })]
+    documents[1].current_version = { ...documents[1].current_version, id: 20 }
+
+    const pending = pendingDocuments(documents, [accepted])
+
+    expect(pending.map((row) => row.slug)).toEqual(['politica'])
   })
 
-  it('should keep acceptances without a date at the end', () => {
-    const acceptances = [
-      { id: 1, acceptedAt: null },
-      { id: 2, acceptedAt: '2026-09-24T14:32:00' },
+  it('should list the document again when its acceptance was revoked', () => {
+    const revoked = normalizeAcceptance(makeAcceptance({ revoked_at: '2026-10-01T10:00:00' }))
+
+    expect(pendingDocuments([makeDocument()], [revoked]).map((row) => row.slug)).toEqual([
+      'termos-de-uso',
+    ])
+  })
+
+  it('should ask for the new version when only an older one is accepted', () => {
+    const olderVersion = normalizeAcceptance(makeAcceptance({ version: { id: 3, version: 1 } }))
+
+    const pending = pendingDocuments([makeDocument()], [olderVersion])
+
+    expect(pending).toHaveLength(1)
+    expect(pending[0].versionLabel).toBe('v2')
+  })
+})
+
+describe('sortByMostRecent', () => {
+  it('should order the rows from the most recent to the oldest, undated last', () => {
+    const rows = [
+      { id: 1, acceptedAt: '2026-03-12T09:15:00' },
+      { id: 2, acceptedAt: null },
+      { id: 3, acceptedAt: '2026-09-24T14:32:00' },
     ]
 
-    expect(sortByMostRecent(acceptances).map((acceptance) => acceptance.id)).toEqual([2, 1])
+    expect(sortByMostRecent(rows).map((row) => row.id)).toEqual([3, 1, 2])
+    expect(rows.map((row) => row.id)).toEqual([1, 2, 3])
   })
 })
 
@@ -126,23 +195,46 @@ describe('useTermsAcceptanceHistory', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    fetchLegalDocuments.mockResolvedValue({ count: 0, results: [] })
   })
 
-  it('should load the acceptances of the user on mount, most recent first', async () => {
+  it('should list the terms not accepted first and then the history, most recent first', async () => {
     fetchLegalAcceptances.mockResolvedValue({
       count: 2,
       results: [
-        makeAcceptance({ id: 1, accepted_at: '2026-03-12T09:15:00' }),
-        makeAcceptance({ id: 2, accepted_at: '2026-09-24T14:32:00' }),
+        makeAcceptance({
+          id: 1,
+          accepted_at: '2026-03-12T09:15:00',
+          version: { id: 3, version: 1 },
+        }),
+        makeAcceptance({
+          id: 2,
+          accepted_at: '2026-09-24T14:32:00',
+          version: { id: 4, version: 1 },
+        }),
       ],
     })
+    fetchLegalDocuments.mockResolvedValue({ count: 1, results: [makeDocument()] })
 
     const history = await mountHistory()
 
-    expect(fetchLegalAcceptances).toHaveBeenCalledTimes(1)
-    expect(history.acceptances.value.map((acceptance) => acceptance.id)).toEqual([2, 1])
+    expect(history.rows.value.map((row) => row.key)).toEqual([
+      'pending-termos-de-uso',
+      'acceptance-2',
+      'acceptance-1',
+    ])
+    expect(history.recordCount.value).toBe(2)
     expect(history.loading.value).toBe(false)
+  })
+
+  it('should still show the history when the published terms cannot be loaded', async () => {
+    fetchLegalAcceptances.mockResolvedValue({ count: 1, results: [makeAcceptance()] })
+    fetchLegalDocuments.mockRejectedValue(new Error('offline'))
+
+    const history = await mountHistory()
+
     expect(history.error.value).toBe('')
+    expect(history.rows.value.map((row) => row.key)).toEqual(['acceptance-4'])
   })
 
   it('should stay loading until the backend answers', async () => {
@@ -156,222 +248,152 @@ describe('useTermsAcceptanceHistory', () => {
 
     expect(loadingBefore).toBe(true)
     expect(history.loading.value).toBe(false)
-    expect(history.acceptances.value).toEqual([])
   })
 
-  it('should report a failure and recover on the next load', async () => {
+  it('should report a failure of the history and recover on the next load', async () => {
     fetchLegalAcceptances.mockRejectedValueOnce(new Error('offline'))
     fetchLegalAcceptances.mockResolvedValueOnce({ count: 1, results: [makeAcceptance()] })
     const history = await mountHistory()
-    const failure = history.error.value
+    const message = history.error.value
 
     await history.load()
 
-    expect(failure).toBe('Não foi possível carregar o histórico de termos.')
+    expect(message).toBe('Não foi possível carregar o histórico de termos.')
     expect(history.error.value).toBe('')
-    expect(history.acceptances.value).toHaveLength(1)
+    expect(history.rows.value).toHaveLength(1)
   })
 
-  it('should revoke an acceptance, keep it in the list and confirm it', async () => {
+  it('should revoke an acceptance in force and list its term again to be accepted', async () => {
     fetchLegalAcceptances.mockResolvedValue({ count: 1, results: [makeAcceptance()] })
+    fetchLegalDocuments.mockResolvedValue({ count: 1, results: [makeDocument()] })
     revokeLegalAcceptance.mockResolvedValue(makeAcceptance({ revoked_at: '2026-10-15T10:00:00' }))
     const history = await mountHistory()
+    const before = history.rows.value.map((row) => row.key)
 
-    const revoked = await history.revoke(history.acceptances.value[0])
+    const revoked = await history.revoke(history.rows.value[0])
 
+    expect(before).toEqual(['acceptance-4'])
     expect(revoked).toBe(true)
     expect(revokeLegalAcceptance).toHaveBeenCalledWith(4)
-    expect(history.acceptances.value).toHaveLength(1)
-    expect(history.acceptances.value[0]).toMatchObject({ status: 'Revogado', revoked: true })
+    expect(history.rows.value.map((row) => [row.key, row.status])).toEqual([
+      ['pending-termos-de-uso', 'Não aceito'],
+      ['acceptance-4', 'Revogado'],
+    ])
     expect(useNotificationStore().items.at(-1)).toMatchObject({
       type: 'success',
       message: 'Aceite revogado. O registro continua no histórico.',
     })
   })
 
-  it('should not ask the backend again for an acceptance already revoked', async () => {
-    fetchLegalAcceptances.mockResolvedValue({
-      count: 1,
-      results: [makeAcceptance({ revoked_at: '2026-10-15T10:00:00' })],
-    })
-    const history = await mountHistory()
-
-    const revoked = await history.revoke(history.acceptances.value[0])
-
-    expect(revoked).toBe(false)
-    expect(revokeLegalAcceptance).not.toHaveBeenCalled()
-  })
-
-  it('should flag the acceptance being revoked and ignore another request meanwhile', async () => {
-    fetchLegalAcceptances.mockResolvedValue({
-      count: 2,
-      results: [makeAcceptance(), makeAcceptance({ id: 5 })],
-    })
-    const pending = deferred()
-    revokeLegalAcceptance.mockReturnValue(pending.promise)
-    const history = await mountHistory()
-
-    const first = history.revoke(history.acceptances.value[0])
-    const revokingId = history.revokingId.value
-    await history.revoke(history.acceptances.value[1])
-    pending.resolve(makeAcceptance({ revoked_at: '2026-10-15T10:00:00' }))
-    await first
-
-    expect(revokingId).toBe(4)
-    expect(revokeLegalAcceptance).toHaveBeenCalledTimes(1)
-    expect(history.revokingId.value).toBeNull()
-  })
-
-  it('should reload the list when the acceptance was already revoked elsewhere', async () => {
-    fetchLegalAcceptances
-      .mockResolvedValueOnce({ count: 1, results: [makeAcceptance()] })
-      .mockResolvedValueOnce({
-        count: 1,
-        results: [makeAcceptance({ revoked_at: '2026-10-15T10:00:00' })],
-      })
-    revokeLegalAcceptance.mockRejectedValue(Object.assign(new Error('conflict'), { status: 409 }))
-    const history = await mountHistory()
-
-    const revoked = await history.revoke(history.acceptances.value[0])
-
-    expect(revoked).toBe(false)
-    expect(fetchLegalAcceptances).toHaveBeenCalledTimes(2)
-    expect(history.acceptances.value[0].revoked).toBe(true)
-    expect(useNotificationStore().items.at(-1).message).toBe('Este aceite já havia sido revogado.')
-  })
-
-  it('should keep the acceptance and warn when the revocation fails', async () => {
-    fetchLegalAcceptances.mockResolvedValue({ count: 1, results: [makeAcceptance()] })
-    revokeLegalAcceptance.mockRejectedValue(Object.assign(new Error('boom'), { status: 500 }))
-    const history = await mountHistory()
-
-    const revoked = await history.revoke(history.acceptances.value[0])
-
-    expect(revoked).toBe(false)
-    expect(history.acceptances.value[0].revoked).toBe(false)
-    expect(useNotificationStore().items.at(-1)).toMatchObject({
-      type: 'error',
-      message: 'Não foi possível revogar o aceite. Tente novamente.',
-    })
-  })
-
-  it('should offer to accept again only a revoked version that is not accepted anymore', async () => {
-    fetchLegalAcceptances.mockResolvedValue({
-      count: 3,
-      results: [
-        makeAcceptance({ id: 1, revoked_at: '2026-10-01T10:00:00' }),
-        makeAcceptance({ id: 2, accepted_at: '2026-10-02T10:00:00' }),
-        makeAcceptance({
-          id: 3,
-          revoked_at: '2026-10-03T10:00:00',
-          version: { id: 8, version: 3 },
-        }),
-      ],
-    })
-    const history = await mountHistory()
-    const byId = (id) => history.acceptances.value.find((acceptance) => acceptance.id === id)
-
-    expect(history.canReaccept(byId(1))).toBe(false)
-    expect(history.canReaccept(byId(2))).toBe(false)
-    expect(history.canReaccept(byId(3))).toBe(true)
-  })
-
-  it('should accept a revoked term again with the same clause decisions', async () => {
-    fetchLegalAcceptances.mockResolvedValue({
-      count: 1,
-      results: [makeAcceptance({ revoked_at: '2026-10-01T10:00:00' })],
-    })
+  it('should accept a term with every clause and remove it from the pending ones', async () => {
+    fetchLegalAcceptances.mockResolvedValue({ count: 0, results: [] })
+    fetchLegalDocuments.mockResolvedValue({ count: 1, results: [makeDocument()] })
     acceptLegalTerms.mockResolvedValue(
-      makeAcceptance({ id: 9, accepted_at: '2026-10-15T11:00:00' }),
+      makeAcceptance({
+        id: 9,
+        accepted_at: '2026-10-15T11:00:00',
+        consents: [
+          { clause_id: 1, is_required: true, accepted: true },
+          { clause_id: 2, is_required: false, accepted: true },
+        ],
+      }),
     )
     const history = await mountHistory()
 
-    const accepted = await history.reaccept(history.acceptances.value[0])
+    const accepted = await history.accept(history.rows.value[0])
 
     expect(accepted).toBe(true)
     expect(acceptLegalTerms).toHaveBeenCalledWith({
       versionId: 7,
       consents: [
         { clause_id: 1, accepted: true },
-        { clause_id: 2, accepted: false },
+        { clause_id: 2, accepted: true },
       ],
     })
-    expect(
-      history.acceptances.value.map((acceptance) => [acceptance.id, acceptance.status]),
-    ).toEqual([
-      [9, 'Aceito'],
-      [4, 'Revogado'],
+    expect(history.rows.value.map((row) => [row.key, row.status])).toEqual([
+      ['acceptance-9', 'Aceito'],
     ])
-    expect(history.canReaccept(history.acceptances.value[1])).toBe(false)
-    expect(useNotificationStore().items.at(-1)).toMatchObject({
-      type: 'success',
-      message: 'Termo aceito novamente.',
-    })
+    expect(history.recordCount.value).toBe(1)
+    expect(useNotificationStore().items.at(-1).message).toBe('Termo aceito.')
   })
 
-  it('should not accept again a term that was not revoked', async () => {
-    fetchLegalAcceptances.mockResolvedValue({ count: 1, results: [makeAcceptance()] })
+  it('should only revoke acceptances in force and only accept pending terms', async () => {
+    fetchLegalAcceptances.mockResolvedValue({
+      count: 1,
+      results: [makeAcceptance({ revoked_at: '2026-10-01T10:00:00' })],
+    })
     const history = await mountHistory()
+    const [revokedRow] = history.rows.value
 
-    const accepted = await history.reaccept(history.acceptances.value[0])
+    const revoked = await history.revoke(revokedRow)
+    const accepted = await history.accept(revokedRow)
 
+    expect(revoked).toBe(false)
     expect(accepted).toBe(false)
+    expect(revokeLegalAcceptance).not.toHaveBeenCalled()
     expect(acceptLegalTerms).not.toHaveBeenCalled()
   })
 
-  it('should reload the list when the version was already accepted elsewhere', async () => {
+  it('should flag the row being changed and ignore another change meanwhile', async () => {
     fetchLegalAcceptances.mockResolvedValue({
-      count: 1,
-      results: [makeAcceptance({ revoked_at: '2026-10-01T10:00:00' })],
+      count: 2,
+      results: [makeAcceptance(), makeAcceptance({ id: 5, version: { id: 8, version: 1 } })],
     })
-    acceptLegalTerms.mockRejectedValue(
-      Object.assign(new Error('conflict'), {
-        status: 409,
-        details: { error: 'LegalVersionAlreadyAccepted' },
-      }),
-    )
+    const pending = deferred()
+    revokeLegalAcceptance.mockReturnValue(pending.promise)
     const history = await mountHistory()
+    const [first, second] = history.rows.value
 
-    const accepted = await history.reaccept(history.acceptances.value[0])
+    const change = history.revoke(first)
+    const busyKey = history.busyKey.value
+    await history.revoke(second)
+    pending.resolve(makeAcceptance({ revoked_at: '2026-10-15T10:00:00' }))
+    await change
 
-    expect(accepted).toBe(false)
-    expect(fetchLegalAcceptances).toHaveBeenCalledTimes(2)
-    expect(useNotificationStore().items.at(-1).message).toBe('Esta versão do termo já está aceita.')
+    expect(busyKey).toBe(first.key)
+    expect(revokeLegalAcceptance).toHaveBeenCalledTimes(1)
+    expect(history.busyKey.value).toBeNull()
   })
 
-  it('should explain when a newer version of the term replaced the revoked one', async () => {
-    fetchLegalAcceptances.mockResolvedValue({
-      count: 1,
-      results: [makeAcceptance({ revoked_at: '2026-10-01T10:00:00' })],
-    })
-    acceptLegalTerms.mockRejectedValue(
-      Object.assign(new Error('conflict'), {
-        status: 409,
-        details: { error: 'OutdatedLegalVersion', current_version_id: 11 },
-      }),
-    )
+  it.each([
+    [
+      failure(409, { error: 'LegalAcceptanceAlreadyRevoked' }),
+      'Este aceite já havia sido revogado.',
+      2,
+    ],
+    [failure(404, { error: 'LegalAcceptanceNotFound' }), 'Não foi possível revogar o aceite.', 2],
+    [failure(500, null), 'Não foi possível revogar o aceite.', 1],
+  ])('should warn when the revocation fails (%#)', async (error, message, loads) => {
+    fetchLegalAcceptances.mockResolvedValue({ count: 1, results: [makeAcceptance()] })
+    revokeLegalAcceptance.mockRejectedValue(error)
     const history = await mountHistory()
 
-    await history.reaccept(history.acceptances.value[0])
+    const revoked = await history.revoke(history.rows.value[0])
 
-    expect(useNotificationStore().items.at(-1).message).toContain('versão mais nova deste termo')
-    expect(history.acceptances.value).toHaveLength(1)
+    expect(revoked).toBe(false)
+    expect(fetchLegalAcceptances).toHaveBeenCalledTimes(loads)
+    expect(useNotificationStore().items.at(-1).message).toContain(message)
   })
 
-  it('should warn when accepting again fails for another reason', async () => {
-    fetchLegalAcceptances.mockResolvedValue({
-      count: 1,
-      results: [makeAcceptance({ revoked_at: '2026-10-01T10:00:00' })],
-    })
-    acceptLegalTerms.mockRejectedValue(Object.assign(new Error('boom'), { status: 500 }))
+  it.each([
+    [failure(409, { error: 'LegalVersionAlreadyAccepted' }), 'já está aceita', 2],
+    [
+      failure(409, { error: 'OutdatedLegalVersion', current_version_id: 11 }),
+      'versão mais nova',
+      2,
+    ],
+    [failure(500, null), 'Não foi possível aceitar o termo.', 1],
+  ])('should warn when the acceptance fails (%#)', async (error, message, loads) => {
+    fetchLegalAcceptances.mockResolvedValue({ count: 0, results: [] })
+    fetchLegalDocuments.mockResolvedValue({ count: 1, results: [makeDocument()] })
+    acceptLegalTerms.mockRejectedValue(error)
     const history = await mountHistory()
 
-    const accepted = await history.reaccept(history.acceptances.value[0])
+    const accepted = await history.accept(history.rows.value[0])
 
     expect(accepted).toBe(false)
-    expect(history.reacceptingId.value).toBeNull()
-    expect(useNotificationStore().items.at(-1).message).toBe(
-      'Não foi possível aceitar o termo novamente. Tente novamente.',
-    )
+    expect(fetchLegalAcceptances).toHaveBeenCalledTimes(loads)
+    expect(useNotificationStore().items.at(-1).message).toContain(message)
+    expect(history.busyKey.value).toBeNull()
   })
 })

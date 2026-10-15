@@ -14,6 +14,10 @@ import { useNotificationStore } from '../../src/stores/notificationStore'
 
 const replace = vi.fn()
 vi.mock('vue-router', () => ({ useRouter: () => ({ replace }) }))
+vi.mock('../../src/api/legal', () => ({
+  fetchLegalDocuments: vi.fn().mockResolvedValue({ count: 0, results: [] }),
+  fetchLegalVersion: vi.fn(),
+}))
 vi.mock('../../src/api/users', () => ({
   fetchCurrentUser: vi.fn(),
   updateCurrentUser: vi.fn(),

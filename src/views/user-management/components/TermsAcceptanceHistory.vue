@@ -1,57 +1,62 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { Lock } from '@lucide/vue'
+import ActionMenu from '@/components/common/ActionMenu.vue'
 import Button from '@/components/common/Button.vue'
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
-import { useTermsAcceptanceHistory } from '@/views/user-management/composables/useTermsAcceptanceHistory.js'
+import LegalTermDialog from '@/views/user-management/components/LegalTermDialog.vue'
+import {
+  TERM_STATES,
+  useTermsAcceptanceHistory,
+} from '@/views/user-management/composables/useTermsAcceptanceHistory.js'
 import { formatDateAtTime } from '@/utils/formatters.js'
 
-const {
-  acceptances,
-  loading,
-  error,
-  revokingId,
-  reacceptingId,
-  load,
-  revoke,
-  reaccept,
-  canReaccept,
-} = useTermsAcceptanceHistory()
+const { rows, recordCount, loading, error, busyKey, load, revoke, accept } =
+  useTermsAcceptanceHistory()
 
-const countLabel = computed(() => {
-  const total = acceptances.value.length
-  return total === 1 ? '1 registro' : `${total} registros`
-})
+const countLabel = computed(() =>
+  recordCount.value === 1 ? '1 registro' : `${recordCount.value} registros`,
+)
 
-const pendingAction = ref(null)
+const rowToRead = ref(null)
+const rowToChange = ref(null)
 
-const busy = computed(() => revokingId.value !== null || reacceptingId.value !== null)
+function menuItemsFor(row) {
+  const items = [{ id: 'read', label: 'Ler termo' }]
+  if (row.state !== TERM_STATES.REVOKED) items.push({ id: 'change', label: 'Alterar aceite' })
+  return items
+}
 
-const dialog = computed(() => {
-  if (!pendingAction.value) return null
-  const { type, acceptance } = pendingAction.value
-  const term = `"${acceptance.title}" (${acceptance.versionLabel})`
-  if (type === 'revoke') {
+function onMenuSelect(row, action) {
+  if (action === 'read') rowToRead.value = row
+  if (action === 'change') rowToChange.value = row
+}
+
+const changeDialog = computed(() => {
+  const row = rowToChange.value
+  if (!row) return null
+  const term = `"${row.title}" (${row.versionLabel})`
+  if (row.state === TERM_STATES.ACCEPTED) {
     return {
-      title: 'Revogar este aceite?',
-      message: `O aceite de ${term} deixará de valer. O registro continua no histórico para auditoria e você poderá aceitar o termo novamente quando quiser.`,
+      title: 'Alterar aceite',
+      message: `Você aceitou ${term} em ${formatDateAtTime(row.acceptedAt)}. Ao revogar, o aceite deixa de valer, o registro continua no histórico para auditoria e você pode aceitar o termo de novo quando quiser.`,
       confirmLabel: 'Revogar aceite',
       variant: 'danger',
     }
   }
   return {
-    title: 'Aceitar este termo novamente?',
-    message: `Você aceitará ${term} de novo, com as mesmas escolhas de cláusulas do aceite anterior. Um novo registro será criado no histórico.`,
-    confirmLabel: 'Aceitar novamente',
+    title: 'Alterar aceite',
+    message: `Você ainda não aceitou ${term}. Ao aceitar, você concorda com todas as cláusulas desta versão, inclusive as opcionais. Leia o termo antes pelo menu "Ler termo".`,
+    confirmLabel: 'Aceitar termo',
     variant: 'primary',
   }
 })
 
-async function confirmAction() {
-  const { type, acceptance } = pendingAction.value
-  if (type === 'revoke') await revoke(acceptance)
-  else await reaccept(acceptance)
-  pendingAction.value = null
+async function confirmChange() {
+  const row = rowToChange.value
+  if (row.state === TERM_STATES.ACCEPTED) await revoke(row)
+  else await accept(row)
+  rowToChange.value = null
 }
 </script>
 
@@ -74,8 +79,8 @@ async function confirmAction() {
       <Button variant="outline" @click="load">Tentar novamente</Button>
     </div>
 
-    <p v-else-if="!acceptances.length" class="terms-state muted">
-      Nenhum aceite de termos registrado até o momento.
+    <p v-else-if="!rows.length" class="terms-state muted">
+      Nenhum termo disponível nem aceite registrado até o momento.
     </p>
 
     <div v-else class="table-scroll">
@@ -91,41 +96,26 @@ async function confirmAction() {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="acceptance in acceptances" :key="acceptance.id">
-            <td class="cell-title">{{ acceptance.title }}</td>
+          <tr v-for="row in rows" :key="row.key" :class="`row-${row.state}`">
+            <td class="cell-title">{{ row.title }}</td>
             <td>
-              <span class="version-pill">{{ acceptance.versionLabel }}</span>
+              <span class="version-pill">{{ row.versionLabel }}</span>
             </td>
-            <td>{{ acceptance.condition }}</td>
-            <td class="cell-date">{{ formatDateAtTime(acceptance.acceptedAt) }}</td>
+            <td>{{ row.condition }}</td>
+            <td class="cell-date">{{ formatDateAtTime(row.acceptedAt) }}</td>
             <td>
-              <span class="status-pill" :class="{ revoked: acceptance.revoked }">
-                {{ acceptance.status }}
-              </span>
-              <span v-if="acceptance.revokedAt" class="revoked-at">
-                em {{ formatDateAtTime(acceptance.revokedAt) }}
+              <span class="status-pill" :class="row.state">{{ row.status }}</span>
+              <span v-if="row.revokedAt" class="revoked-at">
+                em {{ formatDateAtTime(row.revokedAt) }}
               </span>
             </td>
-            <td>
-              <button
-                v-if="!acceptance.revoked"
-                type="button"
-                class="action-button revoke-button"
-                :disabled="busy"
-                @click="pendingAction = { type: 'revoke', acceptance }"
-              >
-                Revogar aceite
-              </button>
-              <button
-                v-else-if="canReaccept(acceptance)"
-                type="button"
-                class="action-button reaccept-button"
-                :disabled="busy"
-                @click="pendingAction = { type: 'reaccept', acceptance }"
-              >
-                Aceitar novamente
-              </button>
-              <span v-else class="muted">—</span>
+            <td class="cell-actions">
+              <ActionMenu
+                :items="menuItemsFor(row)"
+                :label="`Ações para ${row.title}`"
+                :disabled="busyKey !== null"
+                @select="onMenuSelect(row, $event)"
+              />
             </td>
           </tr>
         </tbody>
@@ -138,15 +128,24 @@ async function confirmAction() {
       regulatória.
     </p>
 
+    <LegalTermDialog
+      v-if="rowToRead && rowToRead.versionId"
+      :version-id="rowToRead.versionId"
+      :title="rowToRead.title"
+      :version-label="rowToRead.versionLabel"
+      :decisions="rowToRead.decisions"
+      @close="rowToRead = null"
+    />
+
     <ConfirmDialog
-      v-if="dialog"
-      :title="dialog.title"
-      :message="dialog.message"
-      :confirm-label="dialog.confirmLabel"
-      :variant="dialog.variant"
-      :loading="busy"
-      @confirm="confirmAction"
-      @cancel="pendingAction = null"
+      v-if="changeDialog"
+      :title="changeDialog.title"
+      :message="changeDialog.message"
+      :confirm-label="changeDialog.confirmLabel"
+      :variant="changeDialog.variant"
+      :loading="busyKey !== null"
+      @confirm="confirmChange"
+      @cancel="rowToChange = null"
     />
   </section>
 </template>
@@ -246,6 +245,12 @@ async function confirmAction() {
   white-space: nowrap;
 }
 
+.status-pill.pending {
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
 .status-pill.revoked {
   border-color: var(--color-border);
   background: var(--color-surface-muted);
@@ -260,36 +265,9 @@ async function confirmAction() {
   white-space: nowrap;
 }
 
-.action-button {
-  padding: 0;
-  border: none;
-  background: none;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.revoke-button {
-  color: var(--color-danger);
-}
-
-.reaccept-button {
-  color: var(--color-primary);
-}
-
-.action-button:hover:not(:disabled) {
-  text-decoration: underline;
-}
-
-.action-button:disabled {
-  cursor: default;
-  opacity: 0.5;
-}
-
-.action-button:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: 2px;
+.cell-actions {
+  width: 3rem;
+  text-align: right;
 }
 
 .audit-note {
