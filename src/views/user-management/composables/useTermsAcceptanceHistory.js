@@ -57,6 +57,16 @@ export function normalizeAcceptance(acceptance) {
   }
 }
 
+function acceptTargetOf(document) {
+  const version = document?.current_version
+  if (!version?.id || !version.clauses?.length) return null
+  return {
+    versionId: version.id,
+    versionLabel: versionLabelOf(version.version),
+    clauseIds: version.clauses.map((clause) => clause.id),
+  }
+}
+
 export function normalizePendingDocument(document) {
   const version = document.current_version ?? {}
   const clauses = version.clauses ?? []
@@ -83,18 +93,55 @@ export function sortByMostRecent(rows) {
   return [...rows].sort((first, second) => updatedTime(second) - updatedTime(first))
 }
 
-export function pendingDocuments(documents, acceptances) {
-  return documents
-    .filter((document) => document.current_version?.id)
-    .filter(
-      (document) =>
-        !acceptances.some(
-          (acceptance) =>
-            acceptance.state === TERM_STATES.ACCEPTED &&
-            acceptance.versionId === document.current_version.id,
-        ),
-    )
-    .map(normalizePendingDocument)
+function latestBySlug(acceptances) {
+  const latest = new Map()
+  for (const acceptance of sortByMostRecent(acceptances)) {
+    const slug = acceptance.slug ?? acceptance.key
+    if (!latest.has(slug)) latest.set(slug, acceptance)
+  }
+  return latest
+}
+
+function rowForDocument(document, acceptances, latest) {
+  const target = acceptTargetOf(document)
+  const inForce = acceptances.find(
+    (acceptance) =>
+      acceptance.state === TERM_STATES.ACCEPTED && acceptance.versionId === target?.versionId,
+  )
+  if (inForce) return { ...inForce, key: `term-${document.slug}`, acceptTarget: null }
+
+  const last = latest.get(document.slug)
+  if (!last)
+    return {
+      ...normalizePendingDocument(document),
+      key: `term-${document.slug}`,
+      acceptTarget: target,
+    }
+  if (last.state === TERM_STATES.REVOKED) {
+    return { ...last, key: `term-${document.slug}`, acceptTarget: target }
+  }
+  return {
+    ...normalizePendingDocument(document),
+    key: `term-${document.slug}`,
+    status: 'Nova versão disponível',
+    updatedAt: last.updatedAt,
+    acceptTarget: target,
+  }
+}
+
+export function termRows(documents, acceptances) {
+  const latest = latestBySlug(acceptances)
+  const slugs = new Set()
+  const rows = documents
+    .filter((document) => document.slug)
+    .map((document) => {
+      slugs.add(document.slug)
+      return rowForDocument(document, acceptances, latest)
+    })
+  for (const [slug, acceptance] of latest) {
+    if (!slugs.has(slug)) rows.push({ ...acceptance, key: `term-${slug}`, acceptTarget: null })
+  }
+  return sortByMostRecent(rows)
 }
 
 export function useTermsAcceptanceHistory() {
@@ -105,11 +152,7 @@ export function useTermsAcceptanceHistory() {
   const error = ref('')
   const busyKey = ref(null)
 
-  const rows = computed(() => [
-    ...pendingDocuments(documents.value, acceptances.value),
-    ...sortByMostRecent(acceptances.value),
-  ])
-  const recordCount = computed(() => acceptances.value.length)
+  const rows = computed(() => termRows(documents.value, acceptances.value))
 
   async function loadDocuments() {
     try {
@@ -163,14 +206,13 @@ export function useTermsAcceptanceHistory() {
   }
 
   async function accept(row) {
-    if (busyKey.value !== null || row.state !== TERM_STATES.PENDING || !row.clauseIds.length) {
-      return false
-    }
+    const target = row.acceptTarget
+    if (busyKey.value !== null || !target) return false
     busyKey.value = row.key
     try {
       const created = await acceptLegalTerms({
-        versionId: row.versionId,
-        consents: row.clauseIds.map((clauseId) => ({ clause_id: clauseId, accepted: true })),
+        versionId: target.versionId,
+        consents: target.clauseIds.map((clauseId) => ({ clause_id: clauseId, accepted: true })),
       })
       acceptances.value = [normalizeAcceptance(created), ...acceptances.value]
       notifications.success(ACCEPT_SUCCESS_MESSAGE)
@@ -193,5 +235,5 @@ export function useTermsAcceptanceHistory() {
 
   onMounted(load)
 
-  return { rows, recordCount, loading, error, busyKey, load, revoke, accept }
+  return { rows, loading, error, busyKey, load, revoke, accept }
 }

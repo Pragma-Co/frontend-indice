@@ -11,11 +11,10 @@ import {
 } from '@/views/user-management/composables/useTermsAcceptanceHistory.js'
 import { formatDateAtTime } from '@/utils/formatters.js'
 
-const { rows, recordCount, loading, error, busyKey, load, revoke, accept } =
-  useTermsAcceptanceHistory()
+const { rows, loading, error, busyKey, load, revoke, accept } = useTermsAcceptanceHistory()
 
 const countLabel = computed(() =>
-  recordCount.value === 1 ? '1 registro' : `${recordCount.value} registros`,
+  rows.value.length === 1 ? '1 termo' : `${rows.value.length} termos`,
 )
 
 const rowToRead = ref(null)
@@ -23,7 +22,9 @@ const rowToChange = ref(null)
 
 function menuItemsFor(row) {
   const items = [{ id: 'read', label: 'Ler termo' }]
-  if (row.state !== TERM_STATES.REVOKED) items.push({ id: 'change', label: 'Alterar aceite' })
+  if (row.state === TERM_STATES.ACCEPTED || row.acceptTarget) {
+    items.push({ id: 'change', label: 'Alterar aceite' })
+  }
   return items
 }
 
@@ -44,9 +45,14 @@ const changeDialog = computed(() => {
       variant: 'danger',
     }
   }
+  const target = `"${row.title}" (${row.acceptTarget.versionLabel})`
+  const situation =
+    row.state === TERM_STATES.REVOKED
+      ? `Você revogou o aceite de ${term} em ${formatDateAtTime(row.revokedAt)}.`
+      : `Você ainda não aceitou ${target}.`
   return {
     title: 'Alterar aceite',
-    message: `Você ainda não aceitou ${term}. Ao aceitar, você concorda com todas as cláusulas desta versão, inclusive as opcionais. Leia o termo antes pelo menu "Ler termo".`,
+    message: `${situation} Ao aceitar ${target}, você concorda com todas as cláusulas desta versão, inclusive as opcionais. Leia o termo antes pelo menu "Ler termo".`,
     confirmLabel: 'Aceitar termo',
     variant: 'primary',
   }
@@ -79,9 +85,7 @@ async function confirmChange() {
       <Button variant="outline" @click="load">Tentar novamente</Button>
     </div>
 
-    <p v-else-if="!rows.length" class="terms-state muted">
-      Nenhum termo disponível nem aceite registrado até o momento.
-    </p>
+    <p v-else-if="!rows.length" class="terms-state muted">Nenhum termo disponível até o momento.</p>
 
     <div v-else class="table-scroll">
       <table class="terms-table">
@@ -121,8 +125,8 @@ async function confirmChange() {
 
     <p class="muted audit-note">
       <Lock :size="13" aria-hidden="true" />
-      Registros de aceite são mantidos para fins de auditoria, rastreabilidade e conformidade
-      regulatória.
+      A tabela mostra a situação atual de cada termo. Todos os aceites e revogações continuam
+      registrados para fins de auditoria, rastreabilidade e conformidade regulatória.
     </p>
 
     <LegalTermDialog
