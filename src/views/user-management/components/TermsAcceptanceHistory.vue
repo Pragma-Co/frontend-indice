@@ -1,16 +1,58 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { Lock } from '@lucide/vue'
 import Button from '@/components/common/Button.vue'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
 import { useTermsAcceptanceHistory } from '@/views/user-management/composables/useTermsAcceptanceHistory.js'
 import { formatDateAtTime } from '@/utils/formatters.js'
 
-const { acceptances, loading, error, load } = useTermsAcceptanceHistory()
+const {
+  acceptances,
+  loading,
+  error,
+  revokingId,
+  reacceptingId,
+  load,
+  revoke,
+  reaccept,
+  canReaccept,
+} = useTermsAcceptanceHistory()
 
 const countLabel = computed(() => {
   const total = acceptances.value.length
   return total === 1 ? '1 registro' : `${total} registros`
 })
+
+const pendingAction = ref(null)
+
+const busy = computed(() => revokingId.value !== null || reacceptingId.value !== null)
+
+const dialog = computed(() => {
+  if (!pendingAction.value) return null
+  const { type, acceptance } = pendingAction.value
+  const term = `"${acceptance.title}" (${acceptance.versionLabel})`
+  if (type === 'revoke') {
+    return {
+      title: 'Revogar este aceite?',
+      message: `O aceite de ${term} deixará de valer. O registro continua no histórico para auditoria e você poderá aceitar o termo novamente quando quiser.`,
+      confirmLabel: 'Revogar aceite',
+      variant: 'danger',
+    }
+  }
+  return {
+    title: 'Aceitar este termo novamente?',
+    message: `Você aceitará ${term} de novo, com as mesmas escolhas de cláusulas do aceite anterior. Um novo registro será criado no histórico.`,
+    confirmLabel: 'Aceitar novamente',
+    variant: 'primary',
+  }
+})
+
+async function confirmAction() {
+  const { type, acceptance } = pendingAction.value
+  if (type === 'revoke') await revoke(acceptance)
+  else await reaccept(acceptance)
+  pendingAction.value = null
+}
 </script>
 
 <template>
@@ -45,6 +87,7 @@ const countLabel = computed(() => {
             <th scope="col">Tipo de Condição</th>
             <th scope="col">Data do Aceite</th>
             <th scope="col">Status</th>
+            <th scope="col">Ações</th>
           </tr>
         </thead>
         <tbody>
@@ -59,6 +102,30 @@ const countLabel = computed(() => {
               <span class="status-pill" :class="{ revoked: acceptance.revoked }">
                 {{ acceptance.status }}
               </span>
+              <span v-if="acceptance.revokedAt" class="revoked-at">
+                em {{ formatDateAtTime(acceptance.revokedAt) }}
+              </span>
+            </td>
+            <td>
+              <button
+                v-if="!acceptance.revoked"
+                type="button"
+                class="action-button revoke-button"
+                :disabled="busy"
+                @click="pendingAction = { type: 'revoke', acceptance }"
+              >
+                Revogar aceite
+              </button>
+              <button
+                v-else-if="canReaccept(acceptance)"
+                type="button"
+                class="action-button reaccept-button"
+                :disabled="busy"
+                @click="pendingAction = { type: 'reaccept', acceptance }"
+              >
+                Aceitar novamente
+              </button>
+              <span v-else class="muted">—</span>
             </td>
           </tr>
         </tbody>
@@ -70,6 +137,17 @@ const countLabel = computed(() => {
       Registros de aceite são mantidos para fins de auditoria, rastreabilidade e conformidade
       regulatória.
     </p>
+
+    <ConfirmDialog
+      v-if="dialog"
+      :title="dialog.title"
+      :message="dialog.message"
+      :confirm-label="dialog.confirmLabel"
+      :variant="dialog.variant"
+      :loading="busy"
+      @confirm="confirmAction"
+      @cancel="pendingAction = null"
+    />
   </section>
 </template>
 
@@ -172,6 +250,46 @@ const countLabel = computed(() => {
   border-color: var(--color-border);
   background: var(--color-surface-muted);
   color: var(--color-text-muted);
+}
+
+.revoked-at {
+  display: block;
+  margin-top: 0.3rem;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.action-button {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.revoke-button {
+  color: var(--color-danger);
+}
+
+.reaccept-button {
+  color: var(--color-primary);
+}
+
+.action-button:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.action-button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.action-button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
 }
 
 .audit-note {

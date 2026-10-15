@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 
-vi.mock('@/api/users.js', () => ({ fetchLegalAcceptances: vi.fn() }))
+vi.mock('@/api/users.js', () => ({
+  fetchLegalAcceptances: vi.fn(),
+  revokeLegalAcceptance: vi.fn(),
+  acceptLegalTerms: vi.fn(),
+}))
 
-import { fetchLegalAcceptances } from '@/api/users.js'
+import { acceptLegalTerms, fetchLegalAcceptances, revokeLegalAcceptance } from '@/api/users.js'
 import TermsAcceptanceHistory from '@/views/user-management/components/TermsAcceptanceHistory.vue'
 
 const ACCEPTANCES = [
@@ -41,6 +46,7 @@ async function mountHistory() {
 
 describe('TermsAcceptanceHistory', () => {
   beforeEach(() => {
+    setActivePinia(createPinia())
     vi.clearAllMocks()
     fetchLegalAcceptances.mockResolvedValue({ count: 2, results: ACCEPTANCES })
   })
@@ -56,6 +62,7 @@ describe('TermsAcceptanceHistory', () => {
       'Tipo de Condição',
       'Data do Aceite',
       'Status',
+      'Ações',
     ])
   })
 
@@ -73,6 +80,7 @@ describe('TermsAcceptanceHistory', () => {
         'Obrigatório',
         '24/09/2026 às 14:32',
         'Aceito',
+        'Revogar aceite',
       ],
       [
         'Termo de Consentimento para Uso de Dados Pessoais',
@@ -80,6 +88,7 @@ describe('TermsAcceptanceHistory', () => {
         'Opcional',
         '12/03/2026 às 09:15',
         'Aceito',
+        'Revogar aceite',
       ],
     ])
   })
@@ -109,6 +118,8 @@ describe('TermsAcceptanceHistory', () => {
     const status = wrapper.find('.status-pill')
     expect(status.text()).toBe('Revogado')
     expect(status.classes()).toContain('revoked')
+    expect(wrapper.find('.revoked-at').text()).toBe('em 01/10/2026 às 10:00')
+    expect(wrapper.find('.revoke-button').exists()).toBe(false)
   })
 
   it('should say it is loading while the history is requested', async () => {
@@ -150,5 +161,67 @@ describe('TermsAcceptanceHistory', () => {
     expect(wrapper.find('.audit-note').text()).toContain(
       'Registros de aceite são mantidos para fins de auditoria',
     )
+  })
+
+  it('should ask for confirmation before revoking and do nothing on cancel', async () => {
+    const wrapper = await mountHistory()
+
+    await wrapper.findAll('.revoke-button')[0].trigger('click')
+    const dialog = wrapper.find('[role="alertdialog"]')
+    const message = dialog.text()
+    await dialog.findAll('button')[0].trigger('click')
+
+    expect(message).toContain('Termos de Uso e Política de Privacidade')
+    expect(message).toContain('poderá aceitar o termo novamente')
+    expect(wrapper.find('[role="alertdialog"]').exists()).toBe(false)
+    expect(revokeLegalAcceptance).not.toHaveBeenCalled()
+  })
+
+  it('should revoke the confirmed acceptance and show it as revoked', async () => {
+    revokeLegalAcceptance.mockResolvedValue({
+      ...ACCEPTANCES[1],
+      revoked_at: '2026-10-15T10:00:00',
+    })
+    const wrapper = await mountHistory()
+
+    await wrapper.findAll('.revoke-button')[0].trigger('click')
+    await wrapper.find('[role="alertdialog"]').findAll('button')[1].trigger('click')
+    await flushPromises()
+
+    const firstRow = wrapper.findAll('tbody tr')[0]
+    expect(revokeLegalAcceptance).toHaveBeenCalledWith(2)
+    expect(wrapper.find('[role="alertdialog"]').exists()).toBe(false)
+    expect(firstRow.find('.status-pill').text()).toBe('Revogado')
+    expect(firstRow.find('.revoke-button').exists()).toBe(false)
+    expect(wrapper.findAll('.revoke-button')).toHaveLength(1)
+  })
+
+  it('should accept a revoked term again after confirmation', async () => {
+    fetchLegalAcceptances.mockResolvedValue({
+      count: 1,
+      results: [{ ...ACCEPTANCES[1], revoked_at: '2026-10-01T10:00:00' }],
+    })
+    acceptLegalTerms.mockResolvedValue({
+      ...ACCEPTANCES[1],
+      id: 9,
+      accepted_at: '2026-10-15T11:00:00',
+    })
+    const wrapper = await mountHistory()
+
+    await wrapper.find('.reaccept-button').trigger('click')
+    const dialog = wrapper.find('[role="alertdialog"]')
+    const message = dialog.text()
+    await dialog.findAll('button')[1].trigger('click')
+    await flushPromises()
+
+    const statuses = wrapper.findAll('tbody .status-pill').map((pill) => pill.text())
+    expect(message).toContain('mesmas escolhas de cláusulas')
+    expect(acceptLegalTerms).toHaveBeenCalledWith({
+      versionId: 7,
+      consents: [{ clause_id: 1, accepted: true }],
+    })
+    expect(statuses).toEqual(['Aceito', 'Revogado'])
+    expect(wrapper.find('.reaccept-button').exists()).toBe(false)
+    expect(wrapper.findAll('.revoke-button')).toHaveLength(1)
   })
 })
