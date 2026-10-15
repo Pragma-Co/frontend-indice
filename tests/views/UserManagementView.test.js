@@ -12,8 +12,8 @@ import {
 import { PROFILES, useAuthStore } from '../../src/stores/authStore'
 import { useNotificationStore } from '../../src/stores/notificationStore'
 
-const push = vi.fn()
-vi.mock('vue-router', () => ({ useRouter: () => ({ push }) }))
+const replace = vi.fn()
+vi.mock('vue-router', () => ({ useRouter: () => ({ replace }) }))
 vi.mock('../../src/api/users', () => ({
   fetchCurrentUser: vi.fn(),
   updateCurrentUser: vi.fn(),
@@ -44,7 +44,7 @@ describe('UserManagementView', () => {
     localStorage.clear()
     setActivePinia(createPinia())
     vi.clearAllMocks()
-    useAuthStore().login(PROFILES.COLLABORATOR)
+    useAuthStore().login(PROFILES.MANAGER)
     fetchCurrentUser.mockResolvedValue(USER)
     fetchLegalAcceptances.mockResolvedValue({ count: 0, results: [] })
   })
@@ -122,6 +122,7 @@ describe('UserManagementView', () => {
       email: 'thiago.serpa@akaer.local',
     })
     expect(useAuthStore().currentUser.name).toBe('Tiago Serpa')
+    expect(useAuthStore().initials).toBe('TS')
     expect(useNotificationStore().items.map((i) => i.message)).toContain(
       'Dados atualizados com sucesso.',
     )
@@ -184,10 +185,27 @@ describe('UserManagementView', () => {
 
     expect(requestAccountDeletion).toHaveBeenCalledOnce()
     expect(useAuthStore().isAuthenticated).toBe(false)
-    expect(push).toHaveBeenCalledWith('/login')
+    expect(replace).toHaveBeenCalledWith({ name: 'login' })
     expect(useNotificationStore().items.map((i) => i.message)).toContain(
       'Solicitação de exclusão da conta enviada com sucesso.',
     )
+    wrapper.unmount()
+  })
+
+  it('should clear every stored authentication data after the deletion', async () => {
+    requestAccountDeletion.mockResolvedValue({})
+    localStorage.setItem('indice.devUser', '{"id":10,"name":"Thiago Serpa"}')
+    document.cookie = 'csrftoken=token-before-deletion; path=/'
+    const wrapper = await mountView()
+
+    await buttonByText(wrapper, 'Solicitar Exclusão da Conta').trigger('click')
+    await wrapper.find('[role="alertdialog"]').findAll('button')[1].trigger('click')
+    await flushPromises()
+
+    expect(localStorage.getItem('indice.profile')).toBeNull()
+    expect(localStorage.getItem('indice.devUser')).toBeNull()
+    expect(document.cookie).not.toContain('csrftoken')
+    expect(useAuthStore().currentUser).toBeNull()
     wrapper.unmount()
   })
 
@@ -200,7 +218,7 @@ describe('UserManagementView', () => {
     await flushPromises()
 
     expect(useAuthStore().isAuthenticated).toBe(true)
-    expect(push).not.toHaveBeenCalled()
+    expect(replace).not.toHaveBeenCalled()
     expect(wrapper.find('[role="alertdialog"]').exists()).toBe(false)
     expect(useNotificationStore().items[0]).toMatchObject({ type: 'error' })
     wrapper.unmount()

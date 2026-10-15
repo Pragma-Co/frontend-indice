@@ -69,7 +69,7 @@ async function save() {
     const name = [form.firstName, form.lastName].filter(Boolean).join(' ')
     const updated = await updateCurrentUser({ name, email: form.email })
     applyUser(updated)
-    authStore.currentUser = { ...authStore.currentUser, name: updated.name, email: updated.email }
+    authStore.applyAccount(updated)
     lastUpdate.value = new Date().toLocaleString('pt-BR', {
       dateStyle: 'short',
       timeStyle: 'short',
@@ -94,7 +94,7 @@ async function requestAccountDeletion() {
     await requestAccountDeletionApi()
     confirmingDeletion.value = false
     authStore.logout()
-    await router.push('/login')
+    await router.replace({ name: 'login' })
     notifications.success('Solicitação de exclusão da conta enviada com sucesso.')
   } catch (error) {
     confirmingDeletion.value = false
