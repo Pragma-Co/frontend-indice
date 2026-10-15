@@ -32,8 +32,8 @@ const resolvedLinks = computed(() =>
   })),
 )
 
-function logout() {
-  auth.logout()
+async function logout() {
+  await auth.signOut()
   router.push('/login')
 }
 

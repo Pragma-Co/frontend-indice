@@ -1,16 +1,69 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { Lock } from '@lucide/vue'
+import ActionMenu from '@/components/common/ActionMenu.vue'
 import Button from '@/components/common/Button.vue'
-import { useTermsAcceptanceHistory } from '@/views/user-management/composables/useTermsAcceptanceHistory.js'
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue'
+import LegalTermDialog from '@/views/user-management/components/LegalTermDialog.vue'
+import {
+  TERM_STATES,
+  useTermsAcceptanceHistory,
+} from '@/views/user-management/composables/useTermsAcceptanceHistory.js'
 import { formatDateAtTime } from '@/utils/formatters.js'
 
-const { acceptances, loading, error, load } = useTermsAcceptanceHistory()
+const { rows, loading, error, busyKey, load, revoke, accept } = useTermsAcceptanceHistory()
 
-const countLabel = computed(() => {
-  const total = acceptances.value.length
-  return total === 1 ? '1 registro' : `${total} registros`
+const countLabel = computed(() =>
+  rows.value.length === 1 ? '1 termo' : `${rows.value.length} termos`,
+)
+
+const rowToRead = ref(null)
+const rowToChange = ref(null)
+
+function menuItemsFor(row) {
+  const items = [{ id: 'read', label: 'Ler termo' }]
+  if (row.state === TERM_STATES.ACCEPTED || row.acceptTarget) {
+    items.push({ id: 'change', label: 'Alterar aceite' })
+  }
+  return items
+}
+
+function onMenuSelect(row, action) {
+  if (action === 'read') rowToRead.value = row
+  if (action === 'change') rowToChange.value = row
+}
+
+const changeDialog = computed(() => {
+  const row = rowToChange.value
+  if (!row) return null
+  const term = `"${row.title}" (${row.versionLabel})`
+  if (row.state === TERM_STATES.ACCEPTED) {
+    return {
+      title: 'Alterar aceite',
+      message: `Você aceitou ${term} em ${formatDateAtTime(row.acceptedAt)}. Ao revogar, o aceite deixa de valer, o registro continua no histórico para auditoria e você pode aceitar o termo de novo quando quiser.`,
+      confirmLabel: 'Revogar aceite',
+      variant: 'danger',
+    }
+  }
+  const target = `"${row.title}" (${row.acceptTarget.versionLabel})`
+  const situation =
+    row.state === TERM_STATES.REVOKED
+      ? `Você revogou o aceite de ${term} em ${formatDateAtTime(row.revokedAt)}.`
+      : `Você ainda não aceitou ${target}.`
+  return {
+    title: 'Alterar aceite',
+    message: `${situation} Ao aceitar ${target}, você concorda com todas as cláusulas desta versão, inclusive as opcionais. Leia o termo antes pelo menu "Ler termo".`,
+    confirmLabel: 'Aceitar termo',
+    variant: 'primary',
+  }
 })
+
+async function confirmChange() {
+  const row = rowToChange.value
+  if (row.state === TERM_STATES.ACCEPTED) await revoke(row)
+  else await accept(row)
+  rowToChange.value = null
+}
 </script>
 
 <template>
@@ -32,9 +85,7 @@ const countLabel = computed(() => {
       <Button variant="outline" @click="load">Tentar novamente</Button>
     </div>
 
-    <p v-else-if="!acceptances.length" class="terms-state muted">
-      Nenhum aceite de termos registrado até o momento.
-    </p>
+    <p v-else-if="!rows.length" class="terms-state muted">Nenhum termo disponível até o momento.</p>
 
     <div v-else class="table-scroll">
       <table class="terms-table">
@@ -43,22 +94,29 @@ const countLabel = computed(() => {
             <th scope="col">Documento / Termo</th>
             <th scope="col">Versão</th>
             <th scope="col">Tipo de Condição</th>
-            <th scope="col">Data do Aceite</th>
+            <th scope="col">Última atualização</th>
             <th scope="col">Status</th>
+            <th scope="col">Ações</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="acceptance in acceptances" :key="acceptance.id">
-            <td class="cell-title">{{ acceptance.title }}</td>
+          <tr v-for="row in rows" :key="row.key" :class="`row-${row.state}`">
+            <td class="cell-title">{{ row.title }}</td>
             <td>
-              <span class="version-pill">{{ acceptance.versionLabel }}</span>
+              <span class="version-pill">{{ row.versionLabel }}</span>
             </td>
-            <td>{{ acceptance.condition }}</td>
-            <td class="cell-date">{{ formatDateAtTime(acceptance.acceptedAt) }}</td>
+            <td>{{ row.condition }}</td>
+            <td class="cell-date">{{ formatDateAtTime(row.updatedAt) }}</td>
             <td>
-              <span class="status-pill" :class="{ revoked: acceptance.revoked }">
-                {{ acceptance.status }}
-              </span>
+              <span class="status-pill" :class="row.state">{{ row.status }}</span>
+            </td>
+            <td class="cell-actions">
+              <ActionMenu
+                :items="menuItemsFor(row)"
+                :label="`Ações para ${row.title}`"
+                :disabled="busyKey !== null"
+                @select="onMenuSelect(row, $event)"
+              />
             </td>
           </tr>
         </tbody>
@@ -67,9 +125,31 @@ const countLabel = computed(() => {
 
     <p class="muted audit-note">
       <Lock :size="13" aria-hidden="true" />
-      Registros de aceite são mantidos para fins de auditoria, rastreabilidade e conformidade
-      regulatória.
+      A tabela mostra a situação atual de cada termo. Todos os aceites e revogações continuam
+      registrados para fins de auditoria, rastreabilidade e conformidade regulatória.
     </p>
+
+    <LegalTermDialog
+      v-if="rowToRead && rowToRead.versionId"
+      :version-id="rowToRead.versionId"
+      :title="rowToRead.title"
+      :version-label="rowToRead.versionLabel"
+      :decisions="rowToRead.decisions"
+      :accepted-at="rowToRead.acceptedAt"
+      :revoked-at="rowToRead.revokedAt"
+      @close="rowToRead = null"
+    />
+
+    <ConfirmDialog
+      v-if="changeDialog"
+      :title="changeDialog.title"
+      :message="changeDialog.message"
+      :confirm-label="changeDialog.confirmLabel"
+      :variant="changeDialog.variant"
+      :loading="busyKey !== null"
+      @confirm="confirmChange"
+      @cancel="rowToChange = null"
+    />
   </section>
 </template>
 
@@ -168,10 +248,21 @@ const countLabel = computed(() => {
   white-space: nowrap;
 }
 
+.status-pill.pending {
+  border-color: var(--color-warning-border);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
 .status-pill.revoked {
   border-color: var(--color-border);
   background: var(--color-surface-muted);
   color: var(--color-text-muted);
+}
+
+.cell-actions {
+  width: 3rem;
+  text-align: right;
 }
 
 .audit-note {

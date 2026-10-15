@@ -15,3 +15,11 @@ export function requestAccountDeletion() {
 export function fetchLegalAcceptances() {
   return api.get('/users/me/legal-acceptances')
 }
+
+export function revokeLegalAcceptance(acceptanceId) {
+  return api.post(`/users/me/legal-acceptances/${acceptanceId}/revoke`)
+}
+
+export function acceptLegalTerms({ versionId, consents }) {
+  return api.post('/users/me/legal-acceptances', { version_id: versionId, consents })
+}
