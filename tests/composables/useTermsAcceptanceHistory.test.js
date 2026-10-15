@@ -92,6 +92,7 @@ describe('normalizeAcceptance', () => {
       condition: 'Obrigatório',
       acceptedAt: '2026-09-24T14:32:00',
       revokedAt: null,
+      updatedAt: '2026-09-24T14:32:00',
       revoked: false,
       status: 'Aceito',
       decisions: [
@@ -117,6 +118,7 @@ describe('normalizeAcceptance', () => {
       state: TERM_STATES.REVOKED,
       revoked: true,
       revokedAt: '2026-10-01T10:00:00',
+      updatedAt: '2026-10-01T10:00:00',
       status: 'Revogado',
     })
   })
@@ -181,13 +183,30 @@ describe('pendingDocuments', () => {
 describe('sortByMostRecent', () => {
   it('should order the rows from the most recent to the oldest, undated last', () => {
     const rows = [
-      { id: 1, acceptedAt: '2026-03-12T09:15:00' },
-      { id: 2, acceptedAt: null },
-      { id: 3, acceptedAt: '2026-09-24T14:32:00' },
+      { id: 1, updatedAt: '2026-03-12T09:15:00' },
+      { id: 2, updatedAt: null },
+      { id: 3, updatedAt: '2026-09-24T14:32:00' },
     ]
 
     expect(sortByMostRecent(rows).map((row) => row.id)).toEqual([3, 1, 2])
     expect(rows.map((row) => row.id)).toEqual([1, 2, 3])
+  })
+})
+
+describe('last update', () => {
+  it('should order a recent revocation before an older acceptance', () => {
+    const rows = [
+      normalizeAcceptance(makeAcceptance({ id: 1, accepted_at: '2026-10-10T10:00:00' })),
+      normalizeAcceptance(
+        makeAcceptance({
+          id: 2,
+          accepted_at: '2026-01-01T10:00:00',
+          revoked_at: '2026-10-15T10:41:00',
+        }),
+      ),
+    ]
+
+    expect(sortByMostRecent(rows).map((row) => row.id)).toEqual([2, 1])
   })
 })
 

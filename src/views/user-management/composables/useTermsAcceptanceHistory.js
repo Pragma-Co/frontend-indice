@@ -28,8 +28,8 @@ function versionLabelOf(version) {
   return Number.isInteger(version) ? `v${version}` : '—'
 }
 
-function acceptedTime(row) {
-  const time = new Date(row.acceptedAt).getTime()
+function updatedTime(row) {
+  const time = new Date(row.updatedAt).getTime()
   return Number.isNaN(time) ? 0 : time
 }
 
@@ -46,6 +46,7 @@ export function normalizeAcceptance(acceptance) {
     condition: conditionOf(acceptance.consents),
     acceptedAt: acceptance.accepted_at ?? null,
     revokedAt: acceptance.revoked_at ?? null,
+    updatedAt: acceptance.revoked_at ?? acceptance.accepted_at ?? null,
     revoked,
     status: revoked ? 'Revogado' : 'Aceito',
     decisions: (acceptance.consents ?? []).map((consent) => ({
@@ -70,6 +71,7 @@ export function normalizePendingDocument(document) {
     condition: conditionOf(clauses),
     acceptedAt: null,
     revokedAt: null,
+    updatedAt: null,
     revoked: false,
     status: 'Não aceito',
     decisions: [],
@@ -78,7 +80,7 @@ export function normalizePendingDocument(document) {
 }
 
 export function sortByMostRecent(rows) {
-  return [...rows].sort((first, second) => acceptedTime(second) - acceptedTime(first))
+  return [...rows].sort((first, second) => updatedTime(second) - updatedTime(first))
 }
 
 export function pendingDocuments(documents, acceptances) {

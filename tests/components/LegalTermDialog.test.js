@@ -107,4 +107,21 @@ describe('LegalTermDialog', () => {
 
     expect(wrapper.emitted('close')).toHaveLength(4)
   })
+
+  it('should show when the term was accepted and revoked', async () => {
+    const wrapper = await mountDialog({
+      acceptedAt: '2026-10-14T09:51:00',
+      revokedAt: '2026-10-15T10:41:00',
+    })
+
+    expect(wrapper.find('.term-dialog-timeline').text()).toBe(
+      'Aceito em 14/10/2026 às 09:51 · Revogado em 15/10/2026 às 10:41',
+    )
+  })
+
+  it('should not show dates for a term that was never accepted', async () => {
+    const wrapper = await mountDialog()
+
+    expect(wrapper.find('.term-dialog-timeline').exists()).toBe(false)
+  })
 })

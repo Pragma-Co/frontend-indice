@@ -3,12 +3,15 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { X } from '@lucide/vue'
 import Button from '@/components/common/Button.vue'
 import { fetchLegalVersion } from '@/api/legal.js'
+import { formatDateAtTime } from '@/utils/formatters.js'
 
 const props = defineProps({
   versionId: { type: Number, required: true },
   title: { type: String, required: true },
   versionLabel: { type: String, default: '' },
   decisions: { type: Array, default: () => [] },
+  acceptedAt: { type: String, default: null },
+  revokedAt: { type: String, default: null },
 })
 
 const emit = defineEmits(['close'])
@@ -21,6 +24,15 @@ let previouslyFocused = null
 
 const clauses = computed(() =>
   [...(version.value?.clauses ?? [])].sort((first, second) => first.position - second.position),
+)
+
+const timeline = computed(() =>
+  [
+    props.acceptedAt && `Aceito em ${formatDateAtTime(props.acceptedAt)}`,
+    props.revokedAt && `Revogado em ${formatDateAtTime(props.revokedAt)}`,
+  ]
+    .filter(Boolean)
+    .join(' · '),
 )
 
 function decisionOf(clauseId) {
@@ -68,6 +80,7 @@ onBeforeUnmount(() => {
           <div>
             <h2 id="legal-term-title">{{ title }}</h2>
             <p v-if="versionLabel" class="term-dialog-version">Versão {{ versionLabel }}</p>
+            <p v-if="timeline" class="term-dialog-timeline">{{ timeline }}</p>
           </div>
           <button type="button" class="term-close" aria-label="Fechar" @click="emit('close')">
             <X :size="18" aria-hidden="true" />
@@ -155,6 +168,12 @@ onBeforeUnmount(() => {
   margin-top: 0.25rem;
   color: var(--color-text-muted);
   font-size: 0.82rem;
+}
+
+.term-dialog-timeline {
+  margin-top: 0.2rem;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
 }
 
 .term-close {

@@ -90,7 +90,7 @@ async function confirmChange() {
             <th scope="col">Documento / Termo</th>
             <th scope="col">Versão</th>
             <th scope="col">Tipo de Condição</th>
-            <th scope="col">Data do Aceite</th>
+            <th scope="col">Última atualização</th>
             <th scope="col">Status</th>
             <th scope="col">Ações</th>
           </tr>
@@ -102,12 +102,9 @@ async function confirmChange() {
               <span class="version-pill">{{ row.versionLabel }}</span>
             </td>
             <td>{{ row.condition }}</td>
-            <td class="cell-date">{{ formatDateAtTime(row.acceptedAt) }}</td>
+            <td class="cell-date">{{ formatDateAtTime(row.updatedAt) }}</td>
             <td>
               <span class="status-pill" :class="row.state">{{ row.status }}</span>
-              <span v-if="row.revokedAt" class="revoked-at">
-                em {{ formatDateAtTime(row.revokedAt) }}
-              </span>
             </td>
             <td class="cell-actions">
               <ActionMenu
@@ -134,6 +131,8 @@ async function confirmChange() {
       :title="rowToRead.title"
       :version-label="rowToRead.versionLabel"
       :decisions="rowToRead.decisions"
+      :accepted-at="rowToRead.acceptedAt"
+      :revoked-at="rowToRead.revokedAt"
       @close="rowToRead = null"
     />
 
@@ -255,14 +254,6 @@ async function confirmChange() {
   border-color: var(--color-border);
   background: var(--color-surface-muted);
   color: var(--color-text-muted);
-}
-
-.revoked-at {
-  display: block;
-  margin-top: 0.3rem;
-  color: var(--color-text-muted);
-  font-size: 0.72rem;
-  white-space: nowrap;
 }
 
 .cell-actions {

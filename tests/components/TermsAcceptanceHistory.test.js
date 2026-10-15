@@ -97,7 +97,7 @@ describe('TermsAcceptanceHistory', () => {
       'Documento / Termo',
       'Versão',
       'Tipo de Condição',
-      'Data do Aceite',
+      'Última atualização',
       'Status',
       'Ações',
     ])
@@ -155,7 +155,7 @@ describe('TermsAcceptanceHistory', () => {
     expect(wrapper.find('.count-pill').text()).toBe('1 registro')
   })
 
-  it('should show a revoked acceptance with its own status and date', async () => {
+  it('should show a revoked acceptance with its status and the revocation as last update', async () => {
     fetchLegalAcceptances.mockResolvedValue({
       count: 1,
       results: [{ ...ACCEPTANCES[1], revoked_at: '2026-10-01T10:00:00' }],
@@ -166,7 +166,8 @@ describe('TermsAcceptanceHistory', () => {
     const status = wrapper.find('.status-pill')
     expect(status.text()).toBe('Revogado')
     expect(status.classes()).toContain('revoked')
-    expect(wrapper.find('.revoked-at').text()).toBe('em 01/10/2026 às 10:00')
+    expect(wrapper.find('.cell-date').text()).toBe('01/10/2026 às 10:00')
+    expect(wrapper.find('.status-pill').element.parentElement.textContent.trim()).toBe('Revogado')
   })
 
   it('should offer reading and changing the acceptance in the row menu', async () => {
@@ -206,6 +207,7 @@ describe('TermsAcceptanceHistory', () => {
     expect(dialog.find('h2').text()).toBe('Termo de Consentimento para Uso de Dados Pessoais')
     expect(dialog.text()).toContain('Comunicados')
     expect(dialog.text()).toContain('Aceita')
+    expect(dialog.find('.term-dialog-timeline').text()).toBe('Aceito em 12/03/2026 às 09:15')
   })
 
   it('should revoke an acceptance in force from "Alterar aceite"', async () => {
