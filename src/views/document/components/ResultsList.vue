@@ -7,6 +7,7 @@ import PageLayout from '@/components/layout/PageLayout.vue'
 import DocumentsTable from '@/views/document/components/DocumentsTable.vue'
 import ResultsEmptyState from '@/views/document/components/ResultsEmptyState.vue'
 import ResultsFilterPanel from '@/views/document/components/ResultsFilterPanel.vue'
+import ResultsSummary from '@/views/document/components/ResultsSummary.vue'
 import ResultsSearchBar from '@/views/document/components/ResultsSearchBar.vue'
 import {
   countActiveFilters,
@@ -42,6 +43,9 @@ const showEmptyState = computed(
   () => !loading.value && !error.value && documents.value.length === 0,
 )
 
+const summaryHeight = ref(80)
+const contentOffset = computed(() => `${hasFilters.value ? summaryHeight.value : 0}px`)
+
 const options = ref({})
 const optionsLoading = ref(true)
 
@@ -72,10 +76,13 @@ onMounted(async () => {
   <PageLayout
     wide
     class="results-page"
+    :style="{ '--summary-height': contentOffset }"
     title="Resultados"
     subtitle="Refine a busca pelos filtros ao lado."
   >
     <ResultsSearchBar :term="filters.q" @search="searchAgain" />
+
+    <ResultsSummary v-if="hasFilters" :query="route.query" @resize="summaryHeight = $event" />
 
     <div class="results-layout">
       <ResultsFilterPanel
@@ -134,7 +141,7 @@ onMounted(async () => {
 }
 
 .results-content {
-  max-height: calc(100vh - 250px);
+  max-height: calc(100vh - 262px - var(--summary-height, 80px));
 }
 
 .results-main {

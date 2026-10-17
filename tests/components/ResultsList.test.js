@@ -19,9 +19,10 @@ vi.mock('vue-router', () => ({
 vi.mock('@/api/documents.js', () => ({
   fetchDocuments: vi.fn(),
   fetchSimpleFilters: vi.fn(),
+  fetchResultsSummary: vi.fn(),
 }))
 
-import { fetchDocuments, fetchSimpleFilters } from '@/api/documents.js'
+import { fetchDocuments, fetchResultsSummary, fetchSimpleFilters } from '@/api/documents.js'
 
 const OPTIONS = {
   types: [
@@ -70,6 +71,7 @@ describe('ResultsList', () => {
     route.query = {}
     fetchDocuments.mockResolvedValue(pageOf([]))
     fetchSimpleFilters.mockResolvedValue(OPTIONS)
+    fetchResultsSummary.mockResolvedValue({ summary: 'Resumo de teste' })
   })
 
   afterEach(() => {

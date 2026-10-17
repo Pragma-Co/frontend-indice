@@ -1,5 +1,5 @@
 import { api, uploadWithProgress } from './client'
-import { buildDocumentQueryKey } from '../utils/searchParams'
+import { buildDocumentQueryKey, buildSummaryQueryKey } from '../utils/searchParams'
 
 let simpleFiltersCache = null
 let simpleFiltersRequest = null
@@ -31,13 +31,8 @@ export async function createDocumentRevision(documentId, tempFileIds, { changeDe
 export async function fetchSimpleFilters() {
   if (simpleFiltersCache) return simpleFiltersCache
   if (!simpleFiltersRequest) {
-    simpleFiltersRequest = fetch('/api/documents/simple-filters')
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Simple filters failed with status ${response.status}`)
-        }
-        return response.json()
-      })
+    simpleFiltersRequest = api
+      .get('/documents/simple-filters')
       .then((data) => {
         simpleFiltersCache = data
         return data
@@ -54,13 +49,8 @@ export function fetchDocuments(query = {}) {
   if (documentsCache.has(queryString)) return Promise.resolve(documentsCache.get(queryString))
   if (documentsRequests.has(queryString)) return documentsRequests.get(queryString)
 
-  const request = fetch(`/api/documents${queryString ? `?${queryString}` : ''}`)
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error(`Documents failed with status ${response.status}`)
-      }
-      return response.json()
-    })
+  const request = api
+    .get(`/documents${queryString ? `?${queryString}` : ''}`)
     .then((data) => {
       documentsCache.set(queryString, data)
       return data
@@ -71,6 +61,11 @@ export function fetchDocuments(query = {}) {
 
   documentsRequests.set(queryString, request)
   return request
+}
+
+export async function fetchResultsSummary(query = {}, { signal } = {}) {
+  const queryString = buildSummaryQueryKey(query)
+  return api.get(`/documents/summary${queryString ? `?${queryString}` : ''}`, { signal })
 }
 
 export function toDocumentPayload(form, { tempFileIds, tempFileId, responsibleId, userId }) {
