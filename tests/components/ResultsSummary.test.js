@@ -103,7 +103,9 @@ describe('ResultsSummary', () => {
 
     const wrapper = await mountSummary()
 
-    expect(wrapper.find('.summary-error').text()).toBe('Não foi possível gerar o resumo no momento.')
+    expect(wrapper.find('.summary-error').text()).toBe(
+      'Não foi possível gerar o resumo no momento.',
+    )
     expect(wrapper.find('.summary-body').exists()).toBe(false)
     expect(wrapper.find('.summary-toggle').exists()).toBe(false)
   })
