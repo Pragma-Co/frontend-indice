@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { clearDocumentsCache, fetchDocuments } from '../../src/api/documents'
 
 function okResponse(body) {
-  return { ok: true, status: 200, json: async () => body }
+  return { ok: true, status: 200, text: async () => JSON.stringify(body) }
 }
 
 describe('fetchDocuments cache', () => {
@@ -74,10 +74,12 @@ describe('fetchDocuments cache', () => {
     expect(globalThis.fetch).toHaveBeenNthCalledWith(
       1,
       '/api/documents?page=1&page_size=20&q=caverna',
+      expect.any(Object),
     )
     expect(globalThis.fetch).toHaveBeenNthCalledWith(
       2,
       '/api/documents?page=2&page_size=20&q=caverna',
+      expect.any(Object),
     )
     expect(firstPage.results[0].id).toBe(30)
     expect(secondPage.results[0].id).toBe(10)
