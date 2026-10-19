@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { startDevelopmentSession } from '../../src/api/auth'
+import { endSession, startDevelopmentSession } from '../../src/api/auth'
 
 describe('auth api', () => {
   beforeEach(() => {
@@ -24,5 +24,16 @@ describe('auth api', () => {
     expect(init.method).toBe('POST')
     expect(JSON.parse(init.body)).toEqual({ user_id: 10 })
     expect(user).toEqual({ id: 10, name: 'Thiago Serpa' })
+  })
+
+  it('should ask the backend to end the session', async () => {
+    globalThis.fetch.mockResolvedValue({ ok: true, status: 204, text: async () => '' })
+
+    const result = await endSession()
+
+    const [url, init] = globalThis.fetch.mock.calls[0]
+    expect(url).toBe('/api/auth/logout')
+    expect(init.method).toBe('POST')
+    expect(result).toBeNull()
   })
 })

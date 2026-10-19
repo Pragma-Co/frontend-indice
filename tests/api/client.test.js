@@ -66,4 +66,39 @@ describe('api client', () => {
       details: { error: 'DatabaseError' },
     })
   })
+
+  describe('csrf token', () => {
+    afterEach(() => {
+      document.cookie = 'csrftoken=; Max-Age=0; path=/'
+    })
+
+    it('should send the csrf cookie back on requests that change data', async () => {
+      document.cookie = 'csrftoken=token-123; path=/'
+      globalThis.fetch.mockResolvedValue(mockResponse({}))
+
+      await api.put('/users/me', { name: 'Thiago Serpa' })
+      await api.post('/users/me/request-deletion')
+
+      const [[, put], [, post]] = globalThis.fetch.mock.calls
+      expect(put.headers['X-CSRFToken']).toBe('token-123')
+      expect(post.headers['X-CSRFToken']).toBe('token-123')
+    })
+
+    it('should not send the csrf cookie on reads', async () => {
+      document.cookie = 'csrftoken=token-123; path=/'
+      globalThis.fetch.mockResolvedValue(mockResponse({}))
+
+      await api.get('/users/me')
+
+      expect(globalThis.fetch.mock.calls[0][1].headers['X-CSRFToken']).toBeUndefined()
+    })
+
+    it('should send no csrf header when there is no csrf cookie', async () => {
+      globalThis.fetch.mockResolvedValue(mockResponse({}))
+
+      await api.post('/dev/login', { user_id: 10 })
+
+      expect(globalThis.fetch.mock.calls[0][1].headers['X-CSRFToken']).toBeUndefined()
+    })
+  })
 })
