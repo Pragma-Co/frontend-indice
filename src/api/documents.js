@@ -49,12 +49,13 @@ export async function fetchSimpleFilters() {
   return simpleFiltersRequest
 }
 
-export function fetchDocuments(query = {}) {
+function fetchDocumentPage(path, query = {}) {
   const queryString = buildDocumentQueryKey(query)
-  if (documentsCache.has(queryString)) return Promise.resolve(documentsCache.get(queryString))
-  if (documentsRequests.has(queryString)) return documentsRequests.get(queryString)
+  const cacheKey = `${path}?${queryString}`
+  if (documentsCache.has(cacheKey)) return Promise.resolve(documentsCache.get(cacheKey))
+  if (documentsRequests.has(cacheKey)) return documentsRequests.get(cacheKey)
 
-  const request = fetch(`/api/documents${queryString ? `?${queryString}` : ''}`)
+  const request = fetch(`${path}${queryString ? `?${queryString}` : ''}`)
     .then((response) => {
       if (!response.ok) {
         throw new Error(`Documents failed with status ${response.status}`)
@@ -62,15 +63,23 @@ export function fetchDocuments(query = {}) {
       return response.json()
     })
     .then((data) => {
-      documentsCache.set(queryString, data)
+      documentsCache.set(cacheKey, data)
       return data
     })
     .finally(() => {
-      documentsRequests.delete(queryString)
+      documentsRequests.delete(cacheKey)
     })
 
-  documentsRequests.set(queryString, request)
+  documentsRequests.set(cacheKey, request)
   return request
+}
+
+export function fetchDocuments(query = {}) {
+  return fetchDocumentPage('/api/documents', query)
+}
+
+export function searchDocuments(query = {}) {
+  return fetchDocumentPage('/api/documents/search', query)
 }
 
 export function toDocumentPayload(form, { tempFileIds, tempFileId, responsibleId, userId }) {

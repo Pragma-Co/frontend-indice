@@ -21,10 +21,13 @@ export function normalizeDocument(document) {
     status: document.status ?? null,
     updatedAt: document.updated_at,
     updatedBy: document.updated_by?.name ?? document.created_by?.name ?? 'sistema',
+    tags: [...new Set([...(document.tags ?? []), ...(document.thematic_tags ?? [])])],
+    matchedTags: document.matched_tags ?? [],
+    highlights: document.highlights ?? null,
   }
 }
 
-export function useDocumentList() {
+export function useDocumentList({ fetchPage = fetchDocuments } = {}) {
   const route = useRoute()
   const router = useRouter()
 
@@ -50,7 +53,7 @@ export function useDocumentList() {
     error.value = ''
 
     try {
-      const response = await fetchDocuments({
+      const response = await fetchPage({
         ...route.query,
         page: currentPage.value,
         page_size: itemsPerPage.value,
