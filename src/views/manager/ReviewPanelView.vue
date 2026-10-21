@@ -27,6 +27,7 @@ const {
   closeRevisionReview,
   handleRevisionDecided,
   handleRevisionUnavailable,
+  refreshActiveList,
 } = useReviewPanel()
 
 const SECTIONS = {
@@ -80,10 +81,29 @@ const updatedLabel = computed(() =>
     >
       <header class="panel-card-header">
         <h2>{{ section.title }}</h2>
-        <span v-if="updatedLabel && !activeList.loading" class="panel-updated">
-          <span class="panel-updated-dot" aria-hidden="true" />
-          {{ updatedLabel }}
-        </span>
+        <div v-if="activeList" class="panel-updated-group">
+          <span v-if="updatedLabel && !activeList.loading" class="panel-updated">
+            <span class="panel-updated-dot" aria-hidden="true" />
+            {{ updatedLabel }}
+          </span>
+          <button
+            type="button"
+            class="panel-refresh-button"
+            :disabled="activeList.loading"
+            aria-label="Atualizar lista"
+            @click="refreshActiveList"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M4 4v5h5M20 20v-5h-5M19.4 9a8 8 0 0 0-14.9-2M4.6 15a8 8 0 0 0 14.9 2"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+        </div>
       </header>
 
       <PanelEmptyState
@@ -195,6 +215,36 @@ const updatedLabel = computed(() =>
   height: 6px;
   border-radius: 50%;
   background: var(--color-success);
+}
+
+.panel-updated-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.panel-refresh-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.panel-refresh-button:hover:not(:disabled) {
+  background: var(--color-surface-muted);
+}
+
+.panel-refresh-button:disabled {
+  cursor: default;
+  opacity: 0.5;
 }
 
 .panel-error {
