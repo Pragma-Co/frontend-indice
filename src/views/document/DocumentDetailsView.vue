@@ -73,7 +73,11 @@ const newRevisionRoute = computed(() => ({
 
 const accessRejected = computed(() => document.value?.access_request?.status === 'REJECTED')
 
-const canPreview = computed(() => !!currentFile.value && hasAccess.value)
+const isRejectedRevision = computed(() => currentRevision.value?.status === 'REJECTED')
+
+const canPreview = computed(
+  () => !!currentFile.value && hasAccess.value && !isRejectedRevision.value,
+)
 
 const isPdf = computed(() => {
   if (!currentFile.value) return false
@@ -250,6 +254,14 @@ onMounted(loadDocument)
                 <span v-for="line in 9" :key="line" class="preview-masked-line" />
               </div>
 
+              <div
+                v-else-if="isRejectedRevision"
+                class="preview-placeholder preview-placeholder--rejected"
+              >
+                <p>Documento indisponível para esta revisão.</p>
+                <span>{{ document.code }}</span>
+              </div>
+
               <div v-else-if="!totalFiles" class="preview-placeholder">
                 <p>Nenhum arquivo disponível para esta revisão.</p>
                 <span>{{ document.code }}</span>
@@ -398,6 +410,7 @@ onMounted(loadDocument)
                   :class="{
                     'is-current': version.id === document.revision?.id,
                     'is-selected': version.id === currentRevision?.id,
+                    'is-rejected': version.status === 'REJECTED',
                   }"
                   @click="selectRevision(version)"
                   @keydown.enter.space.prevent="selectRevision(version)"
@@ -615,6 +628,12 @@ onMounted(loadDocument)
   text-align: center;
 }
 
+.preview-placeholder--rejected {
+  background: rgba(220, 38, 38, 0.06);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  color: #991b1b;
+}
+
 .preview-placeholder svg {
   color: var(--color-text-muted);
 }
@@ -793,6 +812,11 @@ dd {
 .revision-list li.is-current {
   border-color: var(--color-primary);
   background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-muted));
+}
+
+.revision-list li.is-rejected {
+  border-color: rgba(220, 38, 38, 0.4);
+  background: rgba(220, 38, 38, 0.06);
 }
 
 .revision-list li.is-selected {
