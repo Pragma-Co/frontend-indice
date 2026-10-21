@@ -24,6 +24,7 @@ const {
   submitting,
   opinionLength,
   opinionValid,
+  opinionIncomplete,
   files,
   fileIndex,
   currentFile,
@@ -209,7 +210,7 @@ onBeforeUnmount(() => {
               variant="danger-outline"
               data-decision="reject"
               :loading="pendingDecision === 'REJECTED'"
-              :disabled="submitting"
+              :disabled="submitting || opinionIncomplete"
               @click="reject"
             >
               Recusar Revisão
@@ -218,7 +219,7 @@ onBeforeUnmount(() => {
               variant="success"
               data-decision="approve"
               :loading="pendingDecision === 'APPROVED'"
-              :disabled="submitting"
+              :disabled="submitting || opinionIncomplete"
               @click="approve"
             >
               <Check
