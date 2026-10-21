@@ -87,6 +87,9 @@ describe('RevisionReviewModal', () => {
     expect(dialog.attributes('aria-modal')).toBe('true')
     expect(wrapper.find('#revision-review-title').text()).toBe('Avaliar Solicitação de Revisão')
     expect(wrapper.find('.review-code').text()).toBe('AK-3100-EST-ESP-0001 (REV02)')
+    expect(wrapper.find('.review-document-title').text()).toBe(
+      'Relatório de verificação estrutural do pilone',
+    )
     expect(wrapper.find('.review-submitted').text()).toBe(
       'Submetido por Marina Duarte em 26/09/2026 às 14:32',
     )
@@ -208,9 +211,20 @@ describe('RevisionReviewModal', () => {
     await wrapper.find('#revision-review-opinion').setValue('F')
 
     expect(wrapper.find('#revision-review-opinion-hint').text()).toBe(
-      'Obrigatório em caso de recusa.',
+      'Mínimo de 20 caracteres (1/20)',
     )
     expect(wrapper.find('.review-opinion-counter').text()).toBe('1/1000')
+  })
+
+  it('should confirm when the opinion reaches the minimum length', async () => {
+    const wrapper = mountModal()
+    await rejectButton(wrapper).trigger('click')
+
+    await wrapper.find('#revision-review-opinion').setValue(VALID_OPINION)
+
+    const hint = wrapper.find('#revision-review-opinion-hint')
+    expect(hint.text()).toBe('✓ Requisito mínimo de 20 caracteres atendido')
+    expect(hint.classes()).toContain('met')
   })
 
   it('should block the actions while the decision is being sent', async () => {

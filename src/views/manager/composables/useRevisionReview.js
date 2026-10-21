@@ -60,6 +60,8 @@ export function useRevisionReview(revision, { onDecided, onUnavailable } = {}) {
     return `/api/files/${currentFile.value.id}/view${query}`
   })
   const submitting = computed(() => pendingDecision.value !== null)
+  const opinionLength = computed(() => opinion.value.trim().length)
+  const opinionValid = computed(() => opinionLength.value >= OPINION_MIN_LENGTH)
 
   function showFile(index) {
     if (index < 0 || index >= files.value.length) return
@@ -102,6 +104,8 @@ export function useRevisionReview(revision, { onDecided, onUnavailable } = {}) {
     submitError,
     pendingDecision,
     submitting,
+    opinionLength,
+    opinionValid,
     files,
     fileIndex,
     currentFile,
