@@ -4,6 +4,8 @@ import { ArrowLeft, ClipboardList, Files, Info, Send } from '@lucide/vue'
 import Button from '@/components/common/Button.vue'
 import DuplicateFileDialog from '@/components/common/DuplicateFileDialog.vue'
 import FileDropzone from '@/components/common/FileDropzone.vue'
+import RemoveFilesDialog from '@/components/common/RemoveFilesDialog.vue'
+import SelectionToolbar from '@/components/common/SelectionToolbar.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import RevisionDocumentHeader from '@/views/document/components/RevisionDocumentHeader.vue'
 import RevisionFileList from '@/views/document/components/RevisionFileList.vue'
@@ -12,6 +14,7 @@ import {
   JUSTIFICATION_MIN_LENGTH,
   useNewRevision,
 } from '@/views/document/composables/useNewRevision.js'
+import { useFileSelection } from '@/composables/useFileSelection.js'
 import { formatFileSize } from '@/utils/formatters.js'
 
 const {
@@ -34,11 +37,23 @@ const {
   formValid,
   canSubmit,
   addFiles,
-  removeFile,
+  removeFiles,
   resolveDuplicate,
   goToDocumentList,
   submit,
 } = useNewRevision()
+
+const {
+  selectedIds,
+  selectedCount,
+  pendingRemovalItems,
+  confirmingRemoval,
+  toggle,
+  toggleAll,
+  requestRemoval,
+  cancelRemoval,
+  confirmRemoval,
+} = useFileSelection(queue, { onRemove: removeFiles })
 
 function preventStrayFileDrop(event) {
   if (event.dataTransfer?.types.includes('Files')) {
@@ -97,7 +112,22 @@ onUnmounted(() => {
             @files-selected="addFiles"
           />
 
-          <RevisionFileList v-if="queue.length" :items="queue" @remove="removeFile" />
+          <div v-if="queue.length" class="file-selection">
+            <SelectionToolbar
+              :selected-count="selectedCount"
+              :total-count="queue.length"
+              :disabled="submitting"
+              @toggle-all="toggleAll"
+              @remove="requestRemoval()"
+            />
+            <RevisionFileList
+              :items="queue"
+              :selected-ids="selectedIds"
+              :disabled="submitting"
+              @toggle="toggle"
+              @remove="requestRemoval([$event])"
+            />
+          </div>
 
           <h2 class="section-title justification-title">
             <ClipboardList :size="18" aria-hidden="true" />O que mudou nesta revisão?
@@ -190,6 +220,13 @@ onUnmounted(() => {
         :existing-document="activeDuplicate.duplicateInfo"
         @discard="resolveDuplicate(activeDuplicate)"
       />
+
+      <RemoveFilesDialog
+        v-if="confirmingRemoval"
+        :files="pendingRemovalItems"
+        @confirm="confirmRemoval"
+        @cancel="cancelRemoval"
+      />
     </template>
   </PageLayout>
 </template>
@@ -226,6 +263,10 @@ onUnmounted(() => {
   font-size: 0.8rem;
   color: var(--color-text-muted);
   white-space: nowrap;
+}
+
+.file-selection {
+  margin-top: 1rem;
 }
 
 .justification-title {

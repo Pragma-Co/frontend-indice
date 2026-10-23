@@ -5,9 +5,11 @@ import { formatFileSize } from '@/utils/formatters.js'
 
 defineProps({
   items: { type: Array, required: true },
+  selectedIds: { type: Array, default: () => [] },
+  disabled: { type: Boolean, default: false },
 })
 
-defineEmits(['remove'])
+defineEmits(['remove', 'toggle'])
 
 const STATUS_LABELS = {
   validating: 'Validando...',
@@ -28,7 +30,20 @@ function statusLabel(item) {
 
 <template>
   <ul class="file-list">
-    <li v-for="item in items" :key="item.id" class="file-row">
+    <li
+      v-for="item in items"
+      :key="item.id"
+      class="file-row"
+      :class="{ 'file-row-selected': selectedIds.includes(item.id) }"
+    >
+      <input
+        type="checkbox"
+        class="file-select"
+        :checked="selectedIds.includes(item.id)"
+        :disabled="disabled"
+        :aria-label="`Selecionar ${item.name}`"
+        @change="$emit('toggle', item.id)"
+      />
       <FileTypeIcon :file-name="item.name" />
       <div class="file-info">
         <span class="file-name">{{ item.name }}</span>
@@ -42,6 +57,7 @@ function statusLabel(item) {
       <button
         type="button"
         class="file-remove"
+        :disabled="disabled"
         :aria-label="`Remover ${item.name}`"
         @click="$emit('remove', item.id)"
       >
@@ -57,7 +73,6 @@ function statusLabel(item) {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-  margin-top: 1rem;
 }
 
 .file-row {
@@ -67,6 +82,16 @@ function statusLabel(item) {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   padding: 0.6rem 0.75rem;
+}
+
+.file-row-selected {
+  border-color: var(--color-primary);
+  background: var(--color-background);
+}
+
+.file-select {
+  accent-color: var(--color-primary);
+  cursor: pointer;
 }
 
 .file-info {
@@ -105,7 +130,12 @@ function statusLabel(item) {
   border-radius: var(--radius-sm);
 }
 
-.file-remove:hover {
+.file-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.file-remove:hover:not(:disabled) {
   background: var(--color-danger-bg);
 }
 </style>
