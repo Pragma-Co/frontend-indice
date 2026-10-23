@@ -158,7 +158,7 @@ onMounted(async () => {
 }
 
 .results-content {
-  max-height: calc(100vh - 250px);
+  max-height: calc(100vh - 252px);
 }
 
 .results-main {

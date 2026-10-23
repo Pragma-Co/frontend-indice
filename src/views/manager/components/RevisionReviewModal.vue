@@ -5,6 +5,7 @@ import Button from '@/components/common/Button.vue'
 import FileViewer from '@/components/common/FileViewer.vue'
 import {
   OPINION_MAX_LENGTH,
+  OPINION_MIN_LENGTH,
   useRevisionReview,
 } from '@/views/manager/composables/useRevisionReview.js'
 import { formatDate, formatFileSize, formatTime } from '@/utils/formatters.js'
@@ -21,6 +22,9 @@ const {
   submitError,
   pendingDecision,
   submitting,
+  opinionLength,
+  opinionValid,
+  opinionIncomplete,
   files,
   fileIndex,
   currentFile,
@@ -88,6 +92,7 @@ onBeforeUnmount(() => {
               <h2 id="revision-review-title">Avaliar Solicitação de Revisão</h2>
               <span class="review-code">{{ revision.code }} ({{ revision.toRevision }})</span>
             </div>
+            <p class="review-document-title">{{ revision.title }}</p>
             <p class="review-submitted">{{ submittedLabel }}</p>
           </div>
           <button
@@ -177,10 +182,15 @@ onBeforeUnmount(() => {
               <p
                 id="revision-review-opinion-hint"
                 class="review-opinion-hint"
-                :class="{ error: opinionError }"
+                :class="{ error: opinionError, met: !opinionError && opinionValid }"
                 :role="opinionError ? 'alert' : undefined"
               >
-                {{ opinionError || 'Obrigatório em caso de recusa.' }}
+                {{
+                  opinionError ||
+                  (opinionValid
+                    ? `✓ Requisito mínimo de ${OPINION_MIN_LENGTH} caracteres atendido`
+                    : `Mínimo de ${OPINION_MIN_LENGTH} caracteres (${opinionLength}/${OPINION_MIN_LENGTH})`)
+                }}
               </p>
               <span class="review-opinion-counter"
                 >{{ opinion.length }}/{{ OPINION_MAX_LENGTH }}</span
@@ -200,7 +210,7 @@ onBeforeUnmount(() => {
               variant="danger-outline"
               data-decision="reject"
               :loading="pendingDecision === 'REJECTED'"
-              :disabled="submitting"
+              :disabled="submitting || opinionIncomplete"
               @click="reject"
             >
               Recusar Revisão
@@ -209,7 +219,7 @@ onBeforeUnmount(() => {
               variant="success"
               data-decision="approve"
               :loading="pendingDecision === 'APPROVED'"
-              :disabled="submitting"
+              :disabled="submitting || opinionIncomplete"
               @click="approve"
             >
               <Check
@@ -290,6 +300,12 @@ onBeforeUnmount(() => {
   font-size: 0.82rem;
 }
 
+.review-document-title {
+  margin-top: 0.35rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
 .review-close {
   display: inline-flex;
   align-items: center;
@@ -363,6 +379,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   min-height: 0;
   overflow-y: auto;
+  padding: 0 0.2rem;
 }
 
 .review-details h3,
@@ -451,6 +468,10 @@ onBeforeUnmount(() => {
 
 .review-opinion-hint.error {
   color: var(--color-danger);
+}
+
+.review-opinion-hint.met {
+  color: var(--color-success);
 }
 
 .review-opinion-counter {

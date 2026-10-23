@@ -1,4 +1,4 @@
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   REVISION_DECISIONS,
@@ -17,6 +17,7 @@ export const PANEL_TABS = {
 
 export const PANEL_PAGE_SIZE_OPTIONS = [5, 10, 20, 50]
 export const PANEL_PAGE_SIZE = 20
+export const PANEL_AUTO_REFRESH_INTERVAL = 60_000
 
 const PERMISSION_ERROR_MESSAGE = 'Você não tem permissão para acessar o painel de gestão.'
 const REVISIONS_ERROR_MESSAGE = 'Não foi possível carregar as revisões pendentes.'
@@ -69,9 +70,9 @@ function usePendingList(fetchPage, normalize, errorMessage) {
   const updatedAt = ref(null)
   let latestRequest = 0
 
-  async function load(page = currentPage.value) {
+  async function load(page = currentPage.value, { silent = false } = {}) {
     const request = ++latestRequest
-    loading.value = true
+    if (!silent) loading.value = true
     error.value = ''
     try {
       const response = await fetchPage({ page, pageSize: pageSize.value })
@@ -105,10 +106,10 @@ function usePendingList(fetchPage, normalize, errorMessage) {
     load(1)
   }
 
-  async function refresh() {
-    await load(currentPage.value)
+  async function refresh({ silent = false } = {}) {
+    await load(currentPage.value, { silent })
     const emptiedLastPage = !error.value && !items.value.length && currentPage.value > 1
-    if (emptiedLastPage) await load(Math.min(currentPage.value - 1, totalPages.value))
+    if (emptiedLastPage) await load(Math.min(currentPage.value - 1, totalPages.value), { silent })
   }
 
   return reactive({
@@ -188,9 +189,25 @@ export function useReviewPanel() {
     return revisions.refresh()
   }
 
+  function refreshActiveList() {
+    if (activeTab.value === PANEL_TABS.REVISIONS) return revisions.refresh()
+    if (activeTab.value === PANEL_TABS.ACCESS_REQUESTS) return accessRequests.refresh()
+    return null
+  }
+
+  let autoRefreshTimer = null
+
   onMounted(() => {
     revisions.load(1)
     accessRequests.load(1)
+    autoRefreshTimer = setInterval(() => {
+      revisions.refresh({ silent: true })
+      accessRequests.refresh({ silent: true })
+    }, PANEL_AUTO_REFRESH_INTERVAL)
+  })
+
+  onUnmounted(() => {
+    if (autoRefreshTimer) clearInterval(autoRefreshTimer)
   })
 
   return {
@@ -204,5 +221,6 @@ export function useReviewPanel() {
     closeRevisionReview,
     handleRevisionDecided,
     handleRevisionUnavailable,
+    refreshActiveList,
   }
 }

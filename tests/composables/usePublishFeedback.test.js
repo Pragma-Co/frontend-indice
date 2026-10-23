@@ -5,9 +5,6 @@ import { useNotificationStore } from '../../src/stores/notificationStore'
 
 const push = vi.fn()
 vi.mock('vue-router', () => ({ useRouter: () => ({ push }) }))
-vi.mock('../../src/api/documents', () => ({ clearDocumentsCache: vi.fn() }))
-
-import { clearDocumentsCache } from '../../src/api/documents'
 
 describe('usePublishFeedback', () => {
   let notifications
@@ -38,14 +35,6 @@ describe('usePublishFeedback', () => {
     expect(push).toHaveBeenCalledWith({ name: 'document-list' })
   })
 
-  it('should drop the cached list so the new document shows on top', () => {
-    const { onPublished } = usePublishFeedback()
-
-    onPublished({ id: 9, code: 'AK-2100-EST-DWG-0006' })
-
-    expect(clearDocumentsCache).toHaveBeenCalledTimes(1)
-  })
-
   it('should still confirm the publication when the response has no code', () => {
     const { onPublished } = usePublishFeedback()
 
@@ -64,7 +53,6 @@ describe('usePublishFeedback', () => {
       message: 'Erro interno do servidor. Tente novamente mais tarde.',
     })
     expect(push).not.toHaveBeenCalled()
-    expect(clearDocumentsCache).not.toHaveBeenCalled()
   })
 
   it('should use a generic message when the failure has no message', () => {

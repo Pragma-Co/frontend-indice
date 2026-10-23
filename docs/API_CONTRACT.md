@@ -71,8 +71,8 @@ back to the last valid page. `status` is the status of the latest revision and b
 | `REJECTED` | Rejeitado |
 | `OBSOLETE` | Obsoleto |
 
-The list is cached in memory by query string, so each page and page size has its own entry;
-`clearDocumentsCache()` drops it after a publication.
+The list is always fetched fresh from the API by query string; no client-side cache is kept.
+
 
 ## Upload (step 1)
 
