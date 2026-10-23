@@ -30,9 +30,10 @@ export function useNewRevision() {
   const justification = ref('')
   const submitting = ref(false)
 
-  const { queue, addFiles, removeFile, resolveDuplicate, ACCEPTED_EXTENSIONS } = useDocumentUpload({
-    getUserId: () => authStore.currentUser?.id,
-  })
+  const { queue, addFiles, removeFile, removeFiles, resolveDuplicate, ACCEPTED_EXTENSIONS } =
+    useDocumentUpload({
+      getUserId: () => authStore.currentUser?.id,
+    })
 
   const currentVersion = computed(() => parentDocument.value?.revision?.version ?? 0)
   const currentRevisionLabel = computed(() =>
@@ -129,6 +130,7 @@ export function useNewRevision() {
     canSubmit,
     addFiles,
     removeFile,
+    removeFiles,
     resolveDuplicate,
     goToDocumentList,
     submit,

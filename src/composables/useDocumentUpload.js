@@ -41,6 +41,10 @@ export function useDocumentUpload({ getUserId = () => undefined } = {}) {
     }
   }
 
+  function isInQueue(item) {
+    return queue.value.some((entry) => entry.id === item.id)
+  }
+
   async function validateAndQueue(item) {
     if (!isFileTypeAccepted(item.file, ACCEPTED_EXTENSIONS)) {
       item.status = 'invalid'
@@ -59,6 +63,8 @@ export function useDocumentUpload({ getUserId = () => undefined } = {}) {
       const fileHash = Array.from(new Uint8Array(digest), (byte) =>
         byte.toString(16).padStart(2, '0'),
       ).join('')
+
+      if (!isInQueue(item)) return
 
       if (seenHashes.has(fileHash)) {
         item.status = 'duplicate'
@@ -92,10 +98,12 @@ export function useDocumentUpload({ getUserId = () => undefined } = {}) {
   async function startUpload(item) {
     item.status = 'uploading'
     item.progress = 0
+    item.abortController = new AbortController()
 
     try {
       const response = await uploadDocument(item.file, {
         userId: getUserId(),
+        signal: item.abortController.signal,
         onProgress: (percent) => {
           item.progress = percent
         },
@@ -110,9 +118,11 @@ export function useDocumentUpload({ getUserId = () => undefined } = {}) {
       item.status = 'success'
       item.documentId = response?.temp_file_id ?? null
     } catch (err) {
+      if (err.name === 'AbortError') return
       item.status = 'error'
       item.error = err.message
     } finally {
+      item.abortController = null
       processQueue()
     }
   }
@@ -122,10 +132,21 @@ export function useDocumentUpload({ getUserId = () => undefined } = {}) {
   }
 
   function removeFile(id) {
-    const removed = queue.value.find((item) => item.id === id)
-    if (removed?.sha256) seenHashes.delete(removed.sha256)
-    queue.value = queue.value.filter((item) => item.id !== id)
+    removeFiles([id])
+  }
+
+  function removeFiles(ids) {
+    const idsToRemove = new Set(ids)
+    const removed = queue.value.filter((item) => idsToRemove.has(item.id))
+    if (!removed.length) return []
+
+    for (const item of removed) {
+      if (item.sha256) seenHashes.delete(item.sha256)
+      item.abortController?.abort()
+    }
+    queue.value = queue.value.filter((item) => !idsToRemove.has(item.id))
     processQueue()
+    return removed
   }
 
   function reset() {
@@ -154,6 +175,7 @@ export function useDocumentUpload({ getUserId = () => undefined } = {}) {
     allSettled,
     addFiles,
     removeFile,
+    removeFiles,
     resolveDuplicate,
     reset,
     restore,

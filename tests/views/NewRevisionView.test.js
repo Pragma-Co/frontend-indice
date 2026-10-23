@@ -16,7 +16,9 @@ const hasFile = ref(false)
 const justificationValid = ref(false)
 
 const addFiles = vi.fn()
-const removeFile = vi.fn()
+const removeFiles = vi.fn((ids) => {
+  queue.value = queue.value.filter((item) => !ids.includes(item.id))
+})
 const resolveDuplicate = vi.fn()
 const goToDocumentList = vi.fn()
 const submit = vi.fn()
@@ -44,7 +46,7 @@ vi.mock('@/views/document/composables/useNewRevision.js', () => ({
     formValid,
     canSubmit,
     addFiles,
-    removeFile,
+    removeFiles,
     resolveDuplicate,
     goToDocumentList,
     submit,
@@ -63,6 +65,14 @@ function makeDocument() {
     discipline: { id: 2, code: 'EST', name: 'Estruturas' },
     revision: { id: 5, version: 1, status: 'APPROVED' },
   }
+}
+
+function makeQueue() {
+  return [
+    { id: 1, name: 'memorial.docx', size: 1024, status: 'success' },
+    { id: 2, name: 'planta.pdf', size: 2048, status: 'success' },
+    { id: 3, name: 'foto.png', size: 512, status: 'success' },
+  ]
 }
 
 function findButton(wrapper, label) {
@@ -156,7 +166,7 @@ describe('NewRevisionView', () => {
     expect(wrapper.find('#revision-justification').attributes('maxlength')).toBe('255')
   })
 
-  it('should list the attached files and remove one on request', async () => {
+  it('should list the attached files and ask for confirmation before removing one', async () => {
     queue.value = [{ id: 7, name: 'relatorio_rev02.pdf', size: 2048, status: 'success' }]
     const wrapper = mount(NewRevisionView)
 
@@ -165,7 +175,85 @@ describe('NewRevisionView', () => {
     expect(wrapper.find('.file-row').text()).toContain('relatorio_rev02.pdf')
     expect(wrapper.find('.file-row').text()).toContain('Pronto para envio')
     expect(wrapper.find('.section-summary').text()).toContain('1 arquivo')
-    expect(removeFile).toHaveBeenCalledWith(7)
+    expect(removeFiles).not.toHaveBeenCalled()
+    expect(wrapper.find('[role="alertdialog"]').text()).toContain('Excluir arquivo?')
+
+    await findButton(wrapper.find('[role="alertdialog"]'), 'Excluir').trigger('click')
+
+    expect(removeFiles).toHaveBeenCalledWith([7])
+    expect(wrapper.find('.file-row').exists()).toBe(false)
+  })
+
+  it('should keep the remove selected action blocked while nothing is selected', () => {
+    queue.value = makeQueue()
+    const wrapper = mount(NewRevisionView)
+
+    expect(findButton(wrapper, 'Excluir selecionados').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[role="alertdialog"]').exists()).toBe(false)
+  })
+
+  it('should select a single file and remove only it after confirmation', async () => {
+    queue.value = makeQueue()
+    const wrapper = mount(NewRevisionView)
+
+    await wrapper.find('[aria-label="Selecionar planta.pdf"]').setValue(true)
+    await findButton(wrapper, 'Excluir selecionados').trigger('click')
+    const dialog = wrapper.find('[role="alertdialog"]')
+    expect(dialog.text()).toContain('planta.pdf')
+    expect(dialog.text()).not.toContain('memorial.docx')
+
+    await findButton(dialog, 'Excluir').trigger('click')
+
+    expect(removeFiles).toHaveBeenCalledWith([2])
+    expect(wrapper.findAll('.file-row').map((row) => row.find('.file-name').text())).toEqual([
+      'memorial.docx',
+      'foto.png',
+    ])
+  })
+
+  it('should remove several selected files in the same operation', async () => {
+    queue.value = makeQueue()
+    const wrapper = mount(NewRevisionView)
+
+    await wrapper.find('[aria-label="Selecionar memorial.docx"]').setValue(true)
+    await wrapper.find('[aria-label="Selecionar foto.png"]').setValue(true)
+    expect(wrapper.text()).toContain('2 selecionados')
+    await findButton(wrapper, 'Excluir selecionados').trigger('click')
+    expect(wrapper.find('[role="alertdialog"]').text()).toContain('Excluir 2 arquivos?')
+
+    await findButton(wrapper.find('[role="alertdialog"]'), 'Excluir').trigger('click')
+
+    expect(removeFiles).toHaveBeenCalledWith([1, 3])
+    expect(wrapper.findAll('.file-row')).toHaveLength(1)
+    expect(wrapper.find('.file-row').text()).toContain('planta.pdf')
+  })
+
+  it('should keep every file and the selection when the removal is cancelled', async () => {
+    queue.value = makeQueue()
+    const wrapper = mount(NewRevisionView)
+
+    await wrapper.find('.selection-all input').setValue(true)
+    await findButton(wrapper, 'Excluir selecionados').trigger('click')
+    expect(wrapper.find('[role="alertdialog"]').text()).toContain('Excluir 3 arquivos?')
+
+    await findButton(wrapper.find('[role="alertdialog"]'), 'Cancelar').trigger('click')
+
+    expect(removeFiles).not.toHaveBeenCalled()
+    expect(wrapper.find('[role="alertdialog"]').exists()).toBe(false)
+    expect(wrapper.findAll('.file-row')).toHaveLength(3)
+    expect(wrapper.text()).toContain('3 selecionados')
+  })
+
+  it('should block the selection and removal while the revision is being submitted', () => {
+    queue.value = makeQueue()
+    submitting.value = true
+    const wrapper = mount(NewRevisionView)
+
+    expect(
+      wrapper.find('[aria-label="Selecionar planta.pdf"]').attributes('disabled'),
+    ).toBeDefined()
+    expect(wrapper.find('[aria-label="Remover planta.pdf"]').attributes('disabled')).toBeDefined()
+    expect(findButton(wrapper, 'Excluir selecionados').attributes('disabled')).toBeDefined()
   })
 
   it('should add the files selected in the dropzone', async () => {
