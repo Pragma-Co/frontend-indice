@@ -6,6 +6,7 @@ import Pagination from '@/components/common/Pagination.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import ResultsEmptyState from '@/views/document/components/ResultsEmptyState.vue'
 import ResultsFilterPanel from '@/views/document/components/ResultsFilterPanel.vue'
+import ResultsSummary from '@/views/document/components/ResultsSummary.vue'
 import ResultsSearchBar from '@/views/document/components/ResultsSearchBar.vue'
 import ResultsSkeleton from '@/views/document/components/ResultsSkeleton.vue'
 import SearchResultCard from '@/views/document/components/SearchResultCard.vue'
@@ -44,6 +45,7 @@ const {
 
 const filters = computed(() => filtersFromQuery(route.query))
 const hasFilters = computed(() => countActiveFilters(filters.value) > 0)
+const hasSummary = computed(() => hasFilters.value || Boolean(filters.value.q?.trim()))
 const searchTerms = computed(() => extractSearchTerms(filters.value.q))
 const resultsSummary = computed(() => {
   const label = totalItems.value === 1 ? 'resultado' : 'resultados'
@@ -52,6 +54,9 @@ const resultsSummary = computed(() => {
 const showEmptyState = computed(
   () => !loading.value && !error.value && documents.value.length === 0,
 )
+
+const summaryHeight = ref(80)
+const contentOffset = computed(() => `${hasSummary.value ? summaryHeight.value + 12 : 0}px`)
 
 const options = ref({})
 const optionsLoading = ref(true)
@@ -83,10 +88,13 @@ onMounted(async () => {
   <PageLayout
     wide
     class="results-page"
+    :style="{ '--summary-height': contentOffset }"
     title="Resultados"
     subtitle="Refine a busca pelos filtros ao lado."
   >
     <ResultsSearchBar :term="filters.q" @search="searchAgain" />
+
+    <ResultsSummary v-if="hasSummary" :query="route.query" @resize="summaryHeight = $event" />
 
     <div class="results-layout">
       <ResultsFilterPanel
@@ -109,7 +117,7 @@ onMounted(async () => {
           @search="searchAgain"
         />
         <template v-else>
-          <p class="results-summary">
+          <p class="summary-results">
             {{ resultsSummary }}
             <template v-if="filters.q">
               para <strong class="results-term">“{{ filters.q }}”</strong>
@@ -158,7 +166,7 @@ onMounted(async () => {
 }
 
 .results-content {
-  max-height: calc(100vh - 252px);
+  max-height: calc(100vh - 250px - var(--summary-height, 92px));
 }
 
 .results-main {
@@ -180,7 +188,7 @@ onMounted(async () => {
   padding-right: 0.25rem;
 }
 
-.results-summary {
+.summary-results {
   flex-shrink: 0;
   margin-bottom: 0.75rem;
   font-size: 0.85rem;

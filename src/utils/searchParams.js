@@ -21,3 +21,10 @@ export function buildDocumentQueryKey(query = {}) {
 
   return new URLSearchParams(params).toString()
 }
+
+export function buildSummaryQueryKey(query = {}) {
+  const filters = { ...query }
+  delete filters.page
+  delete filters.page_size
+  return buildDocumentQueryKey(filters)
+}
