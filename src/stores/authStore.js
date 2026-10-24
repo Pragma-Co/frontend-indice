@@ -1,9 +1,14 @@
 import { defineStore } from 'pinia'
-import { startDevelopmentSession } from '../api/auth'
+import { endSession, startDevelopmentSession } from '../api/auth'
+import { fetchCurrentUser } from '../api/users'
+import { clearCookie } from '../utils/cookies'
 import { getInitials } from '../utils/formatters'
 
 export const DEV_USER_STORAGE_KEY = 'indice.devUser'
 export const PROFILE_STORAGE_KEY = 'indice.profile'
+export const CSRF_COOKIE_NAME = 'csrftoken'
+
+const AUTH_STORAGE_KEYS = [PROFILE_STORAGE_KEY, DEV_USER_STORAGE_KEY]
 
 export const PROFILES = {
   COLLABORATOR: 'collaborator',
@@ -96,16 +101,45 @@ export const useAuthStore = defineStore('auth', {
       } catch {
         return true
       }
+      await this.refreshAccount()
       return true
+    },
+    applyAccount(account) {
+      if (!this.currentUser || account?.id !== this.currentUser.id) return
+      this.currentUser = {
+        ...this.currentUser,
+        name: account.name ?? this.currentUser.name,
+        email: account.email ?? this.currentUser.email,
+      }
+    },
+    async refreshAccount() {
+      if (!this.isAuthenticated) return
+      try {
+        this.applyAccount(await fetchCurrentUser())
+      } catch {
+        return
+      }
+    },
+    async signOut(storage = globalThis.localStorage) {
+      try {
+        await endSession()
+      } catch {
+        this.logout(storage)
+        return
+      }
+      this.logout(storage)
     },
     logout(storage = globalThis.localStorage) {
       this.profile = null
       this.currentUser = null
-      try {
-        storage?.removeItem(PROFILE_STORAGE_KEY)
-      } catch (error) {
-        console.error(error)
+      for (const key of AUTH_STORAGE_KEYS) {
+        try {
+          storage?.removeItem(key)
+        } catch {
+          continue
+        }
       }
+      clearCookie(CSRF_COOKIE_NAME)
     },
   },
 })

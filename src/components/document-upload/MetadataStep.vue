@@ -18,10 +18,8 @@ const areaOptions = computed(() =>
   store.areas.map((area) => ({ value: area.acronym, label: area.name })),
 )
 const canProceed = computed(() => store.isValid && !store.catalogsLoading)
-const disciplineLocked = computed(() => store.projectsCarryDisciplines && !store.selectedProject)
 const disciplinePlaceholder = computed(() => {
   if (store.catalogsLoading) return 'Carregando…'
-  if (disciplineLocked.value) return 'Selecione o projeto primeiro'
   return 'Selecione a disciplina'
 })
 
@@ -172,14 +170,10 @@ function back(event) {
         :suggested="store.isFieldSuggested('disciplineId')"
         @focusout="touch('disciplineId')"
       >
-        <select
-          id="discipline"
-          v-model="disciplineId"
-          :disabled="store.catalogsLoading || disciplineLocked"
-        >
+        <select id="discipline" v-model="disciplineId" :disabled="store.catalogsLoading">
           <option value="">{{ disciplinePlaceholder }}</option>
           <option
-            v-for="discipline in store.availableDisciplines"
+            v-for="discipline in store.disciplines"
             :key="discipline.id"
             :value="discipline.id"
           >

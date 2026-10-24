@@ -1,4 +1,8 @@
+import { readCookie } from '../utils/cookies'
+
 const API_BASE_URL = '/api'
+const CSRF_COOKIE_NAME = 'csrftoken'
+const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS']
 
 export function uploadWithProgress(path, formData, { onProgress, signal } = {}) {
   return new Promise((resolve, reject) => {
@@ -84,6 +88,9 @@ export async function request(path, { method = 'GET', body, headers = {}, signal
     init.headers['Content-Type'] = 'application/json'
     init.body = JSON.stringify(body)
   }
+
+  const csrfToken = SAFE_METHODS.includes(method) ? null : readCookie(CSRF_COOKIE_NAME)
+  if (csrfToken) init.headers['X-CSRFToken'] = csrfToken
 
   let response
   try {

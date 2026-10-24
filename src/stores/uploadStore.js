@@ -8,6 +8,11 @@ export const useUploadStore = defineStore('upload', {
     setUploadedDocuments(documents) {
       this.uploadedDocuments = documents
     },
+    removeDocuments(documentIds) {
+      this.uploadedDocuments = this.uploadedDocuments.filter(
+        (document) => !documentIds.includes(document.id),
+      )
+    },
     reset() {
       this.uploadedDocuments = []
     },

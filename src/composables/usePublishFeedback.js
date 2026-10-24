@@ -1,5 +1,4 @@
 import { useRouter } from 'vue-router'
-import { clearDocumentsCache } from '../api/documents'
 import { useNotificationStore } from '../stores/notificationStore'
 
 const FALLBACK_ERROR_MESSAGE = 'Não foi possível publicar o documento. Tente novamente.'
@@ -10,7 +9,6 @@ export function usePublishFeedback() {
 
   function onPublished(document) {
     const code = document?.code
-    clearDocumentsCache()
     notifications.success(
       code ? `Documento ${code} publicado com sucesso.` : 'Documento publicado com sucesso.',
     )

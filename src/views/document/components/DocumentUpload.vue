@@ -5,10 +5,13 @@ import { useRouter } from 'vue-router'
 import Button from '@/components/common/Button.vue'
 import DuplicateFileDialog from '@/components/common/DuplicateFileDialog.vue'
 import FileDropzone from '@/components/common/FileDropzone.vue'
+import RemoveFilesDialog from '@/components/common/RemoveFilesDialog.vue'
+import SelectionToolbar from '@/components/common/SelectionToolbar.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import StepIndicator from '@/components/common/StepIndicator.vue'
 import UploadQueueTable from '@/components/common/UploadQueueTable.vue'
 import { useDocumentUpload } from '@/composables/useDocumentUpload'
+import { useFileSelection } from '@/composables/useFileSelection'
 import { useDocumentFormStore } from '@/stores/documentFormStore'
 import { useUploadStore } from '@/stores/uploadStore'
 import {
@@ -23,8 +26,35 @@ const uploadStore = useUploadStore()
 const formStore = useDocumentFormStore()
 const auth = useAuthStore()
 
-const { queue, hasSucceededFile, addFiles, resolveDuplicate, reset, restore, ACCEPTED_EXTENSIONS } =
-  useDocumentUpload({ getUserId: () => auth.currentUser?.id })
+const {
+  queue,
+  hasSucceededFile,
+  addFiles,
+  removeFiles,
+  resolveDuplicate,
+  reset,
+  restore,
+  ACCEPTED_EXTENSIONS,
+} = useDocumentUpload({ getUserId: () => auth.currentUser?.id })
+
+const {
+  selectedIds,
+  selectedCount,
+  pendingRemovalItems,
+  confirmingRemoval,
+  toggle,
+  toggleAll,
+  requestRemoval,
+  cancelRemoval,
+  confirmRemoval,
+} = useFileSelection(queue, { onRemove: removeSelectedFiles })
+
+function removeSelectedFiles(ids) {
+  const removed = removeFiles(ids)
+  uploadStore.removeDocuments(
+    removed.map((item) => item.documentId).filter((documentId) => documentId != null),
+  )
+}
 
 const activeDuplicate = computed(() => queue.value.find((item) => item.status === 'duplicate'))
 
@@ -90,7 +120,13 @@ onUnmounted(() => {
 
     <section v-if="queue.length" class="card">
       <h2 class="queue-title">Fila de Carregamento ({{ queue.length }} arquivos)</h2>
-      <UploadQueueTable :items="queue" />
+      <SelectionToolbar
+        :selected-count="selectedCount"
+        :total-count="queue.length"
+        @toggle-all="toggleAll"
+        @remove="requestRemoval()"
+      />
+      <UploadQueueTable :items="queue" :selected-ids="selectedIds" @toggle="toggle" />
     </section>
 
     <footer class="page-footer">
@@ -105,6 +141,13 @@ onUnmounted(() => {
       :file-name="activeDuplicate.name"
       :existing-document="activeDuplicate.duplicateInfo"
       @discard="resolveDuplicate(activeDuplicate)"
+    />
+
+    <RemoveFilesDialog
+      v-if="confirmingRemoval"
+      :files="pendingRemovalItems"
+      @confirm="confirmRemoval"
+      @cancel="cancelRemoval"
     />
   </PageLayout>
 </template>

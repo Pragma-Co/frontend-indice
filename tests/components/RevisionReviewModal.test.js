@@ -87,6 +87,9 @@ describe('RevisionReviewModal', () => {
     expect(dialog.attributes('aria-modal')).toBe('true')
     expect(wrapper.find('#revision-review-title').text()).toBe('Avaliar Solicitação de Revisão')
     expect(wrapper.find('.review-code').text()).toBe('AK-3100-EST-ESP-0001 (REV02)')
+    expect(wrapper.find('.review-document-title').text()).toBe(
+      'Relatório de verificação estrutural do pilone',
+    )
     expect(wrapper.find('.review-submitted').text()).toBe(
       'Submetido por Marina Duarte em 26/09/2026 às 14:32',
     )
@@ -160,12 +163,13 @@ describe('RevisionReviewModal', () => {
     const revision = makeRevision()
     const wrapper = mountModal(revision)
 
+    await wrapper.find('#revision-review-opinion').setValue(VALID_OPINION)
     await approveButton(wrapper).trigger('click')
     await flushPromises()
 
     expect(submitRevisionDecision).toHaveBeenCalledWith(91, {
       decision: 'APPROVED',
-      justification: '',
+      justification: VALID_OPINION,
     })
     expect(wrapper.emitted('decided')).toEqual([
       [{ revision, decision: 'APPROVED', result: { id: 91, status: 'APPROVED' } }],
@@ -187,20 +191,6 @@ describe('RevisionReviewModal', () => {
     expect(wrapper.emitted('decided')[0][0].decision).toBe('REJECTED')
   })
 
-  it('should require the technical opinion to refuse', async () => {
-    const wrapper = mountModal()
-
-    await rejectButton(wrapper).trigger('click')
-    await flushPromises()
-
-    const hint = wrapper.find('#revision-review-opinion-hint')
-    expect(hint.attributes('role')).toBe('alert')
-    expect(hint.text()).toContain('obrigatório para recusar')
-    expect(wrapper.find('#revision-review-opinion').attributes('aria-invalid')).toBe('true')
-    expect(submitRevisionDecision).not.toHaveBeenCalled()
-    expect(wrapper.emitted('decided')).toBeUndefined()
-  })
-
   it('should clear the opinion error while the reviewer types', async () => {
     const wrapper = mountModal()
     await rejectButton(wrapper).trigger('click')
@@ -208,9 +198,37 @@ describe('RevisionReviewModal', () => {
     await wrapper.find('#revision-review-opinion').setValue('F')
 
     expect(wrapper.find('#revision-review-opinion-hint').text()).toBe(
-      'Obrigatório em caso de recusa.',
+      'Mínimo de 20 caracteres (1/20)',
     )
     expect(wrapper.find('.review-opinion-counter').text()).toBe('1/1000')
+  })
+
+  it('should confirm when the opinion reaches the minimum length', async () => {
+    const wrapper = mountModal()
+    await rejectButton(wrapper).trigger('click')
+
+    await wrapper.find('#revision-review-opinion').setValue(VALID_OPINION)
+
+    const hint = wrapper.find('#revision-review-opinion-hint')
+    expect(hint.text()).toBe('✓ Requisito mínimo de 20 caracteres atendido')
+    expect(hint.classes()).toContain('met')
+  })
+
+  it('should block both action buttons until the opinion reaches the minimum length', async () => {
+    const wrapper = mountModal()
+
+    expect(approveButton(wrapper).attributes('disabled')).toBeDefined()
+    expect(rejectButton(wrapper).attributes('disabled')).toBeDefined()
+
+    await wrapper.find('#revision-review-opinion').setValue('F')
+
+    expect(approveButton(wrapper).attributes('disabled')).toBeDefined()
+    expect(rejectButton(wrapper).attributes('disabled')).toBeDefined()
+
+    await wrapper.find('#revision-review-opinion').setValue(VALID_OPINION)
+
+    expect(approveButton(wrapper).attributes('disabled')).toBeUndefined()
+    expect(rejectButton(wrapper).attributes('disabled')).toBeUndefined()
   })
 
   it('should block the actions while the decision is being sent', async () => {
@@ -218,6 +236,7 @@ describe('RevisionReviewModal', () => {
     submitRevisionDecision.mockReturnValue(pending.promise)
     const wrapper = mountModal()
 
+    await wrapper.find('#revision-review-opinion').setValue(VALID_OPINION)
     await approveButton(wrapper).trigger('click')
     await wrapper.find('button[aria-label="Fechar"]').trigger('click')
 
@@ -233,6 +252,7 @@ describe('RevisionReviewModal', () => {
     submitRevisionDecision.mockRejectedValue(Object.assign(new Error('boom'), { status: 500 }))
     const wrapper = mountModal()
 
+    await wrapper.find('#revision-review-opinion').setValue(VALID_OPINION)
     await approveButton(wrapper).trigger('click')
     await flushPromises()
 
@@ -252,6 +272,7 @@ describe('RevisionReviewModal', () => {
     )
     const wrapper = mountModal()
 
+    await wrapper.find('#revision-review-opinion').setValue(VALID_OPINION)
     await approveButton(wrapper).trigger('click')
     await flushPromises()
 

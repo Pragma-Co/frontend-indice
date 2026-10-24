@@ -9,11 +9,11 @@ import {
 describe('translateFieldError', () => {
   it('should translate a known field and code', () => {
     const message = translateFieldError('disciplineId', {
-      code: 'not_in_project',
-      message: 'Discipline is not part of the selected project.',
+      code: 'not_found',
+      message: 'Discipline not found or inactive.',
     })
 
-    expect(message).toBe('A disciplina não pertence ao projeto selecionado.')
+    expect(message).toBe('Disciplina não encontrada ou inativa.')
   })
 
   it('should translate the length and format codes', () => {

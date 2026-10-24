@@ -19,10 +19,10 @@ vi.mock('vue-router', () => ({
 vi.mock('@/api/documents.js', () => ({
   fetchDocuments: vi.fn(),
   fetchSimpleFilters: vi.fn(),
-  fetchResultsSummary: vi.fn(),
+  searchDocuments: vi.fn(),
 }))
 
-import { fetchDocuments, fetchResultsSummary, fetchSimpleFilters } from '@/api/documents.js'
+import { fetchDocuments, fetchSimpleFilters, searchDocuments } from '@/api/documents.js'
 
 const OPTIONS = {
   types: [
@@ -70,6 +70,7 @@ describe('ResultsList', () => {
     vi.clearAllMocks()
     route.query = {}
     fetchDocuments.mockResolvedValue(pageOf([]))
+    searchDocuments.mockResolvedValue(pageOf([]))
     fetchSimpleFilters.mockResolvedValue(OPTIONS)
     fetchResultsSummary.mockResolvedValue({ summary: 'Resumo de teste' })
   })
@@ -83,7 +84,8 @@ describe('ResultsList', () => {
 
     await mountView()
 
-    expect(fetchDocuments).toHaveBeenCalledWith({
+    expect(fetchDocuments).not.toHaveBeenCalled()
+    expect(searchDocuments).toHaveBeenCalledWith({
       q: 'tubulação',
       tipo: 'DWG',
       area: 'EST',
@@ -104,18 +106,72 @@ describe('ResultsList', () => {
     expect(checkbox(wrapper, 'status', 'PENDING').element.checked).toBe(true)
   })
 
-  it('should render the essential columns of the results', async () => {
-    fetchDocuments.mockResolvedValue(pageOf([makeDocument(1)]))
+  it('should list every document without searching when there is no term', async () => {
+    await mountView()
+
+    expect(searchDocuments).not.toHaveBeenCalled()
+    expect(fetchDocuments).toHaveBeenCalledWith({ page: 1, page_size: 20 })
+  })
+
+  it('should render the essential metadata of each result card', async () => {
+    fetchDocuments.mockResolvedValue(
+      pageOf([
+        {
+          ...makeDocument(1),
+          tags: ['concreto'],
+          areas: [{ acronym: 'EST', name: 'Engenharia Estrutural' }],
+        },
+      ]),
+    )
 
     const wrapper = await mountView()
 
-    const row = wrapper.find('tbody tr').text()
-    expect(row).toContain('AK-2100-EST-DWG-0001')
-    expect(row).toContain('Documento 1')
-    expect(row).toContain('Desenho Técnico')
-    expect(row).toContain('Estruturas')
-    expect(row).toContain('REV01')
-    expect(row).toContain('Em revisão')
+    const card = wrapper.find('.result-card').text()
+    expect(card).toContain('AK-2100-EST-DWG-0001')
+    expect(card).toContain('Documento 1')
+    expect(card).toContain('Desenho Técnico')
+    expect(card).toContain('Estruturas')
+    expect(card).toContain('Engenharia Estrutural')
+    expect(card).toContain('concreto')
+    expect(card).toContain('REV01')
+    expect(card).toContain('Em revisão')
+    expect(card).toContain('Atualizado em 18/09/2026')
+  })
+
+  it('should highlight the searched terms in the title and in the snippet', async () => {
+    route.query = { q: 'tubulação' }
+    searchDocuments.mockResolvedValue(
+      pageOf([
+        {
+          ...makeDocument(1),
+          title: 'Planta de tubulação',
+          description: 'Traçado da tubulação de água',
+          highlights: {
+            title: 'Planta de <mark>tubulação</mark>',
+            description: 'Traçado da <mark>tubulação</mark> de água',
+            content: [],
+          },
+        },
+      ]),
+    )
+
+    const wrapper = await mountView()
+
+    const marks = wrapper.findAll('.result-card mark').map((mark) => mark.text())
+    expect(marks).toEqual(['tubulação', 'tubulação'])
+    expect(wrapper.find('.result-snippet').text()).toBe('Traçado da tubulação de água')
+  })
+
+  it('should show the skeleton while the results are loading', async () => {
+    searchDocuments.mockReturnValue(new Promise(() => {}))
+    route.query = { q: 'tubulação' }
+
+    const wrapper = mount(ResultsList)
+    mountedViews.push(wrapper)
+    await flushPromises()
+
+    expect(wrapper.find('.results-skeleton[aria-busy="true"]').exists()).toBe(true)
+    expect(wrapper.find('.result-card').exists()).toBe(false)
   })
 
   it('should put the applied filters in the URL and go back to the first page', async () => {
@@ -130,7 +186,7 @@ describe('ResultsList', () => {
     expect(router.replace).toHaveBeenCalledWith({
       query: { q: 'tubulação', tipo: 'DWG', discipline: 'MAT', page_size: '5' },
     })
-    expect(fetchDocuments).toHaveBeenLastCalledWith({
+    expect(searchDocuments).toHaveBeenLastCalledWith({
       q: 'tubulação',
       tipo: 'DWG',
       discipline: 'MAT',
@@ -150,7 +206,7 @@ describe('ResultsList', () => {
     await flushPromises()
 
     expect(router.replace).toHaveBeenCalledWith({ query: { q: 'tubulação' } })
-    expect(fetchDocuments).toHaveBeenLastCalledWith({ q: 'tubulação', page: 1, page_size: 20 })
+    expect(searchDocuments).toHaveBeenLastCalledWith({ q: 'tubulação', page: 1, page_size: 20 })
   })
 
   it('should search again with a new term keeping the refinements', async () => {
@@ -169,8 +225,8 @@ describe('ResultsList', () => {
 
     const wrapper = await mountView()
 
-    expect(wrapper.text()).toContain('Nenhum documento encontrado')
-    expect(wrapper.find('tbody').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Nenhum resultado para “nada”')
+    expect(wrapper.find('.result-card').exists()).toBe(false)
     expect(wrapper.find('.pagination').exists()).toBe(false)
     await wrapper
       .findAll('button')
@@ -181,7 +237,7 @@ describe('ResultsList', () => {
 
   it('should paginate in the footer keeping the filters', async () => {
     route.query = { q: 'tubulação' }
-    fetchDocuments.mockResolvedValue(pageOf([makeDocument(1)], { count: 47, totalPages: 3 }))
+    searchDocuments.mockResolvedValue(pageOf([makeDocument(1)], { count: 47, totalPages: 3 }))
     const wrapper = await mountView()
 
     await wrapper
@@ -191,7 +247,7 @@ describe('ResultsList', () => {
     await flushPromises()
 
     expect(router.replace).toHaveBeenCalledWith({ query: { q: 'tubulação', page: 2 } })
-    expect(fetchDocuments).toHaveBeenLastCalledWith({ q: 'tubulação', page: 2, page_size: 20 })
+    expect(searchDocuments).toHaveBeenLastCalledWith({ q: 'tubulação', page: 2, page_size: 20 })
   })
 
   it('should show a generic message when the search fails', async () => {

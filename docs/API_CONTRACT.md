@@ -9,7 +9,7 @@ in `ApiError.details` for the callers that need it.
 
 | Endpoint | Response |
 | --- | --- |
-| `GET /projects/` | `[{ "id", "code", "name", "discipline_ids" }]`, active only, ordered by name. `discipline_ids` drives the dependent Disciplina select; all disciplines are listed while the field is absent |
+| `GET /projects/` | `[{ "id", "code", "name", "discipline_ids" }]`, active only, ordered by name. `discipline_ids` is derived from the project's existing documents and is informational; any discipline can be chosen |
 | `GET /disciplines/` | `[{ "id", "code", "name" }]`, active only, ordered by name |
 
 Document types and areas are static lists in `src/utils/documentCatalog.js`, mirroring the seed.
@@ -71,8 +71,8 @@ back to the last valid page. `status` is the status of the latest revision and b
 | `REJECTED` | Rejeitado |
 | `OBSOLETE` | Obsoleto |
 
-The list is cached in memory by query string, so each page and page size has its own entry;
-`clearDocumentsCache()` drops it after a publication.
+The list is always fetched fresh from the API by query string; no client-side cache is kept.
+
 
 ## Upload (step 1)
 
@@ -136,7 +136,7 @@ Portuguese message (`src/utils/publishErrors.js`) and falls back to "Valor invá
 | `title` | `required`, `too_long` |
 | `description` | `too_long` |
 | `project_id` | `required`, `not_found` |
-| `discipline_id` | `required`, `not_found`, `not_in_project` |
+| `discipline_id` | `required`, `not_found` |
 | `document_type` | `required`, `not_found` |
 | `confidentiality` | `required`, `invalid_choice` |
 | `responsible_id` | `required`, `not_found` |

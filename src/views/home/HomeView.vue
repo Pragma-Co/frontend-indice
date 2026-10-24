@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { fetchSimpleFilters } from '@/api/documents'
 import PageLayout from '@/components/layout/PageLayout.vue'
@@ -9,12 +9,12 @@ import { useAuthStore } from '@/stores/authStore.js'
 const router = useRouter()
 const auth = useAuthStore()
 
-const user = {
+const user = computed(() => ({
   name: auth.currentUser?.name,
   role: auth.currentUser?.role,
   department: auth.currentUser?.department,
   area: auth.currentUser?.area,
-}
+}))
 const fallbackFilters = {
   dates: [
     { value: 'last_7_days', label: 'Últimos 7 dias' },

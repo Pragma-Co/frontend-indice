@@ -212,6 +212,61 @@ describe('DocumentDetailsView', () => {
     expect(renderAsync).toHaveBeenCalled()
   })
 
+  it('should highlight rejected versions and hide the preview for that revision', async () => {
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
+    const doc = makeDocument({
+      revision: {
+        ...makeDocument().revision,
+        files: [
+          {
+            id: 51,
+            original_name: 'teste2.pdf',
+            extension: 'pdf',
+            mime_type: 'application/pdf',
+            size_bytes: 6514,
+            view_url: '/api/files/51/view',
+          },
+        ],
+      },
+      versions: [
+        {
+          id: 99,
+          version: 1,
+          status: 'REJECTED',
+          issue_date: '2026-09-10',
+          author: { id: RESPONSIBLE_ID, name: 'Beatriz Canuto' },
+          files: [
+            {
+              id: 88,
+              original_name: 'rejeitada.pdf',
+              extension: 'pdf',
+              mime_type: 'application/pdf',
+              size_bytes: 6514,
+              view_url: '/api/files/88/view',
+            },
+          ],
+          change_description: 'Versão rejeitada',
+        },
+      ],
+    })
+    fetchDocumentDetail.mockResolvedValue(doc)
+
+    const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
+    await flushPromises()
+
+    const rejectedCard = wrapper
+      .findAll('.revision-list li')
+      .find((item) => item.text().includes('REV1'))
+    expect(rejectedCard.exists()).toBe(true)
+    expect(rejectedCard.classes()).toContain('is-rejected')
+
+    await rejectedCard.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('iframe.preview-frame').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Documento indisponível para esta revisão')
+  })
+
   it('should navigate to the next file when clicking "Próximo arquivo"', async () => {
     authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
     const base = makeDocument()

@@ -1,8 +1,11 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createPinia, setActivePinia } from 'pinia'
+vi.mock('../../src/api/auth', () => ({ startDevelopmentSession: vi.fn(), endSession: vi.fn() }))
+
 import Navbar from '../../src/components/layout/Navbar.vue'
+import { endSession } from '../../src/api/auth'
 import { PROFILES, useAuthStore } from '../../src/stores/authStore'
 
 const Page = { template: '<div />' }
@@ -17,6 +20,7 @@ function createTestRouter() {
       { path: '/revisions', name: 'revisions', component: Page },
       { path: '/collaborators', name: 'collaborators', component: Page },
       { path: '/profile', name: 'profile', component: Page },
+      { path: '/login', name: 'login', component: Page },
     ],
   })
 }
@@ -156,4 +160,17 @@ describe('Navbar', () => {
       expect(wrapper.find('a.navbar-profile').classes()).toContain('active')
     },
   )
+
+  it('should end the session, clear the user and go to the login on Sair', async () => {
+    endSession.mockResolvedValue(null)
+    const { wrapper, router } = await mountNavbar('/home', PROFILES.MANAGER)
+
+    await wrapper.find('button[aria-label="Sair"]').trigger('click')
+    await flushPromises()
+
+    expect(endSession).toHaveBeenCalledTimes(1)
+    expect(useAuthStore().isAuthenticated).toBe(false)
+    expect(localStorage.getItem('indice.profile')).toBeNull()
+    expect(router.currentRoute.value.path).toBe('/login')
+  })
 })

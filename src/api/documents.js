@@ -3,13 +3,6 @@ import { buildDocumentQueryKey, buildSummaryQueryKey } from '../utils/searchPara
 
 let simpleFiltersCache = null
 let simpleFiltersRequest = null
-const documentsCache = new Map()
-const documentsRequests = new Map()
-
-export function clearDocumentsCache() {
-  documentsCache.clear()
-  documentsRequests.clear()
-}
 
 export function uploadDocument(file, { onProgress, signal, userId } = {}) {
   const formData = new FormData()
@@ -23,9 +16,7 @@ export function uploadDocument(file, { onProgress, signal, userId } = {}) {
 export async function createDocumentRevision(documentId, tempFileIds, { changeDescription } = {}) {
   const payload = { temp_file_ids: tempFileIds }
   if (changeDescription) payload.change_description = changeDescription
-  const revision = await api.post(`/documents/${documentId}/revisions`, payload)
-  clearDocumentsCache()
-  return revision
+  return api.post(`/documents/${documentId}/revisions`, payload)
 }
 
 export async function fetchSimpleFilters() {
@@ -44,23 +35,23 @@ export async function fetchSimpleFilters() {
   return simpleFiltersRequest
 }
 
-export function fetchDocuments(query = {}) {
+function fetchDocumentPage(path, query = {}) {
   const queryString = buildDocumentQueryKey(query)
-  if (documentsCache.has(queryString)) return Promise.resolve(documentsCache.get(queryString))
-  if (documentsRequests.has(queryString)) return documentsRequests.get(queryString)
 
-  const request = api
-    .get(`/documents${queryString ? `?${queryString}` : ''}`)
-    .then((data) => {
-      documentsCache.set(queryString, data)
-      return data
-    })
-    .finally(() => {
-      documentsRequests.delete(queryString)
-    })
+  return fetch(`${path}${queryString ? `?${queryString}` : ''}`).then((response) => {
+    if (!response.ok) {
+      throw new Error(`Documents failed with status ${response.status}`)
+    }
+    return response.json()
+  })
+}
 
-  documentsRequests.set(queryString, request)
-  return request
+export function fetchDocuments(query = {}) {
+  return fetchDocumentPage('/api/documents', query)
+}
+
+export function searchDocuments(query = {}) {
+  return fetchDocumentPage('/api/documents/search', query)
 }
 
 export async function fetchResultsSummary(query = {}, { signal } = {}) {

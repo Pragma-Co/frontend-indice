@@ -1,14 +1,15 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { fetchSimpleFilters } from '@/api/documents.js'
+import { fetchDocuments, fetchSimpleFilters, searchDocuments } from '@/api/documents.js'
 import Pagination from '@/components/common/Pagination.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
-import DocumentsTable from '@/views/document/components/DocumentsTable.vue'
 import ResultsEmptyState from '@/views/document/components/ResultsEmptyState.vue'
 import ResultsFilterPanel from '@/views/document/components/ResultsFilterPanel.vue'
 import ResultsSummary from '@/views/document/components/ResultsSummary.vue'
 import ResultsSearchBar from '@/views/document/components/ResultsSearchBar.vue'
+import ResultsSkeleton from '@/views/document/components/ResultsSkeleton.vue'
+import SearchResultCard from '@/views/document/components/SearchResultCard.vue'
 import {
   countActiveFilters,
   emptyFilters,
@@ -16,6 +17,7 @@ import {
   filtersToQuery,
   keepPageSize,
 } from '@/utils/resultFilters.js'
+import { extractSearchTerms } from '@/utils/searchHighlight.js'
 import {
   ITEMS_PER_PAGE_OPTIONS,
   useDocumentList,
@@ -23,6 +25,10 @@ import {
 
 const route = useRoute()
 const router = useRouter()
+
+function fetchResultsPage(query) {
+  return String(query.q ?? '').trim() ? searchDocuments(query) : fetchDocuments(query)
+}
 
 const {
   documents,
@@ -35,10 +41,15 @@ const {
   goToPage,
   setItemsPerPage,
   handleDocumentAction,
-} = useDocumentList()
+} = useDocumentList({ fetchPage: fetchResultsPage })
 
 const filters = computed(() => filtersFromQuery(route.query))
-const hasFilters = computed(() => Boolean(filters.value.q) || countActiveFilters(filters.value) > 0)
+const hasFilters = computed(() => countActiveFilters(filters.value) > 0)
+const searchTerms = computed(() => extractSearchTerms(filters.value.q))
+const resultsSummary = computed(() => {
+  const label = totalItems.value === 1 ? 'resultado' : 'resultados'
+  return `${totalItems.value} ${label}`
+})
 const showEmptyState = computed(
   () => !loading.value && !error.value && documents.value.length === 0,
 )
@@ -95,22 +106,35 @@ onMounted(async () => {
       />
 
       <section class="card results-main results-content" aria-live="polite">
-        <p v-if="loading" class="status-message">Carregando documentos...</p>
+        <ResultsSkeleton v-if="loading" class="results-scroll" />
         <p v-else-if="error" class="status-message error-message">{{ error }}</p>
         <ResultsEmptyState
           v-else-if="showEmptyState"
+          :term="filters.q"
           :has-filters="hasFilters"
           @clear="clearFilters"
+          @search="searchAgain"
         />
-        <DocumentsTable
-          v-else
-          class="documents-table"
-          :documents="documents"
-          @action="handleDocumentAction"
-        />
+        <template v-else>
+          <p class="results-summary">
+            {{ resultsSummary }}
+            <template v-if="filters.q">
+              para <strong class="results-term">“{{ filters.q }}”</strong>
+            </template>
+          </p>
+          <div class="results-scroll">
+            <SearchResultCard
+              v-for="document in documents"
+              :key="document.id"
+              :document="document"
+              :terms="searchTerms"
+              @action="handleDocumentAction"
+            />
+          </div>
+        </template>
 
         <Pagination
-          v-if="documents.length"
+          v-if="documents.length && !loading"
           :current-page="currentPage"
           :total-pages="totalPages"
           :total-items="totalItems"
@@ -141,7 +165,7 @@ onMounted(async () => {
 }
 
 .results-content {
-  max-height: calc(100vh - 262px - var(--summary-height, 80px));
+  max-height: calc(100vh - 252px - var(--summary-height, 80px));
 }
 
 .results-main {
@@ -153,31 +177,26 @@ onMounted(async () => {
   padding: 1rem;
 }
 
-.results-main :deep(.table-scroll) {
+.results-scroll {
+  display: flex;
   flex: 1;
+  flex-direction: column;
+  gap: 0.75rem;
   min-height: 0;
   overflow: auto;
+  padding-right: 0.25rem;
 }
 
-.results-main :deep(.documents-table th) {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  background: var(--color-surface);
-  white-space: normal;
+.results-summary {
+  flex-shrink: 0;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
 }
 
-.results-main :deep(.documents-table th),
-.results-main :deep(.documents-table td) {
-  padding: 0.55rem 0.5rem;
-}
-
-.results-main :deep(.cell-title) {
-  min-width: 12.5rem;
-}
-
-.results-main :deep(.cell-type) {
-  min-width: 8rem;
+.results-term {
+  color: var(--color-text);
+  overflow-wrap: anywhere;
 }
 
 .results-main :deep(.pagination) {
@@ -201,15 +220,6 @@ onMounted(async () => {
   .results-layout {
     grid-template-columns: 216px minmax(0, 1fr);
   }
-
-  .results-main :deep(.documents-table th),
-  .results-main :deep(.documents-table td) {
-    padding: 0.55rem 0.45rem;
-  }
-
-  .results-main :deep(.cell-title) {
-    min-width: 10.5rem;
-  }
 }
 
 @media (max-width: 960px) {
@@ -221,7 +231,7 @@ onMounted(async () => {
     grid-template-columns: 1fr;
   }
 
-  .results-main :deep(.table-scroll) {
+  .results-scroll {
     max-height: 60vh;
   }
 }

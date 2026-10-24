@@ -144,72 +144,25 @@ describe('documentFormStore', () => {
     expect(store.publishing).toBe(false)
   })
 
-  describe('disciplines by project', () => {
-    const LINKED_PROJECTS = [
-      { id: 1, code: 'AK-2100', name: 'Aeroestrutura', discipline_ids: [1] },
-      { id: 2, code: 'BR-300', name: 'Trem de pouso', discipline_ids: [2] },
-    ]
-    const TWO_DISCIPLINES = [
-      { id: 1, code: 'EST', name: 'Estruturas' },
-      { id: 2, code: 'HID', name: 'Hidráulica' },
-    ]
-
-    it('should list only the disciplines linked to the selected project', async () => {
-      listProjects.mockResolvedValue(LINKED_PROJECTS)
-      listDisciplines.mockResolvedValue(TWO_DISCIPLINES)
-      await store.loadCatalogs()
-
-      store.selectProject(2)
-
-      expect(store.availableDisciplines.map((d) => d.code)).toEqual(['HID'])
-    })
-
-    it('should clear the discipline when the new project does not include it', async () => {
-      listProjects.mockResolvedValue(LINKED_PROJECTS)
-      listDisciplines.mockResolvedValue(TWO_DISCIPLINES)
-      await store.loadCatalogs()
-      store.selectProject(1)
-      store.form.disciplineId = 1
-      store.suggestedFields.disciplineId = true
-
-      store.selectProject('2')
-
-      expect(store.form.projectId).toBe('2')
-      expect(store.form.disciplineId).toBe('')
-      expect(store.isFieldSuggested('disciplineId')).toBe(false)
-    })
-
-    it('should keep the discipline when the new project also includes it', async () => {
+  describe('disciplines independent of the project', () => {
+    it('should keep the discipline when the project changes', async () => {
       listProjects.mockResolvedValue([
-        { id: 1, code: 'AK-2100', name: 'A', discipline_ids: [1, 2] },
-        { id: 2, code: 'BR-300', name: 'B', discipline_ids: [2] },
+        { id: 1, code: 'AK-2100', name: 'A' },
+        { id: 2, code: 'BR-300', name: 'B' },
       ])
-      listDisciplines.mockResolvedValue(TWO_DISCIPLINES)
+      listDisciplines.mockResolvedValue([
+        { id: 1, code: 'EST', name: 'Estruturas' },
+        { id: 2, code: 'HID', name: 'Hidráulica' },
+      ])
       await store.loadCatalogs()
       store.selectProject(1)
       store.form.disciplineId = 2
+      store.suggestedFields.disciplineId = true
 
       store.selectProject(2)
 
       expect(store.form.disciplineId).toBe(2)
-    })
-
-    it('should list no discipline until a project is chosen when projects carry discipline_ids', async () => {
-      listProjects.mockResolvedValue(LINKED_PROJECTS)
-      listDisciplines.mockResolvedValue(TWO_DISCIPLINES)
-
-      await store.loadCatalogs()
-
-      expect(store.projectsCarryDisciplines).toBe(true)
-      expect(store.availableDisciplines).toEqual([])
-    })
-
-    it('should list every discipline while projects do not carry discipline_ids', async () => {
-      await store.loadCatalogs()
-
-      store.selectProject(1)
-
-      expect(store.availableDisciplines).toEqual(DISCIPLINES)
+      expect(store.isFieldSuggested('disciplineId')).toBe(true)
     })
   })
 
@@ -279,10 +232,8 @@ describe('documentFormStore', () => {
       expect(store.isFieldSuggested('author')).toBe(false)
     })
 
-    it('should ignore a suggested discipline that does not belong to the selected project', async () => {
-      listProjects.mockResolvedValue([
-        { id: 1, code: 'AK-2100', name: 'Aeroestrutura', discipline_ids: [1] },
-      ])
+    it('should apply a suggested discipline regardless of the selected project', async () => {
+      listProjects.mockResolvedValue([{ id: 1, code: 'AK-2100', name: 'Aeroestrutura' }])
       listDisciplines.mockResolvedValue([
         { id: 1, code: 'EST', name: 'Estruturas' },
         { id: 3, code: 'QUA', name: 'Qualidade e Inspeção' },
@@ -291,6 +242,16 @@ describe('documentFormStore', () => {
       store.selectProject(1)
 
       store.applySuggestions({ disciplineId: 3 })
+
+      expect(store.form.disciplineId).toBe(3)
+      expect(store.isFieldSuggested('disciplineId')).toBe(true)
+    })
+
+    it('should ignore a suggested discipline missing from the catalog', async () => {
+      listDisciplines.mockResolvedValue([{ id: 1, code: 'EST', name: 'Estruturas' }])
+      await store.loadCatalogs()
+
+      store.applySuggestions({ disciplineId: 99 })
 
       expect(store.form.disciplineId).toBe('')
       expect(store.isFieldSuggested('disciplineId')).toBe(false)
