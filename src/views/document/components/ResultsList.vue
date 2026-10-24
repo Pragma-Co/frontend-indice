@@ -45,6 +45,7 @@ const {
 
 const filters = computed(() => filtersFromQuery(route.query))
 const hasFilters = computed(() => countActiveFilters(filters.value) > 0)
+const hasSummary = computed(() => hasFilters.value || Boolean(filters.value.q?.trim()))
 const searchTerms = computed(() => extractSearchTerms(filters.value.q))
 const resultsSummary = computed(() => {
   const label = totalItems.value === 1 ? 'resultado' : 'resultados'
@@ -55,7 +56,7 @@ const showEmptyState = computed(
 )
 
 const summaryHeight = ref(80)
-const contentOffset = computed(() => `${hasFilters.value ? summaryHeight.value : 0}px`)
+const contentOffset = computed(() => `${hasSummary.value ? summaryHeight.value + 12 : 0}px`)
 
 const options = ref({})
 const optionsLoading = ref(true)
@@ -93,7 +94,7 @@ onMounted(async () => {
   >
     <ResultsSearchBar :term="filters.q" @search="searchAgain" />
 
-    <ResultsSummary v-if="hasFilters" :query="route.query" @resize="summaryHeight = $event" />
+    <ResultsSummary v-if="hasSummary" :query="route.query" @resize="summaryHeight = $event" />
 
     <div class="results-layout">
       <ResultsFilterPanel
@@ -116,7 +117,7 @@ onMounted(async () => {
           @search="searchAgain"
         />
         <template v-else>
-          <p class="results-summary">
+          <p class="summary-results">
             {{ resultsSummary }}
             <template v-if="filters.q">
               para <strong class="results-term">“{{ filters.q }}”</strong>
@@ -165,7 +166,7 @@ onMounted(async () => {
 }
 
 .results-content {
-  max-height: calc(100vh - 252px - var(--summary-height, 80px));
+  max-height: calc(100vh - 250px - var(--summary-height, 92px));
 }
 
 .results-main {
@@ -187,7 +188,7 @@ onMounted(async () => {
   padding-right: 0.25rem;
 }
 
-.results-summary {
+.summary-results {
   flex-shrink: 0;
   margin-bottom: 0.75rem;
   font-size: 0.85rem;

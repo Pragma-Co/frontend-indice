@@ -1,4 +1,4 @@
-import { api, uploadWithProgress } from './client'
+import { api, request, uploadWithProgress } from './client'
 import { buildDocumentQueryKey, buildSummaryQueryKey } from '../utils/searchParams'
 
 let simpleFiltersCache = null
@@ -55,8 +55,8 @@ export function searchDocuments(query = {}) {
 }
 
 export async function fetchResultsSummary(query = {}, { signal } = {}) {
-  const queryString = buildSummaryQueryKey(query)
-  return api.get(`/documents/summary${queryString ? `?${queryString}` : ''}`, { signal })
+  const filters = Object.fromEntries(new URLSearchParams(buildSummaryQueryKey(query)))
+  return request('/documents/search/ai-summary', { method: 'POST', body: { filters }, signal })
 }
 
 export function toDocumentPayload(form, { tempFileIds, tempFileId, responsibleId, userId }) {
