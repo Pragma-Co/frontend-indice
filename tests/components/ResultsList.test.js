@@ -18,11 +18,17 @@ vi.mock('vue-router', () => ({
 }))
 vi.mock('@/api/documents.js', () => ({
   fetchDocuments: vi.fn(),
+  fetchResultsSummary: vi.fn(),
   fetchSimpleFilters: vi.fn(),
   searchDocuments: vi.fn(),
 }))
 
-import { fetchDocuments, fetchSimpleFilters, searchDocuments } from '@/api/documents.js'
+import {
+  fetchDocuments,
+  fetchResultsSummary,
+  fetchSimpleFilters,
+  searchDocuments,
+} from '@/api/documents.js'
 
 const OPTIONS = {
   types: [
@@ -77,6 +83,18 @@ describe('ResultsList', () => {
 
   afterEach(() => {
     mountedViews.splice(0).forEach((wrapper) => wrapper.unmount())
+  })
+
+  it('should request the summary for a term-only search and for filters-only', async () => {
+    route.query = { q: 'tubulação' }
+    await mountView()
+    expect(fetchResultsSummary).toHaveBeenCalledTimes(1)
+    expect(fetchResultsSummary.mock.calls[0][0]).toEqual({ q: 'tubulação' })
+
+    vi.clearAllMocks()
+    route.query = { tipo: 'DWG' }
+    await mountView()
+    expect(fetchResultsSummary).toHaveBeenCalledWith({ tipo: 'DWG' }, expect.any(Object))
   })
 
   it('should search with the criteria of the URL as soon as it opens', async () => {
