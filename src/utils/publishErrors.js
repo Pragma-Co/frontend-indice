@@ -43,7 +43,6 @@ export const FIELD_ERROR_MESSAGES = {
   disciplineId: {
     required: 'Disciplina é obrigatória.',
     not_found: 'Disciplina não encontrada ou inativa.',
-    not_in_project: 'A disciplina não pertence ao projeto selecionado.',
   },
   documentType: {
     required: 'Tipo de documento é obrigatório.',
