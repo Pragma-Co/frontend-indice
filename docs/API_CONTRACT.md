@@ -9,7 +9,7 @@ in `ApiError.details` for the callers that need it.
 
 | Endpoint | Response |
 | --- | --- |
-| `GET /projects/` | `[{ "id", "code", "name", "discipline_ids" }]`, active only, ordered by name. `discipline_ids` drives the dependent Disciplina select; all disciplines are listed while the field is absent |
+| `GET /projects/` | `[{ "id", "code", "name", "discipline_ids" }]`, active only, ordered by name. `discipline_ids` is derived from the project's existing documents and is informational; any discipline can be chosen |
 | `GET /disciplines/` | `[{ "id", "code", "name" }]`, active only, ordered by name |
 
 Document types and areas are static lists in `src/utils/documentCatalog.js`, mirroring the seed.
@@ -136,7 +136,7 @@ Portuguese message (`src/utils/publishErrors.js`) and falls back to "Valor invá
 | `title` | `required`, `too_long` |
 | `description` | `too_long` |
 | `project_id` | `required`, `not_found` |
-| `discipline_id` | `required`, `not_found`, `not_in_project` |
+| `discipline_id` | `required`, `not_found` |
 | `document_type` | `required`, `not_found` |
 | `confidentiality` | `required`, `invalid_choice` |
 | `responsible_id` | `required`, `not_found` |
