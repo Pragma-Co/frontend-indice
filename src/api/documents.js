@@ -1,5 +1,5 @@
-import { api, uploadWithProgress } from './client'
-import { buildDocumentQueryKey } from '../utils/searchParams'
+import { api, request, uploadWithProgress } from './client'
+import { buildDocumentQueryKey, buildSummaryQueryKey } from '../utils/searchParams'
 
 let simpleFiltersCache = null
 let simpleFiltersRequest = null
@@ -22,13 +22,8 @@ export async function createDocumentRevision(documentId, tempFileIds, { changeDe
 export async function fetchSimpleFilters() {
   if (simpleFiltersCache) return simpleFiltersCache
   if (!simpleFiltersRequest) {
-    simpleFiltersRequest = fetch('/api/documents/simple-filters')
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Simple filters failed with status ${response.status}`)
-        }
-        return response.json()
-      })
+    simpleFiltersRequest = api
+      .get('/documents/simple-filters')
       .then((data) => {
         simpleFiltersCache = data
         return data
@@ -57,6 +52,11 @@ export function fetchDocuments(query = {}) {
 
 export function searchDocuments(query = {}) {
   return fetchDocumentPage('/api/documents/search', query)
+}
+
+export async function fetchResultsSummary(query = {}, { signal } = {}) {
+  const filters = Object.fromEntries(new URLSearchParams(buildSummaryQueryKey(query)))
+  return request('/documents/search/ai-summary', { method: 'POST', body: { filters }, signal })
 }
 
 export function toDocumentPayload(form, { tempFileIds, tempFileId, responsibleId, userId }) {
