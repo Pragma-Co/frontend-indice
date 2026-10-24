@@ -170,11 +170,7 @@ function back(event) {
         :suggested="store.isFieldSuggested('disciplineId')"
         @focusout="touch('disciplineId')"
       >
-        <select
-          id="discipline"
-          v-model="disciplineId"
-          :disabled="store.catalogsLoading"
-        >
+        <select id="discipline" v-model="disciplineId" :disabled="store.catalogsLoading">
           <option value="">{{ disciplinePlaceholder }}</option>
           <option
             v-for="discipline in store.disciplines"
