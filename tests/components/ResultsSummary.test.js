@@ -9,7 +9,10 @@ vi.mock('@/api/documents.js', () => ({
 import { fetchResultsSummary } from '@/api/documents.js'
 
 async function mountSummary(query = { q: 'tubulação' }) {
-  const wrapper = mount(ResultsSummary, { props: { query } })
+  const wrapper = mount(ResultsSummary, {
+    props: { query },
+    global: { stubs: { RouterLink: { props: ['to'], template: '<a :href="to"><slot /></a>' } } },
+  })
   await flushPromises()
   return wrapper
 }
@@ -45,6 +48,30 @@ describe('ResultsSummary', () => {
 
     expect(wrapper.find('.summary-body').text()).toBe('Resumo de teste')
     expect(wrapper.find('[role="status"]').exists()).toBe(false)
+  })
+
+  it('should link to the most relevant document', async () => {
+    fetchResultsSummary.mockResolvedValue({
+      summary: 'Resumo',
+      most_relevant: { id: 7, code: 'A-7', title: 'Memorial' },
+    })
+
+    const wrapper = await mountSummary()
+
+    expect(wrapper.find('.summary-relevant').text()).toContain('A-7 — Memorial')
+    expect(wrapper.find('.summary-relevant a').attributes('href')).toBe('/documents/7')
+  })
+
+  it('should only indicate the restricted documents that contain the searched content', async () => {
+    fetchResultsSummary.mockResolvedValue({
+      summary: 'Resumo',
+      restricted_matches: [{ id: 9, code: 'A-9', title: 'Secreto' }],
+    })
+
+    const wrapper = await mountSummary()
+
+    expect(wrapper.text()).toContain('documento(s) restrito(s)')
+    expect(wrapper.find('a[href="/documents/9"]').text()).toBe('A-9')
   })
 
   it('should accept the "resumo" key as an alternative', async () => {
@@ -153,5 +180,19 @@ describe('ResultsSummary', () => {
 
     expect(firstSignal.aborted).toBe(true)
     expect(wrapper.find('.summary-body').text()).toBe('Resumo B')
+  })
+
+  it('should abort the pending request when the component is unmounted', async () => {
+    let received
+    fetchResultsSummary.mockImplementationOnce((_query, { signal }) => {
+      received = signal
+      return new Promise(() => {})
+    })
+
+    const wrapper = mount(ResultsSummary, { props: { query: { q: 'a' } } })
+    await flushPromises()
+    wrapper.unmount()
+
+    expect(received.aborted).toBe(true)
   })
 })

@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { RouterLink } from 'vue-router'
 import { fetchResultsSummary } from '@/api/documents.js'
 import { buildSummaryQueryKey } from '@/utils/searchParams.js'
 
@@ -18,13 +19,18 @@ onMounted(() => {
   observer.observe(root.value)
 })
 
-onBeforeUnmount(() => observer?.disconnect())
-
 const loading = ref(false)
 const error = ref('')
 const summary = ref('')
+const mostRelevant = ref(null)
+const restricted = ref([])
 const expanded = ref(false)
 let controller = null
+
+onBeforeUnmount(() => {
+  observer?.disconnect()
+  controller?.abort()
+})
 
 const BOLD_PATTERN = /\*\*(.+?)\*\*/g
 
@@ -74,9 +80,13 @@ async function load() {
     const data = await fetchResultsSummary(props.query, { signal })
     if (signal.aborted) return
     summary.value = String(data?.summary ?? data?.resumo ?? '').trim()
+    mostRelevant.value = data?.most_relevant?.id ? data.most_relevant : null
+    restricted.value = Array.isArray(data?.restricted_matches) ? data.restricted_matches : []
   } catch {
     if (signal.aborted) return
     summary.value = ''
+    mostRelevant.value = null
+    restricted.value = []
     error.value = 'Não foi possível gerar o resumo no momento.'
   } finally {
     if (!signal.aborted) loading.value = false
@@ -124,6 +134,19 @@ watch(() => buildSummaryQueryKey(props.query), load, { immediate: true })
         </p>
       </template>
     </div>
+    <p v-if="mostRelevant && !loading" class="summary-relevant">
+      Documento mais relevante:
+      <RouterLink :to="`/documents/${mostRelevant.id}`">
+        {{ mostRelevant.code ? `${mostRelevant.code} — ` : '' }}{{ mostRelevant.title }}
+      </RouterLink>
+    </p>
+    <p v-if="restricted.length && !loading" class="summary-relevant">
+      O conteúdo buscado também aparece em documento(s) restrito(s), sem acesso:
+      <template v-for="(doc, index) in restricted" :key="doc.id">
+        <RouterLink :to="`/documents/${doc.id}`">{{ doc.code || doc.title }}</RouterLink
+        ><template v-if="index < restricted.length - 1">, </template>
+      </template>
+    </p>
   </section>
 </template>
 
@@ -180,6 +203,16 @@ watch(() => buildSummaryQueryKey(props.query), load, { immediate: true })
 .summary-body:not(.clamped) {
   max-height: 30vh;
   overflow-y: auto;
+}
+
+.summary-relevant {
+  margin: 0.35rem 0 0;
+  color: var(--color-text-muted);
+}
+
+.summary-relevant a {
+  color: var(--color-primary);
+  font-weight: 600;
 }
 
 .summary-body p,
