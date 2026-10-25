@@ -6,7 +6,13 @@ defineProps({
     type: Array,
     required: true,
   },
+  selectedIds: {
+    type: Array,
+    default: () => [],
+  },
 })
+
+defineEmits(['toggle'])
 
 const STATUS_LABELS = {
   validating: 'Validando...',
@@ -30,6 +36,7 @@ function statusLabel(item) {
   <table class="queue-table">
     <thead>
       <tr>
+        <th class="cell-select" aria-label="Seleção" />
         <th>Nome</th>
         <th>Tipo</th>
         <th>Tamanho</th>
@@ -37,7 +44,19 @@ function statusLabel(item) {
       </tr>
     </thead>
     <tbody>
-      <tr v-for="item in items" :key="item.id">
+      <tr
+        v-for="item in items"
+        :key="item.id"
+        :class="{ 'row-selected': selectedIds.includes(item.id) }"
+      >
+        <td class="cell-select">
+          <input
+            type="checkbox"
+            :checked="selectedIds.includes(item.id)"
+            :aria-label="`Selecionar ${item.name}`"
+            @change="$emit('toggle', item.id)"
+          />
+        </td>
         <td class="cell-name">{{ item.name }}</td>
         <td class="cell-muted">{{ item.typeLabel }}</td>
         <td class="cell-muted">{{ formatFileSize(item.size) }}</td>
@@ -86,6 +105,19 @@ function statusLabel(item) {
   padding: 0.75rem;
   border-bottom: 1px solid var(--color-border);
   font-size: 0.9rem;
+}
+
+.cell-select {
+  width: 2.5rem;
+}
+
+.cell-select input {
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.row-selected td {
+  background: var(--color-background);
 }
 
 .cell-name {

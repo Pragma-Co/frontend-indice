@@ -1,17 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { flushPromises, mount } from '@vue/test-utils'
+import { RouterLinkStub, flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
 import DocumentDetailsView from '@/views/document/DocumentDetailsView.vue'
 import { ApiError } from '@/api/client.js'
 import { useAuthStore } from '@/stores/authStore.js'
 import { useNotificationStore } from '@/stores/notificationStore.js'
-import {
-  createDocumentRevision,
-  fetchDocumentDetail,
-  requestDocumentAccess,
-  uploadDocument,
-} from '@/api/documents.js'
+import { fetchDocumentDetail, requestDocumentAccess } from '@/api/documents.js'
 
 const routeParams = { documentId: '23' }
 vi.mock('vue-router', () => ({
@@ -23,13 +18,12 @@ vi.mock('docx-preview', () => ({
 }))
 
 vi.mock('@/api/documents.js', () => ({
-  createDocumentRevision: vi.fn(),
   fetchDocumentDetail: vi.fn(),
   requestDocumentAccess: vi.fn(),
-  uploadDocument: vi.fn(),
 }))
 
 const globalStubs = {
+  RouterLink: RouterLinkStub,
   Breadcrumbs: { template: '<nav />' },
   Button: { template: '<button><slot /></button>' },
   StatusBadge: { template: '<span />' },
@@ -74,6 +68,7 @@ function makeDocument(overrides = {}) {
 }
 
 const accessStubs = {
+  RouterLink: RouterLinkStub,
   Breadcrumbs: { template: '<nav />' },
   StatusBadge: { template: '<span />' },
 }
@@ -217,6 +212,61 @@ describe('DocumentDetailsView', () => {
     expect(renderAsync).toHaveBeenCalled()
   })
 
+  it('should highlight rejected versions and hide the preview for that revision', async () => {
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
+    const doc = makeDocument({
+      revision: {
+        ...makeDocument().revision,
+        files: [
+          {
+            id: 51,
+            original_name: 'teste2.pdf',
+            extension: 'pdf',
+            mime_type: 'application/pdf',
+            size_bytes: 6514,
+            view_url: '/api/files/51/view',
+          },
+        ],
+      },
+      versions: [
+        {
+          id: 99,
+          version: 1,
+          status: 'REJECTED',
+          issue_date: '2026-09-10',
+          author: { id: RESPONSIBLE_ID, name: 'Beatriz Canuto' },
+          files: [
+            {
+              id: 88,
+              original_name: 'rejeitada.pdf',
+              extension: 'pdf',
+              mime_type: 'application/pdf',
+              size_bytes: 6514,
+              view_url: '/api/files/88/view',
+            },
+          ],
+          change_description: 'Versão rejeitada',
+        },
+      ],
+    })
+    fetchDocumentDetail.mockResolvedValue(doc)
+
+    const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
+    await flushPromises()
+
+    const rejectedCard = wrapper
+      .findAll('.revision-list li')
+      .find((item) => item.text().includes('REV1'))
+    expect(rejectedCard.exists()).toBe(true)
+    expect(rejectedCard.classes()).toContain('is-rejected')
+
+    await rejectedCard.trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('iframe.preview-frame').exists()).toBe(false)
+    expect(wrapper.text()).toContain('Documento indisponível para esta revisão')
+  })
+
   it('should navigate to the next file when clicking "Próximo arquivo"', async () => {
     authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
     const base = makeDocument()
@@ -328,26 +378,63 @@ describe('DocumentDetailsView', () => {
     expect(wrapper.find('iframe.preview-frame').attributes('src')).toContain('/api/files/40/view')
   })
 
-  it('should upload multiple files together as one new revision', async () => {
+  it('should link to the dedicated new revision screen instead of uploading files in place', async () => {
     authStore.currentUser = { id: RESPONSIBLE_ID, name: 'Beatriz Canuto' }
-    fetchDocumentDetail.mockResolvedValue(makeDocument())
-    uploadDocument
-      .mockResolvedValueOnce({ temp_file_id: 'temp-rev-2-a' })
-      .mockResolvedValueOnce({ temp_file_id: 'temp-rev-2-b' })
-
+    const current = makeDocument().revision
+    fetchDocumentDetail.mockResolvedValue(
+      makeDocument({ revision: { ...current, status: 'APPROVED' } }),
+    )
     const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
     await flushPromises()
-    const input = wrapper.find('input[type="file"]')
-    Object.defineProperty(input.element, 'files', {
-      configurable: true,
-      value: [new File(['a'], 'a.pdf'), new File(['b'], 'b.pdf')],
-    })
 
-    await input.trigger('change')
+    const link = wrapper.findComponent(RouterLinkStub)
+
+    expect(link.text()).toBe('Nova Revisão')
+    expect(link.props('to')).toEqual({
+      name: 'document-new-revision',
+      params: { documentId: '23' },
+    })
+    expect(wrapper.find('.revision-action button').exists()).toBe(false)
+  })
+
+  it('should not offer the new revision shortcut to a user without access', async () => {
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
+    const current = makeDocument().revision
+    const wrapper = await mountAsStranger(
+      makeDocument({ access_status: 'PENDING', revision: { ...current, status: 'APPROVED' } }),
+    )
+
+    expect(wrapper.findComponent(RouterLinkStub).exists()).toBe(false)
+    expect(wrapper.find('.revision-action').exists()).toBe(false)
+  })
+
+  it('should keep the details screen read only without upload controls', async () => {
+    authStore.currentUser = { id: RESPONSIBLE_ID, name: 'Beatriz Canuto' }
+    const current = makeDocument().revision
+    fetchDocumentDetail.mockResolvedValue(
+      makeDocument({ revision: { ...current, status: 'APPROVED' } }),
+    )
+    const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
     await flushPromises()
 
-    expect(createDocumentRevision).toHaveBeenCalledWith('23', ['temp-rev-2-a', 'temp-rev-2-b'])
-    expect(uploadDocument).toHaveBeenCalledTimes(2)
+    expect(wrapper.find('input').exists()).toBe(false)
+    expect(wrapper.find('form').exists()).toBe(false)
+    expect(wrapper.find('.dropzone').exists()).toBe(false)
+    expect(wrapper.text()).not.toMatch(/arraste|enviar arquivos|selecionar arquivos/i)
+  })
+
+  it('should block a new revision while the current one is under review', async () => {
+    authStore.currentUser = { id: RESPONSIBLE_ID, name: 'Beatriz Canuto' }
+    fetchDocumentDetail.mockResolvedValue(makeDocument())
+    const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
+    await flushPromises()
+
+    const blocked = wrapper.find('.revision-action-link')
+
+    expect(wrapper.findComponent(RouterLinkStub).exists()).toBe(false)
+    expect(blocked.attributes('aria-disabled')).toBe('true')
+    expect(blocked.text()).toBe('Nova Revisão')
+    expect(wrapper.find('.revision-action-hint').text()).toContain('revisão em andamento')
   })
 
   it('should disable the navigation buttons when there is only one file', async () => {

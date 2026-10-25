@@ -12,6 +12,29 @@ const props = defineProps({
 const emit = defineEmits(['apply', 'clear'])
 
 const draft = reactive(emptyFilters())
+const dateDisplay = reactive({ dateFrom: '', dateTo: '' })
+const datePickerRefs = { dateFrom: null, dateTo: null }
+
+function formatDateForDisplay(value) {
+  if (!value) return ''
+  const [year, month, day] = value.split('-')
+  return `${day}/${month}/${year}`
+}
+
+function parseDateInput(value) {
+  const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  if (!match) return ''
+
+  const [, day, month, year] = match
+  const parsedDate = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)))
+  if (
+    parsedDate.getUTCFullYear() !== Number(year) ||
+    parsedDate.getUTCMonth() !== Number(month) - 1 ||
+    parsedDate.getUTCDate() !== Number(day)
+  )
+    return ''
+  return `${year}-${month}-${day}`
+}
 
 function resetDraft(filters) {
   Object.assign(draft, emptyFilters(), {
@@ -21,6 +44,8 @@ function resetDraft(filters) {
     discipline: [...(filters.discipline ?? [])],
     status: [...(filters.status ?? [])],
   })
+  dateDisplay.dateFrom = formatDateForDisplay(draft.dateFrom)
+  dateDisplay.dateTo = formatDateForDisplay(draft.dateTo)
 }
 
 watch(() => props.filters, resetDraft, { immediate: true, deep: true })
@@ -61,12 +86,29 @@ function choosePreset(event) {
   if (draft.data) {
     draft.dateFrom = ''
     draft.dateTo = ''
+    dateDisplay.dateFrom = ''
+    dateDisplay.dateTo = ''
   }
+}
+
+function typeDateRange(field, event) {
+  const value = event.target.value.replace(/[^\d/]/g, '').slice(0, 10)
+  dateDisplay[field] = value
+  draft[field] = parseDateInput(value)
+  if (draft[field]) draft.data = ''
 }
 
 function chooseRange(field, event) {
   draft[field] = event.target.value
+  dateDisplay[field] = formatDateForDisplay(event.target.value)
   if (event.target.value) draft.data = ''
+}
+
+function openDatePicker(field) {
+  const picker = datePickerRefs[field]
+  if (!picker) return
+  if (typeof picker.showPicker === 'function') picker.showPicker()
+  else picker.click()
 }
 
 function apply() {
@@ -116,23 +158,55 @@ function clear() {
         <div class="filter-range">
           <label class="filter-field">
             <span>De</span>
-            <input
-              type="date"
-              name="date_from"
-              :value="draft.dateFrom"
-              :max="draft.dateTo || undefined"
-              @change="chooseRange('dateFrom', $event)"
-            />
+            <span class="date-input">
+              <input
+                class="date-display"
+                type="text"
+                inputmode="numeric"
+                placeholder="dd/mm/aaaa"
+                maxlength="10"
+                :value="dateDisplay.dateFrom"
+                @input="typeDateRange('dateFrom', $event)"
+                @click="openDatePicker('dateFrom')"
+              />
+              <input
+                :ref="(element) => (datePickerRefs.dateFrom = element)"
+                class="date-picker"
+                type="date"
+                name="date_from"
+                lang="pt-BR"
+                aria-label="Data inicial"
+                :value="draft.dateFrom"
+                :max="draft.dateTo || undefined"
+                @change="chooseRange('dateFrom', $event)"
+              />
+            </span>
           </label>
           <label class="filter-field">
             <span>Até</span>
-            <input
-              type="date"
-              name="date_to"
-              :value="draft.dateTo"
-              :min="draft.dateFrom || undefined"
-              @change="chooseRange('dateTo', $event)"
-            />
+            <span class="date-input">
+              <input
+                class="date-display"
+                type="text"
+                inputmode="numeric"
+                placeholder="dd/mm/aaaa"
+                maxlength="10"
+                :value="dateDisplay.dateTo"
+                @input="typeDateRange('dateTo', $event)"
+                @click="openDatePicker('dateTo')"
+              />
+              <input
+                :ref="(element) => (datePickerRefs.dateTo = element)"
+                class="date-picker"
+                type="date"
+                name="date_to"
+                lang="pt-BR"
+                aria-label="Data final"
+                :value="draft.dateTo"
+                :min="draft.dateFrom || undefined"
+                @change="chooseRange('dateTo', $event)"
+              />
+            </span>
           </label>
         </div>
       </fieldset>
@@ -242,6 +316,26 @@ function clear() {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+
+.date-input {
+  position: relative;
+  display: block;
+}
+
+.date-display {
+  position: relative;
+  z-index: 1;
+}
+
+.date-picker {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  padding: 0 !important;
+  border: 0 !important;
+  opacity: 0;
+  pointer-events: none;
 }
 
 .filter-actions {

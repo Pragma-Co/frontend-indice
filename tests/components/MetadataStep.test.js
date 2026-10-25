@@ -8,6 +8,7 @@ import formFieldSource from '../../src/components/common/FormField.vue?raw'
 
 vi.mock('../../src/api/projects', () => ({ listProjects: vi.fn() }))
 vi.mock('../../src/api/disciplines', () => ({ listDisciplines: vi.fn() }))
+vi.mock('../../src/api/areas', () => ({ listAreas: vi.fn() }))
 vi.mock('../../src/api/documents', async (importOriginal) => ({
   ...(await importOriginal()),
   listDocumentTypes: vi.fn(),
@@ -16,9 +17,14 @@ vi.mock('../../src/api/documents', async (importOriginal) => ({
 
 import { listProjects } from '../../src/api/projects'
 import { listDisciplines } from '../../src/api/disciplines'
+import { listAreas } from '../../src/api/areas'
 import { listDocumentTypes, requestDocumentSuggestions } from '../../src/api/documents'
 
 const PROJECTS = [{ id: 1, code: 'AK-2100', name: 'Aeroestrutura de Fuselagem Central' }]
+const AREAS = [
+  { id: 1, acronym: 'EST', name: 'Engenharia Estrutural' },
+  { id: 2, acronym: 'QUA', name: 'Qualidade e Inspeção' },
+]
 const DISCIPLINES = [{ id: 1, code: 'EST', name: 'Estruturas' }]
 const DOCUMENT_TYPES = [{ id: 'DWG', code: 'DWG', name: 'Desenho' }]
 
@@ -62,6 +68,7 @@ describe('MetadataStep', () => {
     vi.clearAllMocks()
     listProjects.mockResolvedValue(PROJECTS)
     listDisciplines.mockResolvedValue(DISCIPLINES)
+    listAreas.mockResolvedValue(AREAS)
     listDocumentTypes.mockResolvedValue(DOCUMENT_TYPES)
     requestDocumentSuggestions.mockResolvedValue(null)
     await store.loadCatalogs()
@@ -136,50 +143,33 @@ describe('MetadataStep', () => {
     expect(store.form.author).toBe('Maria Souza')
   })
 
-  it('should lock the discipline until a project is chosen when projects carry discipline_ids', async () => {
-    store.projects = [
-      { id: 1, code: 'AK-2100', name: 'Aeroestrutura', discipline_ids: [1] },
-      { id: 2, code: 'BR-300', name: 'Trem de pouso', discipline_ids: [] },
-    ]
+  it('should list every discipline without requiring a project', async () => {
+    store.projects = [{ id: 1, code: 'AK-2100', name: 'Aeroestrutura' }]
     store.disciplines = [
       { id: 1, code: 'EST', name: 'Estruturas' },
       { id: 2, code: 'HID', name: 'Hidráulica' },
     ]
     const wrapper = mount(MetadataStep)
-    expect(wrapper.find('#discipline').attributes('disabled')).toBeDefined()
-    expect(wrapper.findAll('#discipline option').map((o) => o.text().trim())).toEqual([
-      'Selecione o projeto primeiro',
-    ])
-
-    await wrapper.find('#project').setValue(1)
 
     const options = wrapper.findAll('#discipline option').map((o) => o.text().trim())
+
     expect(wrapper.find('#discipline').attributes('disabled')).toBeUndefined()
-    expect(options).toEqual(['Selecione a disciplina', 'EST - Estruturas'])
+    expect(options).toEqual(['Selecione a disciplina', 'EST - Estruturas', 'HID - Hidráulica'])
   })
 
-  it('should reset the discipline when the project changes to one that does not include it', async () => {
+  it('should keep the chosen discipline when the project changes', async () => {
     store.projects = [
-      { id: 1, code: 'AK-2100', name: 'Aeroestrutura', discipline_ids: [1] },
-      { id: 2, code: 'BR-300', name: 'Trem de pouso', discipline_ids: [2] },
+      { id: 1, code: 'AK-2100', name: 'Aeroestrutura' },
+      { id: 2, code: 'BR-300', name: 'Trem de pouso' },
     ]
-    store.disciplines = [
-      { id: 1, code: 'EST', name: 'Estruturas' },
-      { id: 2, code: 'HID', name: 'Hidráulica' },
-    ]
+    store.disciplines = [{ id: 1, code: 'EST', name: 'Estruturas' }]
     const wrapper = mount(MetadataStep)
     await wrapper.find('#project').setValue(1)
     await wrapper.find('#discipline').setValue(1)
-    store.suggestedFields.disciplineId = true
 
     await wrapper.find('#project').setValue(2)
 
-    expect(store.form.disciplineId).toBe('')
-    expect(store.isFieldSuggested('disciplineId')).toBe(false)
-    expect(wrapper.find('#discipline').element.value).toBe('')
-    expect(wrapper.find('#discipline').element.closest('.field').classList).not.toContain(
-      'field--suggested',
-    )
+    expect(store.form.disciplineId).toBe(1)
   })
 
   it('should show an inline error only after a required field is left empty', async () => {

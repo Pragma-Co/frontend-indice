@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { formatDate, formatFileSize, getInitials } from '../../src/utils/formatters'
+import {
+  formatDate,
+  formatDateAtTime,
+  formatDateTime,
+  formatFileSize,
+  formatTime,
+  getInitials,
+} from '../../src/utils/formatters'
 
 describe('formatDate', () => {
   it('should format a date as dd/mm/yyyy', () => {
@@ -41,5 +48,39 @@ describe('getInitials', () => {
   it('should return an empty string for empty names', () => {
     expect(getInitials('')).toBe('')
     expect(getInitials()).toBe('')
+  })
+})
+
+describe('formatTime', () => {
+  it('should format the time as hh:mm', () => {
+    expect(formatTime(new Date(2026, 8, 26, 14, 36))).toBe('14:36')
+    expect(formatTime('2026-09-26T08:05:00')).toBe('08:05')
+  })
+
+  it('should show a dash for a missing or invalid value', () => {
+    expect(formatTime(null)).toBe('—')
+    expect(formatTime('not a date')).toBe('—')
+  })
+})
+
+describe('formatDateTime', () => {
+  it('should join the date and the time with a bullet', () => {
+    expect(formatDateTime('2026-09-26T14:32:00')).toBe('26/09/2026 • 14:32')
+  })
+
+  it('should show a single dash for a missing or invalid value', () => {
+    expect(formatDateTime(null)).toBe('—')
+    expect(formatDateTime('not a date')).toBe('—')
+  })
+})
+
+describe('formatDateAtTime', () => {
+  it('should write the date and the time joined by "às"', () => {
+    expect(formatDateAtTime('2026-09-24T14:32:00')).toBe('24/09/2026 às 14:32')
+  })
+
+  it('should show a single dash for a missing or invalid value', () => {
+    expect(formatDateAtTime(null)).toBe('—')
+    expect(formatDateAtTime('not a date')).toBe('—')
   })
 })

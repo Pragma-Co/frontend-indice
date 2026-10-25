@@ -1,4 +1,8 @@
+import { readCookie } from '../utils/cookies'
+
 const API_BASE_URL = '/api'
+const CSRF_COOKIE_NAME = 'csrftoken'
+const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS']
 
 export function uploadWithProgress(path, formData, { onProgress, signal } = {}) {
   return new Promise((resolve, reject) => {
@@ -77,18 +81,22 @@ async function parseBody(response) {
   }
 }
 
-export async function request(path, { method = 'GET', body, headers = {} } = {}) {
-  const init = { method, headers: { Accept: 'application/json', ...headers } }
+export async function request(path, { method = 'GET', body, headers = {}, signal } = {}) {
+  const init = { method, signal, headers: { Accept: 'application/json', ...headers } }
 
   if (body !== undefined) {
     init.headers['Content-Type'] = 'application/json'
     init.body = JSON.stringify(body)
   }
 
+  const csrfToken = SAFE_METHODS.includes(method) ? null : readCookie(CSRF_COOKIE_NAME)
+  if (csrfToken) init.headers['X-CSRFToken'] = csrfToken
+
   let response
   try {
     response = await fetch(`${API_BASE_URL}${path}`, init)
-  } catch {
+  } catch (err) {
+    if (err?.name === 'AbortError') throw err
     throw new ApiError('Não foi possível conectar ao servidor.', { status: 0 })
   }
 
@@ -100,6 +108,7 @@ export async function request(path, { method = 'GET', body, headers = {} } = {})
 }
 
 export const api = {
-  get: (path) => request(path),
+  get: (path, options) => request(path, options),
   post: (path, body) => request(path, { method: 'POST', body }),
+  put: (path, body) => request(path, { method: 'PUT', body }),
 }

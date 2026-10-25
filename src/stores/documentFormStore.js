@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { listProjects } from '../api/projects'
+import { listAreas } from '../api/areas'
 import { listDisciplines } from '../api/disciplines'
 import { createDocument, toDocumentPayload, listDocumentTypes } from '../api/documents'
 import { useAuthStore } from './authStore'
@@ -44,6 +45,7 @@ export const useDocumentFormStore = defineStore('documentForm', {
     form: emptyForm(),
     projects: [],
     disciplines: [],
+    areas: [],
     documentTypes: [],
     catalogsLoading: false,
     catalogsError: null,
@@ -58,13 +60,6 @@ export const useDocumentFormStore = defineStore('documentForm', {
       state.projects.find((p) => String(p.id) === String(state.form.projectId)) ?? null,
     selectedDiscipline: (state) =>
       state.disciplines.find((d) => String(d.id) === String(state.form.disciplineId)) ?? null,
-    projectsCarryDisciplines: (state) =>
-      state.projects.some((project) => Array.isArray(project.discipline_ids)),
-    availableDisciplines() {
-      if (!this.projectsCarryDisciplines) return this.disciplines
-      const ids = this.selectedProject?.discipline_ids ?? []
-      return this.disciplines.filter((d) => ids.includes(d.id))
-    },
     selectedDocumentType: (state) =>
       state.documentTypes.find((t) => t.id === state.form.documentType) ?? null,
     revision: (state) => revisionLabel(state.form.version),
@@ -89,10 +84,16 @@ export const useDocumentFormStore = defineStore('documentForm', {
 
       this.catalogsLoading = true
       this.catalogsError = null
-      const request = Promise.all([listProjects(), listDisciplines(), listDocumentTypes()])
-        .then(([projects, disciplines, document_types]) => {
+      const request = Promise.all([
+        listProjects(),
+        listDisciplines(),
+        listDocumentTypes(),
+        listAreas(),
+      ])
+        .then(([projects, disciplines, document_types, areas]) => {
           this.projects = Array.isArray(projects) ? projects : []
           this.disciplines = Array.isArray(disciplines) ? disciplines : []
+          this.areas = Array.isArray(areas) ? areas : []
           this.documentTypes = Array.isArray(document_types) ? document_types : []
         })
         .catch((error) => {
@@ -109,13 +110,6 @@ export const useDocumentFormStore = defineStore('documentForm', {
     selectProject(projectId) {
       this.form.projectId = projectId
       this.clearSuggestion('projectId')
-      const stillValid = this.availableDisciplines.some(
-        (d) => String(d.id) === String(this.form.disciplineId),
-      )
-      if (!stillValid) {
-        this.form.disciplineId = ''
-        this.clearSuggestion('disciplineId')
-      }
     },
 
     setDefaultAuthor(name) {
@@ -141,7 +135,7 @@ export const useDocumentFormStore = defineStore('documentForm', {
         }
         if (
           field === 'disciplineId' &&
-          !this.availableDisciplines.some((d) => String(d.id) === String(value))
+          !this.disciplines.some((d) => String(d.id) === String(value))
         ) {
           continue
         }

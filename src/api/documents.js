@@ -1,15 +1,8 @@
-import { api, uploadWithProgress } from './client'
-import { buildDocumentQueryKey } from '../utils/searchParams'
+import { api, request, uploadWithProgress } from './client'
+import { buildDocumentQueryKey, buildSummaryQueryKey } from '../utils/searchParams'
 
 let simpleFiltersCache = null
 let simpleFiltersRequest = null
-const documentsCache = new Map()
-const documentsRequests = new Map()
-
-export function clearDocumentsCache() {
-  documentsCache.clear()
-  documentsRequests.clear()
-}
 
 export function uploadDocument(file, { onProgress, signal, userId } = {}) {
   const formData = new FormData()
@@ -20,24 +13,17 @@ export function uploadDocument(file, { onProgress, signal, userId } = {}) {
   return uploadWithProgress('/documents/upload', formData, { onProgress, signal })
 }
 
-export async function createDocumentRevision(documentId, tempFileIds) {
-  const revision = await api.post(`/documents/${documentId}/revisions`, {
-    temp_file_ids: tempFileIds,
-  })
-  clearDocumentsCache()
-  return revision
+export async function createDocumentRevision(documentId, tempFileIds, { changeDescription } = {}) {
+  const payload = { temp_file_ids: tempFileIds }
+  if (changeDescription) payload.change_description = changeDescription
+  return api.post(`/documents/${documentId}/revisions`, payload)
 }
 
 export async function fetchSimpleFilters() {
   if (simpleFiltersCache) return simpleFiltersCache
   if (!simpleFiltersRequest) {
-    simpleFiltersRequest = fetch('/api/documents/simple-filters')
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Simple filters failed with status ${response.status}`)
-        }
-        return response.json()
-      })
+    simpleFiltersRequest = api
+      .get('/documents/simple-filters')
       .then((data) => {
         simpleFiltersCache = data
         return data
@@ -49,28 +35,28 @@ export async function fetchSimpleFilters() {
   return simpleFiltersRequest
 }
 
-export function fetchDocuments(query = {}) {
+function fetchDocumentPage(path, query = {}) {
   const queryString = buildDocumentQueryKey(query)
-  if (documentsCache.has(queryString)) return Promise.resolve(documentsCache.get(queryString))
-  if (documentsRequests.has(queryString)) return documentsRequests.get(queryString)
 
-  const request = fetch(`/api/documents${queryString ? `?${queryString}` : ''}`)
-    .then((response) => {
-      if (!response.ok) {
-        throw new Error(`Documents failed with status ${response.status}`)
-      }
-      return response.json()
-    })
-    .then((data) => {
-      documentsCache.set(queryString, data)
-      return data
-    })
-    .finally(() => {
-      documentsRequests.delete(queryString)
-    })
+  return fetch(`${path}${queryString ? `?${queryString}` : ''}`).then((response) => {
+    if (!response.ok) {
+      throw new Error(`Documents failed with status ${response.status}`)
+    }
+    return response.json()
+  })
+}
 
-  documentsRequests.set(queryString, request)
-  return request
+export function fetchDocuments(query = {}) {
+  return fetchDocumentPage('/api/documents', query)
+}
+
+export function searchDocuments(query = {}) {
+  return fetchDocumentPage('/api/documents/search', query)
+}
+
+export async function fetchResultsSummary(query = {}, { signal } = {}) {
+  const filters = Object.fromEntries(new URLSearchParams(buildSummaryQueryKey(query)))
+  return request('/documents/search/ai-summary', { method: 'POST', body: { filters }, signal })
 }
 
 export function toDocumentPayload(form, { tempFileIds, tempFileId, responsibleId, userId }) {

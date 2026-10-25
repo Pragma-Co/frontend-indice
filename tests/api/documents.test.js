@@ -169,4 +169,19 @@ describe('createDocumentRevision', () => {
     expect(refreshedList.results[0].revision.version).toBe(2)
     expect(globalThis.fetch).toHaveBeenCalledTimes(3)
   })
+
+  it('should send the change description together with the revision files', async () => {
+    globalThis.fetch.mockResolvedValueOnce(mockResponse({ id: 38, version: 2 }, { status: 201 }))
+
+    await createDocumentRevision(23, ['temp-a'], {
+      changeDescription: 'Updated load combinations',
+    })
+
+    const [url, init] = globalThis.fetch.mock.calls[0]
+    expect(url).toBe('/api/documents/23/revisions')
+    expect(JSON.parse(init.body)).toEqual({
+      temp_file_ids: ['temp-a'],
+      change_description: 'Updated load combinations',
+    })
+  })
 })

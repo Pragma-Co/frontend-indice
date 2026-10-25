@@ -4,16 +4,19 @@ import { useRoute } from 'vue-router'
 import { ArrowRight, Building2, Calendar, ChevronDown, FileText, Search, Upload } from '@lucide/vue'
 import { buildDocumentSearchQuery } from '@/utils/searchParams'
 import { useSearchStore } from '@/stores/searchStore.js'
+import { useAuthStore } from '@/stores/authStore.js'
 import Button from '@/components/common/Button.vue'
 
 const props = defineProps({
   filters: { type: Object, required: true },
   filtersLoading: { type: Boolean, required: true },
+  showViewAll: { type: Boolean, default: true },
 })
 
 const emit = defineEmits(['search', 'view-all'])
 const route = useRoute()
 const searchStore = useSearchStore()
+const authStore = useAuthStore()
 const form = reactive({ query: '', date: '', dateFrom: '', dateTo: '', area: '', type: '' })
 const dateInputs = reactive({ from: '', to: '' })
 const dateMenuOpen = ref(false)
@@ -140,7 +143,7 @@ onMounted(restoreFilters)
       />
     </label>
     <Button>Pesquisar</Button>
-    <RouterLink class="upload-button" :to="{ name: 'document-upload' }">
+    <RouterLink v-if="!authStore.isManager" class="upload-button" :to="{ name: 'document-upload' }">
       <Upload :size="17" :stroke-width="2" aria-hidden="true" />
       Upload
     </RouterLink>
@@ -290,7 +293,7 @@ onMounted(restoreFilters)
 
     <div class="search-actions">
       <Button variant="outline" type="button" @click="resetFilters">Limpar filtros</Button>
-      <button type="button" class="all-documents" @click="emit('view-all')">
+      <button v-if="showViewAll" type="button" class="all-documents" @click="emit('view-all')">
         Ver todos os documentos
         <ArrowRight :size="16" aria-hidden="true" />
       </button>

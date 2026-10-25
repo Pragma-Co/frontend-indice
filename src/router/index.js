@@ -1,9 +1,16 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { useAuthStore } from '../stores/authStore'
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', redirect: '/home' },
+    {
+      path: '/login',
+      name: 'login',
+      component: () => import('../views/login/LoginView.vue'),
+      meta: { title: 'Índice - Entrar', public: true },
+    },
     {
       path: '/home',
       name: 'home',
@@ -20,13 +27,19 @@ const router = createRouter({
       path: '/documents',
       name: 'document-list',
       component: () => import('../views/document/DocumentsListView.vue'),
-      meta: { title: 'Colaborador - Documentos' },
+      meta: { title: 'Colaborador - Documentos', collaboratorOnly: true },
     },
     {
       path: '/documents/:documentId',
       name: 'document-details',
       component: () => import('../views/document/DocumentDetailsView.vue'),
       meta: { title: 'Colaborador - Visualizar documento' },
+    },
+    {
+      path: '/documents/:documentId/new-revision',
+      name: 'document-new-revision',
+      component: () => import('../views/document/NewRevisionView.vue'),
+      meta: { title: 'Colaborador - Nova revisão' },
     },
     {
       path: '/documents/upload',
@@ -46,6 +59,24 @@ const router = createRouter({
       component: () => import('../views/document/components/DocumentConfirmation.vue'),
       meta: { title: 'Colaborador - Confirmação' },
     },
+    {
+      path: '/revisions',
+      name: 'revisions',
+      component: () => import('../views/manager/ReviewPanelView.vue'),
+      meta: { title: 'Gestor - Painel de gestão', managerOnly: true },
+    },
+    {
+      path: '/collaborators',
+      name: 'collaborators',
+      component: () => import('../views/UnderConstructionView.vue'),
+      meta: { title: 'Gestor - Colaboradores', heading: 'Colaboradores', managerOnly: true },
+    },
+    {
+      path: '/profile',
+      name: 'profile',
+      component: () => import('../views/user-management/UserManagementView.vue'),
+      meta: { title: 'Índice - Gestão do Titular' },
+    },
   ],
 })
 
@@ -53,6 +84,11 @@ router.beforeEach((to, from) => {
   if (to.path === from.path && JSON.stringify(to.query) === JSON.stringify(from.query)) {
     return false
   }
+
+  const auth = useAuthStore()
+  if (!to.meta.public && !auth.isAuthenticated) return { name: 'login' }
+  if (to.meta.managerOnly && !auth.isManager) return { name: 'home' }
+  if (to.meta.collaboratorOnly && auth.isManager) return { name: 'home' }
 })
 
 router.afterEach((to) => {

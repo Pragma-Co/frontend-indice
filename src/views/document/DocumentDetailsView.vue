@@ -2,15 +2,16 @@
 import { onMounted, ref, computed, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { renderAsync } from 'docx-preview'
-import {
-  createDocumentRevision,
-  fetchDocumentDetail,
-  requestDocumentAccess,
-  uploadDocument,
-} from '@/api/documents.js'
+import { fetchDocumentDetail, requestDocumentAccess } from '@/api/documents.js'
 import { useAuthStore } from '@/stores/authStore.js'
 import { useNotificationStore } from '@/stores/notificationStore.js'
-import { statusBadgeFor } from '@/utils/documentStatus.js'
+import {
+  REVISION_BLOCK_MESSAGES,
+  REVISION_BLOCK_REASONS,
+  hasDocumentAccess,
+  revisionBlockReason,
+  statusBadgeFor,
+} from '@/utils/documentStatus.js'
 import { formatDate } from '@/utils/formatters.js'
 import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
@@ -26,8 +27,6 @@ const notFound = ref(false)
 const requestingAccess = ref(false)
 const accessRequested = ref(false)
 const requestError = ref('')
-const revisionUploading = ref(false)
-const revisionInput = ref(null)
 
 const docxContainer = ref(null)
 const docxLoading = ref(false)
@@ -57,17 +56,28 @@ const totalFiles = computed(() => allFiles.value.length)
 
 const currentUserId = computed(() => authStore.currentUser?.id ?? null)
 
-const isResponsible = computed(
-  () => currentUserId.value != null && document.value?.responsible?.id === currentUserId.value,
+const hasAccess = computed(() => hasDocumentAccess(document.value, currentUserId.value))
+
+const newRevisionBlockReason = computed(() =>
+  revisionBlockReason(document.value, currentUserId.value),
 )
 
-const hasAccess = computed(
-  () => document.value?.access_status === 'APPROVED' || isResponsible.value,
+const newRevisionInProgress = computed(
+  () => newRevisionBlockReason.value === REVISION_BLOCK_REASONS.IN_PROGRESS,
 )
+
+const newRevisionRoute = computed(() => ({
+  name: 'document-new-revision',
+  params: { documentId: route.params.documentId },
+}))
 
 const accessRejected = computed(() => document.value?.access_request?.status === 'REJECTED')
 
-const canPreview = computed(() => !!currentFile.value && hasAccess.value)
+const isRejectedRevision = computed(() => currentRevision.value?.status === 'REJECTED')
+
+const canPreview = computed(
+  () => !!currentFile.value && hasAccess.value && !isRejectedRevision.value,
+)
 
 const isPdf = computed(() => {
   if (!currentFile.value) return false
@@ -157,40 +167,6 @@ async function handleRequestAccess() {
   }
 }
 
-function openRevisionPicker() {
-  revisionInput.value?.click()
-}
-
-async function handleRevisionFile(event) {
-  const files = Array.from(event.target.files ?? [])
-  event.target.value = ''
-  if (!files.length) return
-
-  revisionUploading.value = true
-  try {
-    const tempFileIds = []
-    for (const file of files) {
-      const upload = await uploadDocument(file, { userId: currentUserId.value })
-      if (upload?.duplicate) {
-        notifications.error(`O arquivo ${file.name} já existe e não pode ser usado nesta revisão.`)
-        return
-      }
-      tempFileIds.push(upload.temp_file_id)
-    }
-    await createDocumentRevision(route.params.documentId, tempFileIds)
-    notifications.success('Nova revisão criada com sucesso.')
-    await loadDocument()
-  } catch (err) {
-    if (err?.status === 409) {
-      notifications.error('Este arquivo já existe e não pode ser usado como revisão.')
-    } else {
-      notifications.error('Não foi possível criar a nova revisão.')
-    }
-  } finally {
-    revisionUploading.value = false
-  }
-}
-
 async function renderDocx() {
   if (!docxContainer.value) return
   if (!canPreview.value || !isDocx.value || !fileUrl.value) return
@@ -276,6 +252,14 @@ onMounted(loadDocument)
             <div class="preview-viewer">
               <div v-if="!hasAccess" class="preview-masked" aria-hidden="true">
                 <span v-for="line in 9" :key="line" class="preview-masked-line" />
+              </div>
+
+              <div
+                v-else-if="isRejectedRevision"
+                class="preview-placeholder preview-placeholder--rejected"
+              >
+                <p>Documento indisponível para esta revisão.</p>
+                <span>{{ document.code }}</span>
               </div>
 
               <div v-else-if="!totalFiles" class="preview-placeholder">
@@ -399,19 +383,19 @@ onMounted(loadDocument)
             <div class="revision-block">
               <h2>Histórico de versões</h2>
               <div v-if="hasAccess && document.revision" class="revision-action">
-                <input
-                  ref="revisionInput"
-                  class="visually-hidden-input"
-                  type="file"
-                  multiple
-                  accept=".pdf,.doc,.docx,.jpeg,.jpg,.png"
-                  @change="handleRevisionFile"
-                />
-                <button type="button" :disabled="revisionUploading" @click="openRevisionPicker">
-                  {{
-                    revisionUploading ? 'Enviando revisão...' : 'Adicionar arquivos à nova revisão'
-                  }}
-                </button>
+                <RouterLink
+                  v-if="!newRevisionBlockReason"
+                  :to="newRevisionRoute"
+                  class="revision-action-link"
+                >
+                  Nova Revisão
+                </RouterLink>
+                <span v-else class="revision-action-link is-disabled" aria-disabled="true">
+                  Nova Revisão
+                </span>
+                <p v-if="newRevisionInProgress" class="revision-action-hint">
+                  {{ REVISION_BLOCK_MESSAGES[REVISION_BLOCK_REASONS.IN_PROGRESS] }}
+                </p>
               </div>
               <p v-if="!document.versions?.length" class="tag-block-empty">
                 Nenhuma versão registrada.
@@ -426,6 +410,7 @@ onMounted(loadDocument)
                   :class="{
                     'is-current': version.id === document.revision?.id,
                     'is-selected': version.id === currentRevision?.id,
+                    'is-rejected': version.status === 'REJECTED',
                   }"
                   @click="selectRevision(version)"
                   @keydown.enter.space.prevent="selectRevision(version)"
@@ -474,8 +459,11 @@ onMounted(loadDocument)
   margin: 0.5rem 0 0.85rem;
 }
 
-.revision-action button {
+.revision-action-link {
+  display: block;
   width: 100%;
+  text-align: center;
+  text-decoration: none;
   padding: 0.7rem 1rem;
   border: 1px solid var(--color-primary);
   border-radius: var(--radius-sm);
@@ -485,17 +473,27 @@ onMounted(loadDocument)
   cursor: pointer;
 }
 
-.revision-action button:disabled {
-  cursor: wait;
-  opacity: 0.65;
+.revision-action-link:hover:not(.is-disabled) {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
 }
 
-.visually-hidden-input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  pointer-events: none;
+.revision-action-link:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.revision-action-link.is-disabled {
+  background: var(--color-surface-muted);
+  border-color: var(--color-border);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.revision-block .revision-action-hint {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: 0.4rem;
 }
 
 .details-shell {
@@ -628,6 +626,12 @@ onMounted(loadDocument)
   background: var(--color-surface-muted);
   border-radius: var(--radius-sm);
   text-align: center;
+}
+
+.preview-placeholder--rejected {
+  background: rgba(220, 38, 38, 0.06);
+  border: 1px solid rgba(220, 38, 38, 0.2);
+  color: #991b1b;
 }
 
 .preview-placeholder svg {
@@ -808,6 +812,11 @@ dd {
 .revision-list li.is-current {
   border-color: var(--color-primary);
   background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-muted));
+}
+
+.revision-list li.is-rejected {
+  border-color: rgba(220, 38, 38, 0.4);
+  background: rgba(220, 38, 38, 0.06);
 }
 
 .revision-list li.is-selected {

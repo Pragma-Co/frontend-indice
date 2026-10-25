@@ -1,20 +1,29 @@
 <script setup>
 import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import logo from '@/assets/logo.svg'
-import bellIcon from '@/assets/icons/bell.svg'
+import { Bell, LogOut } from '@lucide/vue'
 import { useAuthStore } from '@/stores/authStore'
 
 const route = useRoute()
+const router = useRouter()
 const auth = useAuthStore()
 
-const links = [
+const collaboratorLinks = [
   { label: 'Início', to: '/home' },
   { label: 'Documentos', to: '/documents', preserveQuery: true },
 ]
 
+const managerLinks = [
+  { label: 'Início', to: '/home' },
+  { label: 'Revisões', to: '/revisions' },
+  { label: 'Colaboradores', to: '/collaborators' },
+]
+
+const links = computed(() => (auth.isManager ? managerLinks : collaboratorLinks))
+
 const resolvedLinks = computed(() =>
-  links.map((link) => ({
+  links.value.map((link) => ({
     ...link,
     to: {
       path: link.to,
@@ -22,6 +31,11 @@ const resolvedLinks = computed(() =>
     },
   })),
 )
+
+async function logout() {
+  await auth.signOut()
+  router.push('/login')
+}
 
 function isActive(to) {
   return route.path === to || route.path.startsWith(`${to}/`)
@@ -47,10 +61,19 @@ function isActive(to) {
 
     <div class="navbar-user">
       <button class="navbar-notifications" type="button" aria-label="Notificações">
-        <img :src="bellIcon" alt="" class="navbar-bell" />
+        <Bell :size="18" class="navbar-bell" aria-hidden="true" />
       </button>
-      <span class="navbar-avatar" aria-hidden="true">{{ auth.initials }}</span>
-      <span class="navbar-user-name">{{ auth.currentUser?.name }}</span>
+      <RouterLink
+        to="/profile"
+        :class="['navbar-profile', { active: isActive('/profile') }]"
+        aria-label="Perfil - Gestão do Titular"
+      >
+        <span class="navbar-avatar" aria-hidden="true">{{ auth.initials }}</span>
+        <span class="navbar-user-name">{{ auth.currentUser?.name }}</span>
+      </RouterLink>
+      <button class="navbar-notifications" type="button" aria-label="Sair" @click="logout">
+        <LogOut :size="18" class="navbar-bell" aria-hidden="true" />
+      </button>
     </div>
   </header>
 </template>
@@ -136,9 +159,26 @@ function isActive(to) {
 }
 
 .navbar-bell {
-  width: 18px;
-  height: 18px;
-  filter: brightness(0) invert(1);
+  color: var(--color-text-inverse);
+}
+
+.navbar-profile {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0.6rem 0.25rem 0.25rem;
+  border-radius: var(--radius-sm);
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.navbar-profile:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.navbar-profile.active {
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .navbar-avatar {
@@ -162,6 +202,7 @@ function isActive(to) {
 
 .navbar-brand:focus-visible,
 .navbar-link:focus-visible,
+.navbar-profile:focus-visible,
 .navbar-notifications:focus-visible {
   outline: 2px solid var(--color-text-inverse);
   outline-offset: 2px;
@@ -179,6 +220,10 @@ function isActive(to) {
 
   .navbar-link {
     padding: 0.35rem 0.6rem;
+  }
+
+  .navbar-profile {
+    padding: 0.25rem;
   }
 
   .navbar-user-name {

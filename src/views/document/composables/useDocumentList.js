@@ -21,11 +21,13 @@ export function normalizeDocument(document) {
     status: document.status ?? null,
     updatedAt: document.updated_at,
     updatedBy: document.updated_by?.name ?? document.created_by?.name ?? 'sistema',
-    action: document.action ?? 'view-details',
+    tags: [...new Set([...(document.tags ?? []), ...(document.thematic_tags ?? [])])],
+    matchedTags: document.matched_tags ?? [],
+    highlights: document.highlights ?? null,
   }
 }
 
-export function useDocumentList() {
+export function useDocumentList({ fetchPage = fetchDocuments } = {}) {
   const route = useRoute()
   const router = useRouter()
 
@@ -51,7 +53,7 @@ export function useDocumentList() {
     error.value = ''
 
     try {
-      const response = await fetchDocuments({
+      const response = await fetchPage({
         ...route.query,
         page: currentPage.value,
         page_size: itemsPerPage.value,
@@ -96,9 +98,13 @@ export function useDocumentList() {
     router.push({ name: 'document-details', params: { documentId: document.id } })
   }
 
+  function goToNewRevision(document) {
+    router.push({ name: 'document-new-revision', params: { documentId: document.id } })
+  }
+
   function handleDocumentAction({ document, action }) {
-    if (action === 'new-revision' || action === 'continue-editing') {
-      goToUpload()
+    if (action === 'new-revision') {
+      goToNewRevision(document)
     } else if (action === 'view-details') {
       goToDocumentDetails(document)
     }
@@ -129,6 +135,7 @@ export function useDocumentList() {
     setSkipFirstLoad,
     goToUpload,
     goToDocumentDetails,
+    goToNewRevision,
     handleDocumentAction,
   }
 }

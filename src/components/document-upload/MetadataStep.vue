@@ -3,7 +3,7 @@ import { computed, reactive, ref, watch, onMounted } from 'vue'
 import { useDocumentFormStore } from '../../stores/documentFormStore'
 import { useUploadStore } from '@/stores/uploadStore.js'
 import { requestDocumentSuggestions } from '@/api/documents.js'
-import { AREAS, CONFIDENTIALITY_LEVELS } from '../../utils/documentCatalog'
+import { CONFIDENTIALITY_LEVELS } from '../../utils/documentCatalog'
 import Button from '../common/Button.vue'
 import FormField from '../common/FormField.vue'
 import TagMultiSelect from '../common/TagMultiSelect.vue'
@@ -14,12 +14,12 @@ const uploadStore = useUploadStore()
 const files = computed(() => uploadStore.uploadedDocuments)
 
 const code = computed(() => store.codePreview ?? '')
-const areaOptions = AREAS.map((area) => ({ value: area.code, label: area.name }))
+const areaOptions = computed(() =>
+  store.areas.map((area) => ({ value: area.acronym, label: area.name })),
+)
 const canProceed = computed(() => store.isValid && !store.catalogsLoading)
-const disciplineLocked = computed(() => store.projectsCarryDisciplines && !store.selectedProject)
 const disciplinePlaceholder = computed(() => {
   if (store.catalogsLoading) return 'Carregando…'
-  if (disciplineLocked.value) return 'Selecione o projeto primeiro'
   return 'Selecione a disciplina'
 })
 
@@ -28,7 +28,7 @@ function suggestedAreaCode(area) {
     .trim()
     .toLowerCase()
   if (!name) return null
-  return AREAS.find((option) => option.name.toLowerCase() === name)?.code ?? null
+  return store.areas.find((option) => option.name.toLowerCase() === name)?.acronym ?? null
 }
 
 function setSuggestions(suggestions) {
@@ -56,7 +56,8 @@ onMounted(async () => {
     emit('back')
     return
   }
-  if (!store.projects.length || !store.disciplines.length) await store.loadCatalogs()
+  if (!store.projects.length || !store.disciplines.length || !store.areas.length)
+    await store.loadCatalogs()
   if (!isFormEmpty()) return
   const file = files.value.reduce((biggest, current) => {
     return current.size > biggest.size ? current : biggest
@@ -169,14 +170,10 @@ function back(event) {
         :suggested="store.isFieldSuggested('disciplineId')"
         @focusout="touch('disciplineId')"
       >
-        <select
-          id="discipline"
-          v-model="disciplineId"
-          :disabled="store.catalogsLoading || disciplineLocked"
-        >
+        <select id="discipline" v-model="disciplineId" :disabled="store.catalogsLoading">
           <option value="">{{ disciplinePlaceholder }}</option>
           <option
-            v-for="discipline in store.availableDisciplines"
+            v-for="discipline in store.disciplines"
             :key="discipline.id"
             :value="discipline.id"
           >
