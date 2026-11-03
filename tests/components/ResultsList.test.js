@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { reactive } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
+import { useNotificationStore } from '@/stores/notificationStore.js'
 import ResultsList from '@/views/document/components/ResultsList.vue'
 
 const route = reactive({ query: {} })
@@ -73,6 +75,8 @@ function checkbox(wrapper, name, value) {
 
 describe('ResultsList', () => {
   beforeEach(() => {
+    setActivePinia(createPinia())
+    globalThis.localStorage?.clear()
     vi.clearAllMocks()
     route.query = {}
     fetchDocuments.mockResolvedValue(pageOf([]))
@@ -178,6 +182,20 @@ describe('ResultsList', () => {
     const marks = wrapper.findAll('.result-card mark').map((mark) => mark.text())
     expect(marks).toEqual(['tubulação', 'tubulação'])
     expect(wrapper.find('.result-snippet').text()).toBe('Traçado da tubulação de água')
+  })
+
+  it('should favorite and unfavorite a document showing a toast', async () => {
+    fetchDocuments.mockResolvedValue(pageOf([makeDocument(1)]))
+    const wrapper = await mountView()
+    const notifications = useNotificationStore()
+
+    await wrapper.find('.favorite-button').trigger('click')
+    expect(wrapper.find('.favorite-button').attributes('aria-pressed')).toBe('true')
+    expect(notifications.items.at(-1).message).toBe('Documento adicionado aos favoritos.')
+
+    await wrapper.find('.favorite-button').trigger('click')
+    expect(wrapper.find('.favorite-button').attributes('aria-pressed')).toBe('false')
+    expect(notifications.items.at(-1).message).toBe('Documento removido dos favoritos.')
   })
 
   it('should show the skeleton while the results are loading', async () => {

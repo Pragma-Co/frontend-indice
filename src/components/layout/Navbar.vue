@@ -12,6 +12,7 @@ const auth = useAuthStore()
 const collaboratorLinks = [
   { label: 'Início', to: '/home' },
   { label: 'Documentos', to: '/documents', preserveQuery: true },
+  { label: 'Favoritos', to: '/favorites' },
 ]
 
 const managerLinks = [

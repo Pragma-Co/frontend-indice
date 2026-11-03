@@ -47,11 +47,15 @@ describe('Navbar', () => {
     expect(brand.find('img').attributes('alt')).toBe('Índice')
   })
 
-  it('should render only the Início and Documentos links for a collaborator', async () => {
+  it('should render the Início, Documentos and Favoritos links for a collaborator', async () => {
     const { wrapper } = await mountNavbar()
     const links = wrapper.findAll('a.navbar-link')
-    expect(links.map((link) => link.text())).toEqual(['Início', 'Documentos'])
-    expect(links.map((link) => link.attributes('href'))).toEqual(['/home', '/documents'])
+    expect(links.map((link) => link.text())).toEqual(['Início', 'Documentos', 'Favoritos'])
+    expect(links.map((link) => link.attributes('href'))).toEqual([
+      '/home',
+      '/documents',
+      '/favorites',
+    ])
   })
 
   it('should mark Início as active on the home route', async () => {
