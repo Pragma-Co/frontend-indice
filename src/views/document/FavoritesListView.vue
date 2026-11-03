@@ -1,57 +1,39 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import DocumentsTable from '@/views/document/components/DocumentsTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
+import { fetchFavoriteDocuments } from '@/api/documents.js'
 import {
-  DEFAULT_ITEMS_PER_PAGE,
   ITEMS_PER_PAGE_OPTIONS,
+  useDocumentList,
 } from '@/views/document/composables/useDocumentList.js'
-import { useFavoriteStore } from '@/stores/favoriteStore.js'
 
-const router = useRouter()
-const favorites = useFavoriteStore()
-favorites.load()
+const {
+  documents,
+  totalItems,
+  totalPages,
+  currentPage,
+  itemsPerPage,
+  loading,
+  error,
+  goToPage,
+  setItemsPerPage,
+  handleDocumentAction,
+  loadDocuments,
+} = useDocumentList({ fetchPage: fetchFavoriteDocuments })
 
-const currentPage = ref(1)
-const itemsPerPage = ref(DEFAULT_ITEMS_PER_PAGE)
-
-const totalItems = computed(() => favorites.items.length)
-const totalPages = computed(() => Math.max(1, Math.ceil(totalItems.value / itemsPerPage.value)))
-const documents = computed(() => {
-  const start = (currentPage.value - 1) * itemsPerPage.value
-  return favorites.items.slice(start, start + itemsPerPage.value)
-})
-
-watch(totalPages, (pages) => {
-  if (currentPage.value > pages) currentPage.value = pages
-})
-
-function goToPage(page) {
-  currentPage.value = Math.min(Math.max(1, page), totalPages.value)
-}
-
-function setItemsPerPage(value) {
-  itemsPerPage.value = value
-  currentPage.value = 1
-}
-
-function handleDocumentAction({ document, action }) {
-  if (action === 'toggle-favorite') {
-    favorites.toggle(document)
-  } else if (action === 'new-revision') {
-    router.push({ name: 'document-new-revision', params: { documentId: document.id } })
-  } else if (action === 'view-details') {
-    router.push({ name: 'document-details', params: { documentId: document.id } })
-  }
+async function handleAction(event) {
+  const done = await handleDocumentAction(event)
+  if (event.action === 'toggle-favorite' && done) loadDocuments()
 }
 </script>
 
 <template>
   <PageLayout wide title="Favoritos" subtitle="Documentos que você marcou como favoritos.">
     <section class="card">
-      <p v-if="!documents.length" class="status-message">
+      <p v-if="loading" class="status-message">Carregando favoritos...</p>
+      <p v-else-if="error" class="status-message error-message">{{ error }}</p>
+      <p v-else-if="!documents.length" class="status-message">
         Nenhum documento favoritado. Use a estrela nos resultados de busca para favoritar.
       </p>
       <DocumentsTable
@@ -59,7 +41,7 @@ function handleDocumentAction({ document, action }) {
         class="documents-table"
         favoritable
         :documents="documents"
-        @action="handleDocumentAction"
+        @action="handleAction"
       />
 
       <Pagination
@@ -86,5 +68,9 @@ function handleDocumentAction({ document, action }) {
   align-items: center;
   justify-content: center;
   color: var(--color-text-muted);
+}
+
+.error-message {
+  color: var(--color-warning);
 }
 </style>

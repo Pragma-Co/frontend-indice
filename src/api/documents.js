@@ -54,6 +54,14 @@ export function searchDocuments(query = {}) {
   return fetchDocumentPage('/api/documents/search', query)
 }
 
+export function fetchFavoriteDocuments(query = {}) {
+  return fetchDocumentPage('/api/documents/favorite', query)
+}
+
+export function setDocumentFavorite(documentId, isFavorite) {
+  return api.put(`/documents/${documentId}/favorite`, { is_favorite: isFavorite })
+}
+
 export async function fetchResultsSummary(query = {}, { signal } = {}) {
   const filters = Object.fromEntries(new URLSearchParams(buildSummaryQueryKey(query)))
   return request('/documents/search/ai-summary', { method: 'POST', body: { filters }, signal })

@@ -23,6 +23,7 @@ vi.mock('@/api/documents.js', () => ({
   fetchResultsSummary: vi.fn(),
   fetchSimpleFilters: vi.fn(),
   searchDocuments: vi.fn(),
+  setDocumentFavorite: vi.fn(),
 }))
 
 import {
@@ -30,6 +31,7 @@ import {
   fetchResultsSummary,
   fetchSimpleFilters,
   searchDocuments,
+  setDocumentFavorite,
 } from '@/api/documents.js'
 
 const OPTIONS = {
@@ -186,14 +188,19 @@ describe('ResultsList', () => {
 
   it('should favorite and unfavorite a document showing a toast', async () => {
     fetchDocuments.mockResolvedValue(pageOf([makeDocument(1)]))
+    setDocumentFavorite.mockResolvedValue({})
     const wrapper = await mountView()
     const notifications = useNotificationStore()
 
     await wrapper.find('.favorite-button').trigger('click')
+    await flushPromises()
+    expect(setDocumentFavorite).toHaveBeenLastCalledWith(1, true)
     expect(wrapper.find('.favorite-button').attributes('aria-pressed')).toBe('true')
     expect(notifications.items.at(-1).message).toBe('Documento adicionado aos favoritos.')
 
     await wrapper.find('.favorite-button').trigger('click')
+    await flushPromises()
+    expect(setDocumentFavorite).toHaveBeenLastCalledWith(1, false)
     expect(wrapper.find('.favorite-button').attributes('aria-pressed')).toBe('false')
     expect(notifications.items.at(-1).message).toBe('Documento removido dos favoritos.')
   })

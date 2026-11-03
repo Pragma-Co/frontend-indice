@@ -1,6 +1,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { fetchDocuments } from '@/api/documents.js'
+import { fetchDocuments, setDocumentFavorite } from '@/api/documents.js'
+import { useNotificationStore } from '@/stores/notificationStore.js'
 import { buildDocumentQueryKey } from '@/utils/searchParams.js'
 
 export const ITEMS_PER_PAGE_OPTIONS = [5, 10, 20, 50]
@@ -102,7 +103,26 @@ export function useDocumentList({ fetchPage = fetchDocuments } = {}) {
     router.push({ name: 'document-new-revision', params: { documentId: document.id } })
   }
 
+  async function toggleFavorite(document) {
+    const notifications = useNotificationStore()
+    const next = !document.is_favorite
+    try {
+      await setDocumentFavorite(document.id, next)
+      document.is_favorite = next
+      notifications.success(
+        next ? 'Documento adicionado aos favoritos.' : 'Documento removido dos favoritos.',
+      )
+      return true
+    } catch {
+      notifications.error('Não foi possível atualizar os favoritos.')
+      return false
+    }
+  }
+
   function handleDocumentAction({ document, action }) {
+    if (action === 'toggle-favorite') {
+      return toggleFavorite(document)
+    }
     if (action === 'new-revision') {
       goToNewRevision(document)
     } else if (action === 'view-details') {

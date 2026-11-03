@@ -18,7 +18,6 @@ import {
   keepPageSize,
 } from '@/utils/resultFilters.js'
 import { extractSearchTerms } from '@/utils/searchHighlight.js'
-import { useFavoriteStore } from '@/stores/favoriteStore.js'
 import {
   ITEMS_PER_PAGE_OPTIONS,
   useDocumentList,
@@ -26,8 +25,6 @@ import {
 
 const route = useRoute()
 const router = useRouter()
-const favorites = useFavoriteStore()
-favorites.load()
 
 function fetchResultsPage(query) {
   return String(query.q ?? '').trim() ? searchDocuments(query) : fetchDocuments(query)
@@ -45,11 +42,6 @@ const {
   setItemsPerPage,
   handleDocumentAction,
 } = useDocumentList({ fetchPage: fetchResultsPage })
-
-function handleCardAction(event) {
-  if (event.action === 'toggle-favorite') favorites.toggle(event.document)
-  else handleDocumentAction(event)
-}
 
 const filters = computed(() => filtersFromQuery(route.query))
 const hasFilters = computed(() => countActiveFilters(filters.value) > 0)
@@ -136,9 +128,9 @@ onMounted(async () => {
               v-for="document in documents"
               :key="document.id"
               :document="document"
-              :favorite="favorites.isFavorite(document.id)"
+              :favorite="Boolean(document.is_favorite)"
               :terms="searchTerms"
-              @action="handleCardAction"
+              @action="handleDocumentAction"
             />
           </div>
         </template>
