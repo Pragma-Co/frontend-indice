@@ -16,6 +16,7 @@ import { formatDate } from '@/utils/formatters.js'
 import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import DocumentAccessOverlay from '@/views/document/components/DocumentAccessOverlay.vue'
+import RecommendedDocuments from '@/views/document/components/RecommendedDocuments.vue'
 
 const route = useRoute()
 const authStore = useAuthStore()
@@ -207,6 +208,15 @@ watch(
     }
   },
   { immediate: false },
+)
+
+watch(
+  () => route.params.documentId,
+  (documentId, previousId) => {
+    if (!documentId || documentId === previousId) return
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    loadDocument()
+  },
 )
 
 onMounted(loadDocument)
@@ -444,6 +454,11 @@ onMounted(loadDocument)
           </aside>
         </div>
       </template>
+
+      <RecommendedDocuments
+        v-if="!notFound && route.params.documentId"
+        :document-id="route.params.documentId"
+      />
     </div>
   </main>
 </template>
