@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive } from 'vue'
 import { RouterLinkStub, flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
@@ -7,10 +8,16 @@ import { ApiError } from '@/api/client.js'
 import { useAuthStore } from '@/stores/authStore.js'
 import { useNotificationStore } from '@/stores/notificationStore.js'
 import { fetchDocumentDetail, requestDocumentAccess } from '@/api/documents.js'
+import { fetchDocumentRecommendations } from '@/api/recommendations.js'
 
-const routeParams = { documentId: '23' }
+const route = reactive({ params: { documentId: '23' } })
+const routeParams = route.params
 vi.mock('vue-router', () => ({
-  useRoute: () => ({ params: routeParams }),
+  useRoute: () => route,
+}))
+
+vi.mock('@/api/recommendations.js', () => ({
+  fetchDocumentRecommendations: vi.fn().mockResolvedValue({ collections: [] }),
 }))
 
 vi.mock('docx-preview', () => ({
@@ -599,5 +606,56 @@ describe('DocumentDetailsView', () => {
 
     expect(wrapper.text()).toContain('Nenhum arquivo disponível para esta revisão.')
     expect(wrapper.find('.preview-footer').exists()).toBe(false)
+  })
+
+  describe('recommended documents', () => {
+    afterEach(() => {
+      routeParams.documentId = '23'
+    })
+
+    it('should show the recommendations of the document being viewed', async () => {
+      authStore.currentUser = { id: RESPONSIBLE_ID, name: 'Beatriz Canuto' }
+      fetchDocumentDetail.mockResolvedValue(makeDocument())
+
+      const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
+      mountedViews.push(wrapper)
+      await flushPromises()
+
+      expect(wrapper.find('#recommended-title').text()).toBe('Recomendados')
+      expect(fetchDocumentRecommendations).toHaveBeenCalledWith('23')
+    })
+
+    it('should load the new document and its recommendations when a recommendation is opened', async () => {
+      authStore.currentUser = { id: RESPONSIBLE_ID, name: 'Beatriz Canuto' }
+      fetchDocumentDetail.mockResolvedValue(makeDocument())
+      const scrollTo = vi.fn()
+      vi.stubGlobal('scrollTo', scrollTo)
+      const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
+      mountedViews.push(wrapper)
+      await flushPromises()
+      fetchDocumentDetail.mockResolvedValue(
+        makeDocument({ id: 40, title: 'Documento recomendado' }),
+      )
+
+      routeParams.documentId = '40'
+      await flushPromises()
+
+      expect(fetchDocumentDetail).toHaveBeenLastCalledWith('40', RESPONSIBLE_ID)
+      expect(fetchDocumentRecommendations).toHaveBeenLastCalledWith('40')
+      expect(scrollTo).toHaveBeenCalled()
+      expect(wrapper.text()).toContain('Documento recomendado')
+    })
+
+    it('should not show recommendations for a document that does not exist', async () => {
+      fetchDocumentDetail.mockRejectedValue(
+        new ApiError('Recurso não encontrado.', { status: 404 }),
+      )
+
+      const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
+      mountedViews.push(wrapper)
+      await flushPromises()
+
+      expect(wrapper.find('#recommended-title').exists()).toBe(false)
+    })
   })
 })
