@@ -1,4 +1,8 @@
 <script setup>
+import { watch } from 'vue'
+import { useRouter } from 'vue-router'
+import { useNotificationStore } from '@/stores/notificationStore.js'
+import FavoritesEmptyState from '@/views/document/components/FavoritesEmptyState.vue'
 import DocumentsTable from '@/views/document/components/DocumentsTable.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
@@ -7,6 +11,9 @@ import {
   ITEMS_PER_PAGE_OPTIONS,
   useDocumentList,
 } from '@/views/document/composables/useDocumentList.js'
+
+const router = useRouter()
+const notifications = useNotificationStore()
 
 const {
   documents,
@@ -22,6 +29,10 @@ const {
   loadDocuments,
 } = useDocumentList({ fetchPage: fetchFavoriteDocuments })
 
+watch(error, (message) => {
+  if (message) notifications.error(message)
+})
+
 async function handleAction(event) {
   const done = await handleDocumentAction(event)
   if (event.action === 'toggle-favorite' && done) loadDocuments()
@@ -32,10 +43,11 @@ async function handleAction(event) {
   <PageLayout wide title="Favoritos" subtitle="Documentos que você marcou como favoritos.">
     <section class="card">
       <p v-if="loading" class="status-message">Carregando favoritos...</p>
-      <p v-else-if="error" class="status-message error-message">{{ error }}</p>
-      <p v-else-if="!documents.length" class="status-message">
-        Nenhum documento favoritado. Use a estrela nos resultados de busca para favoritar.
-      </p>
+      <FavoritesEmptyState
+        v-else-if="!documents.length"
+        class="status-message"
+        @explore="router.push({ name: 'results' })"
+      />
       <DocumentsTable
         v-else
         class="documents-table"
@@ -68,9 +80,5 @@ async function handleAction(event) {
   align-items: center;
   justify-content: center;
   color: var(--color-text-muted);
-}
-
-.error-message {
-  color: var(--color-warning);
 }
 </style>
