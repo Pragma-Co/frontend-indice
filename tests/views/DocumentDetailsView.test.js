@@ -94,6 +94,18 @@ function requestButton(wrapper) {
   return wrapper.find('.access-overlay button')
 }
 
+const VALID_JUSTIFICATION = 'Preciso consultar este documento para o projeto.'
+
+async function fillAndSubmit(wrapper) {
+  await requestButton(wrapper).trigger('click')
+  await wrapper.find('.access-overlay textarea').setValue(VALID_JUSTIFICATION)
+  await submitButton(wrapper).trigger('click')
+}
+
+function submitButton(wrapper) {
+  return wrapper.find('.dialog-actions button:last-child')
+}
+
 describe('DocumentDetailsView', () => {
   let authStore
   let notifications
@@ -515,13 +527,17 @@ describe('DocumentDetailsView', () => {
     requestDocumentAccess.mockReturnValue(new Promise((resolve) => (finishRequest = resolve)))
     const wrapper = await mountAsStranger(makeDocument({ access_status: 'PENDING' }))
 
-    await requestButton(wrapper).trigger('click')
-    expect(requestButton(wrapper).attributes('disabled')).toBeDefined()
-    expect(requestButton(wrapper).text()).toContain('Enviando solicitação')
+    await fillAndSubmit(wrapper)
+    expect(submitButton(wrapper).attributes('disabled')).toBeDefined()
+    expect(submitButton(wrapper).text()).toContain('Enviando solicitação')
     finishRequest({ id: 9, status: 'PENDING', created: true })
     await flushPromises()
 
-    expect(requestDocumentAccess).toHaveBeenCalledWith('23', OTHER_USER_ID)
+    expect(requestDocumentAccess).toHaveBeenCalledWith('23', OTHER_USER_ID, {
+      justification: VALID_JUSTIFICATION,
+      access_type: 'PERMANENT',
+      expires_on: null,
+    })
     expect(fetchDocumentDetail).toHaveBeenCalledTimes(1)
     expect(requestButton(wrapper).text()).toBe('Solicitação enviada')
     expect(requestButton(wrapper).attributes('disabled')).toBeDefined()
@@ -536,15 +552,62 @@ describe('DocumentDetailsView', () => {
     requestDocumentAccess.mockRejectedValue(new ApiError('Erro interno.', { status: 500 }))
     const wrapper = await mountAsStranger(makeDocument({ access_status: 'PENDING' }))
 
-    await requestButton(wrapper).trigger('click')
+    await fillAndSubmit(wrapper)
     await flushPromises()
 
-    expect(wrapper.find('.access-overlay [role="alert"]').text()).toContain(
+    expect(wrapper.find('.dialog [role="alert"]').text()).toContain(
       'Não foi possível enviar a solicitação',
     )
-    expect(requestButton(wrapper).text()).toBe('Solicitar Acesso')
-    expect(requestButton(wrapper).attributes('disabled')).toBeUndefined()
+    expect(submitButton(wrapper).text()).toBe('Enviar solicitação')
+    expect(submitButton(wrapper).attributes('disabled')).toBeUndefined()
     expect(notifications.items[0].type).toBe('error')
+  })
+
+  it('should explain a network failure and keep the typed justification', async () => {
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
+    requestDocumentAccess.mockRejectedValue(
+      new ApiError('Não foi possível conectar ao servidor.', { status: 0 }),
+    )
+    const wrapper = await mountAsStranger(makeDocument({ access_status: 'PENDING' }))
+
+    await fillAndSubmit(wrapper)
+    await flushPromises()
+
+    expect(wrapper.find('.dialog [role="alert"]').text()).toContain('Sem conexão')
+    expect(wrapper.find('textarea').element.value).toBe(VALID_JUSTIFICATION)
+    expect(submitButton(wrapper).attributes('disabled')).toBeUndefined()
+  })
+
+  it('should not call the API when the justification is invalid', async () => {
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
+    const wrapper = await mountAsStranger(makeDocument({ access_status: 'PENDING' }))
+
+    await requestButton(wrapper).trigger('click')
+    await submitButton(wrapper).trigger('click')
+
+    expect(requestDocumentAccess).not.toHaveBeenCalled()
+  })
+
+  it('should lock the form when the backend reports a duplicate pending request', async () => {
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante' }
+    requestDocumentAccess.mockRejectedValue(new ApiError('Duplicada.', { status: 409 }))
+    fetchDocumentDetail
+      .mockResolvedValueOnce(makeDocument({ access_status: 'PENDING' }))
+      .mockResolvedValueOnce(
+        makeDocument({
+          access_status: 'PENDING',
+          access_request: { id: 9, status: 'PENDING', created_at: '2026-09-22' },
+        }),
+      )
+    const wrapper = mount(DocumentDetailsView, { global: { stubs: accessStubs } })
+    mountedViews.push(wrapper)
+    await flushPromises()
+
+    await fillAndSubmit(wrapper)
+    await flushPromises()
+
+    expect(requestButton(wrapper).text()).toBe('Solicitação enviada')
+    expect(requestButton(wrapper).attributes('disabled')).toBeDefined()
   })
 
   it('should start as sent when the backend already has a pending request', async () => {
@@ -585,7 +648,7 @@ describe('DocumentDetailsView', () => {
     mountedViews.push(wrapper)
     await flushPromises()
 
-    await requestButton(wrapper).trigger('click')
+    await fillAndSubmit(wrapper)
     await flushPromises()
 
     expect(fetchDocumentDetail).toHaveBeenCalledTimes(2)

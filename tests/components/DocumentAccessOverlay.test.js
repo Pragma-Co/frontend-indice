@@ -2,53 +2,70 @@ import { describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
 import DocumentAccessOverlay from '@/views/document/components/DocumentAccessOverlay.vue'
 
-function requestButton(wrapper) {
-  return wrapper.find('button')
+const PAYLOAD = { justification: 'Preciso consultar este documento.', access_type: 'PERMANENT' }
+
+function openButton(wrapper) {
+  return wrapper.find('.access-banner button')
 }
 
 describe('DocumentAccessOverlay', () => {
-  it('should explain the restriction and offer to request access', () => {
+  it('should explain the restriction and offer the request button without the form', () => {
     const wrapper = mount(DocumentAccessOverlay)
 
     expect(wrapper.text()).toContain('Conteúdo restrito')
     expect(wrapper.text()).toContain('sigiloso')
-    expect(requestButton(wrapper).text()).toBe('Solicitar Acesso')
-    expect(requestButton(wrapper).attributes('disabled')).toBeUndefined()
+    expect(openButton(wrapper).text()).toBe('Solicitar Acesso')
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+    expect(wrapper.find('textarea').exists()).toBe(false)
   })
 
-  it('should emit request when the button is clicked', async () => {
+  it('should open the dialog when the button is clicked', async () => {
     const wrapper = mount(DocumentAccessOverlay)
 
-    await requestButton(wrapper).trigger('click')
+    await openButton(wrapper).trigger('click')
 
-    expect(wrapper.emitted('request')).toHaveLength(1)
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(true)
+    expect(wrapper.find('textarea').exists()).toBe(true)
   })
 
-  it('should show the loading state and block new clicks while requesting', async () => {
-    const wrapper = mount(DocumentAccessOverlay, { props: { requesting: true } })
+  it('should close the dialog on cancel without emitting', async () => {
+    const wrapper = mount(DocumentAccessOverlay)
+    await openButton(wrapper).trigger('click')
 
-    expect(requestButton(wrapper).text()).toContain('Enviando solicitação')
-    expect(requestButton(wrapper).attributes('disabled')).toBeDefined()
-    expect(requestButton(wrapper).attributes('aria-busy')).toBe('true')
-    await requestButton(wrapper).trigger('click')
+    await wrapper.findComponent({ name: 'AccessRequestDialog' }).vm.$emit('cancel')
+
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
     expect(wrapper.emitted('request')).toBeUndefined()
   })
 
-  it('should stay disabled as sent after the request succeeds', () => {
-    const wrapper = mount(DocumentAccessOverlay, { props: { requested: true } })
+  it('should forward the dialog payload as a request event', async () => {
+    const wrapper = mount(DocumentAccessOverlay)
+    await openButton(wrapper).trigger('click')
 
-    expect(requestButton(wrapper).text()).toBe('Solicitação enviada')
-    expect(requestButton(wrapper).attributes('disabled')).toBeDefined()
-    expect(wrapper.find('[role="status"]').text()).toContain('responsável responder')
+    await wrapper.findComponent({ name: 'AccessRequestDialog' }).vm.$emit('submit', PAYLOAD)
+
+    expect(wrapper.emitted('request')).toEqual([[PAYLOAD]])
   })
 
-  it('should show the error and keep the button available to try again', () => {
-    const wrapper = mount(DocumentAccessOverlay, {
-      props: { errorMessage: 'Não foi possível enviar a solicitação. Tente novamente.' },
-    })
+  it('should keep the dialog open and show the error when the request fails', async () => {
+    const wrapper = mount(DocumentAccessOverlay)
+    await openButton(wrapper).trigger('click')
 
-    expect(wrapper.find('[role="alert"]').text()).toContain('Não foi possível enviar')
-    expect(requestButton(wrapper).attributes('disabled')).toBeUndefined()
+    await wrapper.setProps({ errorMessage: 'Não foi possível enviar a solicitação.' })
+
+    expect(wrapper.find('[role="dialog"] [role="alert"]').text()).toContain('Não foi possível')
+  })
+
+  it('should close the dialog and block duplicates once the request is pending', async () => {
+    const wrapper = mount(DocumentAccessOverlay)
+    await openButton(wrapper).trigger('click')
+
+    await wrapper.setProps({ requested: true })
+
+    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
+    expect(openButton(wrapper).text()).toBe('Solicitação enviada')
+    expect(openButton(wrapper).attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[role="status"]').text()).toContain('responsável responder')
   })
 
   it('should tell the user a rejected request instead of offering the button', () => {
