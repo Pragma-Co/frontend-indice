@@ -2,12 +2,13 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import router from '../../src/router'
 import { PROFILES, useAuthStore } from '../../src/stores/authStore'
+import { ACCOUNTS_BY_PROFILE, COLLABORATOR_ACCOUNT, MANAGER_ACCOUNT } from '../fixtures/accounts'
 
 describe('router', () => {
   beforeEach(async () => {
     localStorage.clear()
     setActivePinia(createPinia())
-    useAuthStore().login(PROFILES.COLLABORATOR)
+    useAuthStore().setSession(COLLABORATOR_ACCOUNT)
     await router.push('/login')
   })
 
@@ -76,7 +77,7 @@ describe('router', () => {
   )
 
   it('should send a manager back to the home route when opening the documents list', async () => {
-    useAuthStore().login(PROFILES.MANAGER)
+    useAuthStore().setSession(MANAGER_ACCOUNT)
 
     await router.push('/documents')
 
@@ -84,7 +85,7 @@ describe('router', () => {
   })
 
   it('should open the documents list for a collaborator', async () => {
-    useAuthStore().login(PROFILES.COLLABORATOR)
+    useAuthStore().setSession(COLLABORATOR_ACCOUNT)
 
     await router.push('/documents')
 
@@ -92,7 +93,7 @@ describe('router', () => {
   })
 
   it('should open the manager routes for a manager', async () => {
-    useAuthStore().login(PROFILES.MANAGER)
+    useAuthStore().setSession(MANAGER_ACCOUNT)
 
     await router.push('/revisions')
     const revisionsRoute = router.currentRoute.value.name
@@ -104,7 +105,7 @@ describe('router', () => {
   })
 
   it('should open the review panel on the revisions route', async () => {
-    useAuthStore().login(PROFILES.MANAGER)
+    useAuthStore().setSession(MANAGER_ACCOUNT)
 
     await router.push('/revisions')
 
@@ -115,7 +116,7 @@ describe('router', () => {
   it.each([PROFILES.COLLABORATOR, PROFILES.MANAGER])(
     'should open the profile route for the %s',
     async (profile) => {
-      useAuthStore().login(profile)
+      useAuthStore().setSession(ACCOUNTS_BY_PROFILE[profile])
 
       await router.push('/profile')
 

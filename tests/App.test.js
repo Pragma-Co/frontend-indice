@@ -6,7 +6,8 @@ vi.mock('../src/api/users', () => ({ fetchCurrentUser: vi.fn() }))
 
 import App from '../src/App.vue'
 import { fetchCurrentUser } from '../src/api/users'
-import { PROFILES, useAuthStore } from '../src/stores/authStore'
+import { useAuthStore } from '../src/stores/authStore'
+import { COLLABORATOR_ACCOUNT, MANAGER_ACCOUNT } from './fixtures/accounts'
 
 const Page = { template: '<div />' }
 
@@ -33,7 +34,7 @@ describe('App', () => {
   })
 
   it('should hide the navbar on the login screen', async () => {
-    useAuthStore().login(PROFILES.MANAGER)
+    useAuthStore().setSession(MANAGER_ACCOUNT)
 
     const wrapper = await mountApp('/login')
 
@@ -47,7 +48,7 @@ describe('App', () => {
   })
 
   it('should show the navbar to a signed in user', async () => {
-    useAuthStore().login(PROFILES.COLLABORATOR)
+    useAuthStore().setSession(COLLABORATOR_ACCOUNT)
 
     const wrapper = await mountApp('/home')
 
@@ -55,7 +56,7 @@ describe('App', () => {
   })
 
   it('should refresh the signed in user from the backend when the app opens', async () => {
-    useAuthStore().login(PROFILES.COLLABORATOR)
+    useAuthStore().setSession(COLLABORATOR_ACCOUNT)
     fetchCurrentUser.mockResolvedValue({ id: 12, name: 'Beatriz C. Canuto' })
 
     const wrapper = await mountApp('/home')
