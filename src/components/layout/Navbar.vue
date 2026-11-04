@@ -19,6 +19,7 @@ const managerLinks = [
   { label: 'Início', to: '/home' },
   { label: 'Revisões', to: '/revisions' },
   { label: 'Colaboradores', to: '/collaborators' },
+  { label: 'Favoritos', to: '/favorites' },
 ]
 
 const links = computed(() => (auth.isManager ? managerLinks : collaboratorLinks))

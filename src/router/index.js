@@ -33,7 +33,7 @@ const router = createRouter({
       path: '/favorites',
       name: 'favorites',
       component: () => import('../views/document/FavoritesListView.vue'),
-      meta: { title: 'Colaborador - Favoritos', collaboratorOnly: true },
+      meta: { title: 'Colaborador - Favoritos' },
     },
     {
       path: '/documents/:documentId',
