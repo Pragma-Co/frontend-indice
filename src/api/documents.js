@@ -55,11 +55,12 @@ export function searchDocuments(query = {}) {
 }
 
 export function fetchFavoriteDocuments(query = {}) {
-  return fetchDocumentPage('/api/documents/favorite', query)
+  return fetchDocumentPage('/api/users/me/library', query)
 }
 
 export function setDocumentFavorite(documentId, isFavorite) {
-  return api.put(`/documents/${documentId}/favorite`, { is_favorite: isFavorite })
+  const path = `/users/me/library/${documentId}`
+  return isFavorite ? api.post(path) : api.delete(path)
 }
 
 export async function fetchResultsSummary(query = {}, { signal } = {}) {
