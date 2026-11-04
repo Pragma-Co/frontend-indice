@@ -104,16 +104,22 @@ describe('Navbar', () => {
     expect(wrapper.find('header.navbar').exists()).toBe(true)
   })
 
-  it('should render the Início, Revisões and Colaboradores links for a manager', async () => {
+  it('should render the Início, Revisões, Colaboradores and Favoritos links for a manager', async () => {
     const { wrapper } = await mountNavbar('/home', PROFILES.MANAGER)
 
     const links = wrapper.findAll('a.navbar-link')
 
-    expect(links.map((link) => link.text())).toEqual(['Início', 'Revisões', 'Colaboradores'])
+    expect(links.map((link) => link.text())).toEqual([
+      'Início',
+      'Revisões',
+      'Colaboradores',
+      'Favoritos',
+    ])
     expect(links.map((link) => link.attributes('href'))).toEqual([
       '/home',
       '/revisions',
       '/collaborators',
+      '/favorites',
     ])
   })
 
