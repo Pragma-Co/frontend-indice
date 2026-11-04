@@ -175,7 +175,6 @@ describe('Navbar', () => {
 
     expect(endSession).toHaveBeenCalledTimes(1)
     expect(useAuthStore().isAuthenticated).toBe(false)
-    expect(localStorage.getItem('indice.profile')).toBeNull()
     expect(router.currentRoute.value.path).toBe('/login')
   })
 })

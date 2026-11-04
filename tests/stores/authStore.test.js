@@ -3,12 +3,9 @@ import { createPinia, setActivePinia } from 'pinia'
 import { endSession, fetchCsrfCookie, startSession } from '@/api/auth.js'
 import { fetchCurrentUser } from '@/api/users.js'
 import {
-  PROFILE_STORAGE_KEY,
+  LEGACY_STORAGE_KEYS,
   PROFILES,
-  USER_STORAGE_KEY,
   profileForRole,
-  resolveStoredProfile,
-  resolveStoredUser,
   toCurrentUser,
   useAuthStore,
 } from '@/stores/authStore.js'
@@ -22,6 +19,14 @@ vi.mock('@/api/auth.js', () => ({
 vi.mock('@/api/users.js', () => ({ fetchCurrentUser: vi.fn() }))
 
 const CREDENTIALS = { email: 'thiago.serpa@akaer.local', password: 'senha-segura' }
+
+function deferred() {
+  let resolve
+  const promise = new Promise((done) => {
+    resolve = done
+  })
+  return { promise, resolve }
+}
 
 describe('profileForRole', () => {
   it('should map auditors and admins to the manager profile', () => {
@@ -53,65 +58,19 @@ describe('toCurrentUser', () => {
   })
 })
 
-describe('resolveStoredProfile', () => {
-  function profileStorage(value) {
-    return { getItem: (key) => (key === PROFILE_STORAGE_KEY ? value : null) }
-  }
-
-  it('should restore a known profile', () => {
-    expect(resolveStoredProfile(profileStorage('manager'))).toBe(PROFILES.MANAGER)
-    expect(resolveStoredProfile(profileStorage('collaborator'))).toBe(PROFILES.COLLABORATOR)
-  })
-
-  it('should ignore a missing or unknown profile', () => {
-    expect(resolveStoredProfile(profileStorage(null))).toBeNull()
-    expect(resolveStoredProfile(profileStorage('admin'))).toBeNull()
-    expect(resolveStoredProfile(profileStorage('toString'))).toBeNull()
-  })
-
-  it('should ignore a storage that cannot be read', () => {
-    const brokenStorage = {
-      getItem: () => {
-        throw new Error('blocked')
-      },
-    }
-
-    expect(resolveStoredProfile(brokenStorage)).toBeNull()
-  })
-})
-
-describe('resolveStoredUser', () => {
-  function userStorage(value) {
-    return { getItem: (key) => (key === USER_STORAGE_KEY ? value : null) }
-  }
-
-  it('should restore a stored user', () => {
-    expect(resolveStoredUser(userStorage('{"id":10,"name":"Thiago Serpa"}'))).toEqual({
-      id: 10,
-      name: 'Thiago Serpa',
-    })
-  })
-
-  it('should ignore a stored value that is not a valid user', () => {
-    expect(resolveStoredUser(userStorage('{"id":"abc","name":"X"}'))).toBeNull()
-    expect(resolveStoredUser(userStorage('{"id":1,"name":"  "}'))).toBeNull()
-    expect(resolveStoredUser(userStorage('not json'))).toBeNull()
-    expect(resolveStoredUser(userStorage(null))).toBeNull()
-  })
-})
-
 describe('authStore session', () => {
   beforeEach(() => {
     localStorage.clear()
     setActivePinia(createPinia())
   })
 
-  it('should start without a user', () => {
+  it('should start without a user and without a checked session', () => {
     const auth = useAuthStore()
 
     expect(auth.isAuthenticated).toBe(false)
     expect(auth.isManager).toBe(false)
     expect(auth.currentUser).toBeNull()
+    expect(auth.sessionChecked).toBe(false)
   })
 
   it('should open a collaborator session from an author account', () => {
@@ -134,24 +93,28 @@ describe('authStore session', () => {
     expect(auth.currentUser).toMatchObject({ id: 10, name: 'Thiago Serpa', role: 'Gestor' })
   })
 
-  it('should keep the session after the page is reloaded', () => {
+  it('should mark the session as checked when it is opened', () => {
+    const auth = useAuthStore()
+
+    auth.setSession(COLLABORATOR_ACCOUNT)
+
+    expect(auth.sessionChecked).toBe(true)
+  })
+
+  it('should keep the signed in user only in memory', () => {
+    useAuthStore().setSession(MANAGER_ACCOUNT)
+
+    expect(localStorage.length).toBe(0)
+  })
+
+  it('should start a reloaded page signed out until the backend confirms the session', () => {
     useAuthStore().setSession(MANAGER_ACCOUNT)
 
     setActivePinia(createPinia())
     const reloaded = useAuthStore()
 
-    expect(reloaded.isManager).toBe(true)
-    expect(reloaded.currentUser.name).toBe('Thiago Serpa')
-    expect(reloaded.currentUser.area).toBe('Qualidade e Inspeção')
-  })
-
-  it('should not restore a session whose stored user is missing', () => {
-    localStorage.setItem(PROFILE_STORAGE_KEY, PROFILES.MANAGER)
-
-    const auth = useAuthStore()
-
-    expect(auth.isAuthenticated).toBe(false)
-    expect(auth.profile).toBeNull()
+    expect(reloaded.isAuthenticated).toBe(false)
+    expect(reloaded.sessionChecked).toBe(false)
   })
 
   it('should switch the user when another account signs in', () => {
@@ -162,7 +125,92 @@ describe('authStore session', () => {
 
     expect(auth.isManager).toBe(false)
     expect(auth.currentUser.name).toBe('Beatriz Canuto')
-    expect(localStorage.getItem(PROFILE_STORAGE_KEY)).toBe(PROFILES.COLLABORATOR)
+  })
+})
+
+describe('authStore ensureSession', () => {
+  beforeEach(() => {
+    localStorage.clear()
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  it('should open the session of the account the backend recognizes', async () => {
+    fetchCurrentUser.mockResolvedValue(MANAGER_ACCOUNT)
+    const auth = useAuthStore()
+
+    await auth.ensureSession()
+
+    expect(fetchCurrentUser).toHaveBeenCalledTimes(1)
+    expect(auth.isManager).toBe(true)
+    expect(auth.currentUser).toMatchObject({ id: 10, name: 'Thiago Serpa' })
+    expect(auth.sessionChecked).toBe(true)
+  })
+
+  it('should stay signed out when the backend has no session', async () => {
+    fetchCurrentUser.mockRejectedValue(Object.assign(new Error('unauthorized'), { status: 401 }))
+    const auth = useAuthStore()
+
+    await expect(auth.ensureSession()).resolves.toBeUndefined()
+
+    expect(auth.isAuthenticated).toBe(false)
+    expect(auth.profile).toBeNull()
+    expect(auth.sessionChecked).toBe(true)
+  })
+
+  it('should stay signed out without failing when the server is unreachable', async () => {
+    fetchCurrentUser.mockRejectedValue(Object.assign(new Error('offline'), { status: 0 }))
+    const auth = useAuthStore()
+
+    await expect(auth.ensureSession()).resolves.toBeUndefined()
+
+    expect(auth.isAuthenticated).toBe(false)
+    expect(auth.sessionChecked).toBe(true)
+  })
+
+  it('should ask the backend only once for simultaneous checks', async () => {
+    const account = deferred()
+    fetchCurrentUser.mockReturnValue(account.promise)
+    const auth = useAuthStore()
+
+    const checks = [auth.ensureSession(), auth.ensureSession(), auth.ensureSession()]
+    account.resolve(COLLABORATOR_ACCOUNT)
+    await Promise.all(checks)
+
+    expect(fetchCurrentUser).toHaveBeenCalledTimes(1)
+    expect(auth.currentUser.name).toBe('Beatriz Canuto')
+  })
+
+  it('should not ask the backend again once the session was checked', async () => {
+    fetchCurrentUser.mockResolvedValue(MANAGER_ACCOUNT)
+    const auth = useAuthStore()
+
+    await auth.ensureSession()
+    await auth.ensureSession()
+
+    expect(fetchCurrentUser).toHaveBeenCalledTimes(1)
+  })
+
+  it('should not ask the backend when the user has just signed in', async () => {
+    const auth = useAuthStore()
+    auth.setSession(COLLABORATOR_ACCOUNT)
+
+    await auth.ensureSession()
+
+    expect(fetchCurrentUser).not.toHaveBeenCalled()
+  })
+
+  it('should not restore the session when the user logged out during the check', async () => {
+    const account = deferred()
+    fetchCurrentUser.mockReturnValue(account.promise)
+    const auth = useAuthStore()
+
+    const check = auth.ensureSession()
+    auth.logout()
+    account.resolve(MANAGER_ACCOUNT)
+    await check
+
+    expect(auth.isAuthenticated).toBe(false)
   })
 })
 
@@ -189,13 +237,14 @@ describe('authStore signIn', () => {
     expect(startSession).toHaveBeenCalledWith(CREDENTIALS)
   })
 
-  it('should open the session of the returned account', async () => {
+  it('should open and mark as checked the session of the returned account', async () => {
     const auth = useAuthStore()
 
     const user = await auth.signIn(CREDENTIALS)
 
     expect(auth.isAuthenticated).toBe(true)
     expect(auth.isManager).toBe(true)
+    expect(auth.sessionChecked).toBe(true)
     expect(user).toMatchObject({ id: 10, name: 'Thiago Serpa', role: 'Gestor' })
   })
 
@@ -217,7 +266,6 @@ describe('authStore signIn', () => {
     await expect(auth.signIn(CREDENTIALS)).rejects.toBe(failure)
 
     expect(auth.isAuthenticated).toBe(false)
-    expect(localStorage.getItem(USER_STORAGE_KEY)).toBeNull()
   })
 
   it('should not send the credentials when the CSRF cookie cannot be fetched', async () => {
@@ -251,7 +299,6 @@ describe('authStore account data', () => {
       role: 'Gestor',
     })
     expect(auth.initials).toBe('TS')
-    expect(JSON.parse(localStorage.getItem(USER_STORAGE_KEY)).name).toBe('Tiago Serpa')
   })
 
   it('should ignore account data of another user', () => {
@@ -263,39 +310,10 @@ describe('authStore account data', () => {
     expect(auth.currentUser.name).toBe('Thiago Serpa')
   })
 
-  it('should refresh the signed in user from the backend account', async () => {
-    fetchCurrentUser.mockResolvedValue({
-      id: 12,
-      name: 'Beatriz C. Canuto',
-      email: 'b@akaer.local',
-    })
-    const auth = useAuthStore()
-    auth.setSession(COLLABORATOR_ACCOUNT)
-
-    await auth.refreshAccount()
-
-    expect(auth.currentUser.name).toBe('Beatriz C. Canuto')
-  })
-
-  it('should keep the user as it is when the account cannot be loaded', async () => {
-    fetchCurrentUser.mockRejectedValue(Object.assign(new Error('no session'), { status: 401 }))
-    const auth = useAuthStore()
-    auth.setSession(COLLABORATOR_ACCOUNT)
-
-    await auth.refreshAccount()
-
-    expect(auth.currentUser.name).toBe('Beatriz Canuto')
-  })
-
-  it('should not ask the backend for the account when nobody is signed in', async () => {
-    await useAuthStore().refreshAccount()
-
-    expect(fetchCurrentUser).not.toHaveBeenCalled()
-  })
-
-  it('should clear every stored authentication data on logout', () => {
+  it('should clear the user, the legacy stored session and the CSRF cookie on logout', () => {
     const auth = useAuthStore()
     auth.setSession(MANAGER_ACCOUNT)
+    for (const key of LEGACY_STORAGE_KEYS) localStorage.setItem(key, 'legacy')
     localStorage.setItem('indice.unrelated', 'kept')
     document.cookie = 'csrftoken=abc; path=/'
 
@@ -303,22 +321,39 @@ describe('authStore account data', () => {
 
     expect(auth.isAuthenticated).toBe(false)
     expect(auth.profile).toBeNull()
-    expect(localStorage.getItem(PROFILE_STORAGE_KEY)).toBeNull()
-    expect(localStorage.getItem(USER_STORAGE_KEY)).toBeNull()
+    expect(localStorage.getItem('indice.profile')).toBeNull()
+    expect(localStorage.getItem('indice.user')).toBeNull()
     expect(localStorage.getItem('indice.unrelated')).toBe('kept')
     expect(document.cookie).not.toContain('csrftoken')
   })
 
-  it('should keep the user signed out after a reload once logged out', () => {
-    useAuthStore().setSession(MANAGER_ACCOUNT)
-    useAuthStore().logout()
+  it('should not ask the backend for the session again after logout', async () => {
+    const auth = useAuthStore()
+    auth.setSession(MANAGER_ACCOUNT)
 
-    setActivePinia(createPinia())
+    auth.logout()
+    await auth.ensureSession()
 
-    expect(useAuthStore().isAuthenticated).toBe(false)
+    expect(auth.sessionChecked).toBe(true)
+    expect(auth.isAuthenticated).toBe(false)
+    expect(fetchCurrentUser).not.toHaveBeenCalled()
   })
 
-  it('should end the backend session and clear the local data on sign out', async () => {
+  it('should still log out when the storage cannot be written', () => {
+    const auth = useAuthStore()
+    auth.setSession(MANAGER_ACCOUNT)
+    const brokenStorage = {
+      removeItem: () => {
+        throw new Error('blocked')
+      },
+    }
+
+    auth.logout(brokenStorage)
+
+    expect(auth.isAuthenticated).toBe(false)
+  })
+
+  it('should end the backend session and clear the user on sign out', async () => {
     endSession.mockResolvedValue(null)
     const auth = useAuthStore()
     auth.setSession(MANAGER_ACCOUNT)
@@ -327,10 +362,10 @@ describe('authStore account data', () => {
 
     expect(endSession).toHaveBeenCalledTimes(1)
     expect(auth.isAuthenticated).toBe(false)
-    expect(localStorage.getItem(PROFILE_STORAGE_KEY)).toBeNull()
+    expect(auth.sessionChecked).toBe(true)
   })
 
-  it('should still clear the local data when the backend cannot end the session', async () => {
+  it('should still clear the user when the backend cannot end the session', async () => {
     endSession.mockRejectedValue(new Error('offline'))
     const auth = useAuthStore()
     auth.setSession(MANAGER_ACCOUNT)
@@ -338,6 +373,5 @@ describe('authStore account data', () => {
     await auth.signOut()
 
     expect(auth.isAuthenticated).toBe(false)
-    expect(localStorage.getItem(PROFILE_STORAGE_KEY)).toBeNull()
   })
 })

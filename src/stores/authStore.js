@@ -4,11 +4,8 @@ import { fetchCurrentUser } from '../api/users'
 import { clearCookie } from '../utils/cookies'
 import { getInitials } from '../utils/formatters'
 
-export const PROFILE_STORAGE_KEY = 'indice.profile'
-export const USER_STORAGE_KEY = 'indice.user'
 export const CSRF_COOKIE_NAME = 'csrftoken'
-
-const AUTH_STORAGE_KEYS = [PROFILE_STORAGE_KEY, USER_STORAGE_KEY]
+export const LEGACY_STORAGE_KEYS = ['indice.profile', 'indice.user']
 
 export const PROFILES = {
   COLLABORATOR: 'collaborator',
@@ -22,13 +19,7 @@ const PROFILE_LABELS = {
   [PROFILES.MANAGER]: 'Gestor',
 }
 
-function isKnownProfile(profile) {
-  return typeof profile === 'string' && Object.hasOwn(PROFILE_LABELS, profile)
-}
-
-function isValidUser(user) {
-  return Number.isInteger(user?.id) && typeof user?.name === 'string' && Boolean(user.name.trim())
-}
+const pendingSessionChecks = new WeakMap()
 
 export function profileForRole(role) {
   return MANAGER_ROLES.includes(role) ? PROFILES.MANAGER : PROFILES.COLLABORATOR
@@ -45,73 +36,72 @@ export function toCurrentUser(account) {
   }
 }
 
-export function resolveStoredProfile(storage = globalThis.localStorage) {
+async function fetchAccountOrNull() {
   try {
-    const stored = storage?.getItem(PROFILE_STORAGE_KEY)
-    return isKnownProfile(stored) ? stored : null
+    return await fetchCurrentUser()
   } catch {
     return null
   }
 }
 
-export function resolveStoredUser(storage = globalThis.localStorage) {
-  try {
-    const stored = JSON.parse(storage?.getItem(USER_STORAGE_KEY) ?? 'null')
-    return isValidUser(stored) ? stored : null
-  } catch {
-    return null
-  }
-}
-
-function restoreSession(storage = globalThis.localStorage) {
-  const profile = resolveStoredProfile(storage)
-  const currentUser = profile ? resolveStoredUser(storage) : null
-  return currentUser ? { profile, currentUser } : { profile: null, currentUser: null }
-}
-
-function persistSession(storage, profile, currentUser) {
-  try {
-    storage?.setItem(PROFILE_STORAGE_KEY, profile)
-    storage?.setItem(USER_STORAGE_KEY, JSON.stringify(currentUser))
-  } catch {
-    return
+function removeLegacySession(storage) {
+  for (const key of LEGACY_STORAGE_KEYS) {
+    try {
+      storage?.removeItem(key)
+    } catch {
+      continue
+    }
   }
 }
 
 export const useAuthStore = defineStore('auth', {
-  state: () => restoreSession(),
+  state: () => ({
+    profile: null,
+    currentUser: null,
+    sessionChecked: false,
+  }),
   getters: {
     isAuthenticated: (state) => Boolean(state.currentUser),
     isManager: (state) => state.profile === PROFILES.MANAGER,
     initials: (state) => getInitials(state.currentUser?.name),
   },
   actions: {
-    setSession(account, storage = globalThis.localStorage) {
+    setSession(account) {
       this.profile = profileForRole(account.role)
       this.currentUser = toCurrentUser(account)
-      persistSession(storage, this.profile, this.currentUser)
+      this.sessionChecked = true
     },
-    async signIn(credentials, storage = globalThis.localStorage) {
+    clearSession() {
+      this.profile = null
+      this.currentUser = null
+      this.sessionChecked = true
+    },
+    async restoreSession() {
+      const account = await fetchAccountOrNull()
+      if (this.sessionChecked) return
+      if (account) this.setSession(account)
+      else this.clearSession()
+    },
+    ensureSession() {
+      if (this.sessionChecked) return Promise.resolve()
+      if (!pendingSessionChecks.has(this)) {
+        const check = this.restoreSession().finally(() => pendingSessionChecks.delete(this))
+        pendingSessionChecks.set(this, check)
+      }
+      return pendingSessionChecks.get(this)
+    },
+    async signIn(credentials) {
       await fetchCsrfCookie()
       const account = await startSession(credentials)
-      this.setSession(account, storage)
+      this.setSession(account)
       return this.currentUser
     },
-    applyAccount(account, storage = globalThis.localStorage) {
+    applyAccount(account) {
       if (!this.currentUser || account?.id !== this.currentUser.id) return
       this.currentUser = {
         ...this.currentUser,
         name: account.name ?? this.currentUser.name,
         email: account.email ?? this.currentUser.email,
-      }
-      persistSession(storage, this.profile, this.currentUser)
-    },
-    async refreshAccount() {
-      if (!this.isAuthenticated) return
-      try {
-        this.applyAccount(await fetchCurrentUser())
-      } catch {
-        return
       }
     },
     async signOut(storage = globalThis.localStorage) {
@@ -124,15 +114,8 @@ export const useAuthStore = defineStore('auth', {
       this.logout(storage)
     },
     logout(storage = globalThis.localStorage) {
-      this.profile = null
-      this.currentUser = null
-      for (const key of AUTH_STORAGE_KEYS) {
-        try {
-          storage?.removeItem(key)
-        } catch {
-          continue
-        }
-      }
+      this.clearSession()
+      removeLegacySession(storage)
       clearCookie(CSRF_COOKIE_NAME)
     },
   },

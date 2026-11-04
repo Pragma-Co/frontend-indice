@@ -197,9 +197,8 @@ describe('UserManagementView', () => {
     wrapper.unmount()
   })
 
-  it('should clear every stored authentication data after the deletion', async () => {
+  it('should clear the signed in user and the CSRF cookie after the deletion', async () => {
     requestAccountDeletion.mockResolvedValue({})
-    localStorage.setItem('indice.unrelated', 'kept')
     document.cookie = 'csrftoken=token-before-deletion; path=/'
     const wrapper = await mountView()
 
@@ -207,9 +206,6 @@ describe('UserManagementView', () => {
     await wrapper.find('[role="alertdialog"]').findAll('button')[1].trigger('click')
     await flushPromises()
 
-    expect(localStorage.getItem('indice.profile')).toBeNull()
-    expect(localStorage.getItem('indice.user')).toBeNull()
-    expect(localStorage.getItem('indice.unrelated')).toBe('kept')
     expect(document.cookie).not.toContain('csrftoken')
     expect(useAuthStore().currentUser).toBeNull()
     wrapper.unmount()
