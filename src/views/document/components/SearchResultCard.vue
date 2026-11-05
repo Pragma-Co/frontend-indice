@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { Star } from '@lucide/vue'
 import Badge from '@/components/common/Badge.vue'
 import HighlightedText from '@/components/common/HighlightedText.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
@@ -18,6 +19,7 @@ const NEW_REVISION_BLOCKED_MESSAGE = REVISION_BLOCK_MESSAGES[REVISION_BLOCK_REAS
 const props = defineProps({
   document: { type: Object, required: true },
   terms: { type: Array, default: () => [] },
+  favorite: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['action'])
@@ -53,6 +55,10 @@ function openDetails() {
   emit('action', { document: props.document, action: 'view-details' })
 }
 
+function toggleFavorite() {
+  emit('action', { document: props.document, action: 'toggle-favorite' })
+}
+
 function startNewRevision() {
   if (!revisionAllowed.value) return
   emit('action', { document: props.document, action: 'new-revision' })
@@ -73,6 +79,17 @@ function startNewRevision() {
       <div class="result-badges">
         <Badge>{{ document.revision }}</Badge>
         <StatusBadge v-if="statusBadge" :status="statusBadge" />
+        <button
+          type="button"
+          class="favorite-button"
+          :class="{ 'favorite-button-active': favorite }"
+          :aria-pressed="favorite"
+          :aria-label="favorite ? 'Desfavoritar documento' : 'Favoritar documento'"
+          :title="favorite ? 'Desfavoritar' : 'Favoritar'"
+          @click="toggleFavorite"
+        >
+          <Star :size="18" :fill="favorite ? 'currentColor' : 'none'" aria-hidden="true" />
+        </button>
       </div>
     </header>
 
@@ -195,6 +212,29 @@ function startNewRevision() {
   flex-shrink: 0;
   align-items: center;
   gap: 0.4rem;
+}
+
+.favorite-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.favorite-button:hover,
+.favorite-button-active {
+  color: var(--color-warning);
+}
+
+.favorite-button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .result-category {

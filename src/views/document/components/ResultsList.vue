@@ -128,6 +128,7 @@ onMounted(async () => {
               v-for="document in documents"
               :key="document.id"
               :document="document"
+              :favorite="Boolean(document.is_favorite)"
               :terms="searchTerms"
               @action="handleDocumentAction"
             />
@@ -166,7 +167,7 @@ onMounted(async () => {
 }
 
 .results-content {
-  max-height: calc(100vh - 250px - var(--summary-height, 92px));
+  max-height: calc(100vh - 251px - var(--summary-height, 92px));
 }
 
 .results-main {

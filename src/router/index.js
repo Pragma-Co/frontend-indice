@@ -37,6 +37,12 @@ const router = createRouter({
       meta: { title: 'Colaborador - Documentos', collaboratorOnly: true },
     },
     {
+      path: '/favorites',
+      name: 'favorites',
+      component: () => import('../views/document/FavoritesListView.vue'),
+      meta: { title: 'Colaborador - Favoritos' },
+    },
+    {
       path: '/documents/:documentId',
       name: 'document-details',
       component: () => import('../views/document/DocumentDetailsView.vue'),
