@@ -12,6 +12,8 @@ export const useNotificationStore = defineStore('notifications', {
 
   actions: {
     notify({ type = 'info', message, timeout = DEFAULT_TIMEOUT_MS }) {
+      const visible = this.items.find((item) => item.type === type && item.message === message)
+      if (visible) return visible.id
       const id = nextId++
       this.items.push({ id, type, message })
       if (timeout > 0) setTimeout(() => this.dismiss(id), timeout)

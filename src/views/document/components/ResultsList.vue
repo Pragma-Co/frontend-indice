@@ -128,6 +128,7 @@ onMounted(async () => {
               v-for="document in documents"
               :key="document.id"
               :document="document"
+              :favorite="Boolean(document.is_favorite)"
               :terms="searchTerms"
               @action="handleDocumentAction"
             />

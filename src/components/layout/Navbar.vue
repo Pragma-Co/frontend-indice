@@ -12,12 +12,14 @@ const auth = useAuthStore()
 const collaboratorLinks = [
   { label: 'Início', to: '/home' },
   { label: 'Documentos', to: '/documents', preserveQuery: true },
+  { label: 'Favoritos', to: '/favorites' },
 ]
 
 const managerLinks = [
   { label: 'Início', to: '/home' },
   { label: 'Revisões', to: '/revisions' },
   { label: 'Colaboradores', to: '/collaborators' },
+  { label: 'Favoritos', to: '/favorites' },
 ]
 
 const links = computed(() => (auth.isManager ? managerLinks : collaboratorLinks))

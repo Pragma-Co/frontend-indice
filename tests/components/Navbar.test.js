@@ -2,11 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createPinia, setActivePinia } from 'pinia'
-vi.mock('../../src/api/auth', () => ({ startDevelopmentSession: vi.fn(), endSession: vi.fn() }))
+vi.mock('../../src/api/auth', () => ({
+  fetchCsrfCookie: vi.fn(),
+  startSession: vi.fn(),
+  endSession: vi.fn(),
+}))
 
 import Navbar from '../../src/components/layout/Navbar.vue'
 import { endSession } from '../../src/api/auth'
 import { PROFILES, useAuthStore } from '../../src/stores/authStore'
+import { ACCOUNTS_BY_PROFILE } from '../fixtures/accounts'
 
 const Page = { template: '<div />' }
 
@@ -26,7 +31,7 @@ function createTestRouter() {
 }
 
 async function mountNavbar(path = '/home', profile = PROFILES.COLLABORATOR) {
-  useAuthStore().login(profile)
+  useAuthStore().setSession(ACCOUNTS_BY_PROFILE[profile])
   const router = createTestRouter()
   router.push(path)
   await router.isReady()
@@ -47,11 +52,15 @@ describe('Navbar', () => {
     expect(brand.find('img').attributes('alt')).toBe('Índice')
   })
 
-  it('should render only the Início and Documentos links for a collaborator', async () => {
+  it('should render the Início, Documentos and Favoritos links for a collaborator', async () => {
     const { wrapper } = await mountNavbar()
     const links = wrapper.findAll('a.navbar-link')
-    expect(links.map((link) => link.text())).toEqual(['Início', 'Documentos'])
-    expect(links.map((link) => link.attributes('href'))).toEqual(['/home', '/documents'])
+    expect(links.map((link) => link.text())).toEqual(['Início', 'Documentos', 'Favoritos'])
+    expect(links.map((link) => link.attributes('href'))).toEqual([
+      '/home',
+      '/documents',
+      '/favorites',
+    ])
   })
 
   it('should mark Início as active on the home route', async () => {
@@ -100,16 +109,22 @@ describe('Navbar', () => {
     expect(wrapper.find('header.navbar').exists()).toBe(true)
   })
 
-  it('should render the Início, Revisões and Colaboradores links for a manager', async () => {
+  it('should render the Início, Revisões, Colaboradores and Favoritos links for a manager', async () => {
     const { wrapper } = await mountNavbar('/home', PROFILES.MANAGER)
 
     const links = wrapper.findAll('a.navbar-link')
 
-    expect(links.map((link) => link.text())).toEqual(['Início', 'Revisões', 'Colaboradores'])
+    expect(links.map((link) => link.text())).toEqual([
+      'Início',
+      'Revisões',
+      'Colaboradores',
+      'Favoritos',
+    ])
     expect(links.map((link) => link.attributes('href'))).toEqual([
       '/home',
       '/revisions',
       '/collaborators',
+      '/favorites',
     ])
   })
 
@@ -170,7 +185,6 @@ describe('Navbar', () => {
 
     expect(endSession).toHaveBeenCalledTimes(1)
     expect(useAuthStore().isAuthenticated).toBe(false)
-    expect(localStorage.getItem('indice.profile')).toBeNull()
     expect(router.currentRoute.value.path).toBe('/login')
   })
 })

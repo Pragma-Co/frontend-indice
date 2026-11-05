@@ -9,7 +9,8 @@ import {
   requestAccountDeletion,
   updateCurrentUser,
 } from '../../src/api/users'
-import { PROFILES, useAuthStore } from '../../src/stores/authStore'
+import { useAuthStore } from '../../src/stores/authStore'
+import { MANAGER_ACCOUNT } from '../fixtures/accounts'
 import { useNotificationStore } from '../../src/stores/notificationStore'
 
 const replace = vi.fn()
@@ -48,7 +49,7 @@ describe('UserManagementView', () => {
     localStorage.clear()
     setActivePinia(createPinia())
     vi.clearAllMocks()
-    useAuthStore().login(PROFILES.MANAGER)
+    useAuthStore().setSession(MANAGER_ACCOUNT)
     fetchCurrentUser.mockResolvedValue(USER)
     fetchLegalAcceptances.mockResolvedValue({ count: 0, results: [] })
   })
@@ -196,9 +197,8 @@ describe('UserManagementView', () => {
     wrapper.unmount()
   })
 
-  it('should clear every stored authentication data after the deletion', async () => {
+  it('should clear the signed in user and the CSRF cookie after the deletion', async () => {
     requestAccountDeletion.mockResolvedValue({})
-    localStorage.setItem('indice.devUser', '{"id":10,"name":"Thiago Serpa"}')
     document.cookie = 'csrftoken=token-before-deletion; path=/'
     const wrapper = await mountView()
 
@@ -206,8 +206,6 @@ describe('UserManagementView', () => {
     await wrapper.find('[role="alertdialog"]').findAll('button')[1].trigger('click')
     await flushPromises()
 
-    expect(localStorage.getItem('indice.profile')).toBeNull()
-    expect(localStorage.getItem('indice.devUser')).toBeNull()
     expect(document.cookie).not.toContain('csrftoken')
     expect(useAuthStore().currentUser).toBeNull()
     wrapper.unmount()

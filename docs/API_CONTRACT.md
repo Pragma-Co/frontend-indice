@@ -5,6 +5,35 @@ the Django backend (`VITE_API_PORT`, default 8000). Responses are JSON. Error bo
 the UI as-is: `src/api/client.js` maps the HTTP status to a user-facing message and keeps the body
 in `ApiError.details` for the callers that need it.
 
+## Authentication
+
+The backend keeps a Django session cookie; the frontend never stores the user in `localStorage`.
+Every request that changes data (`POST`, `PUT`, `PATCH`, `DELETE`) sends the `X-CSRFToken` header
+with the value of the `csrftoken` cookie (`src/api/client.js`).
+
+| Endpoint | Request | Responses |
+| --- | --- | --- |
+| `GET /auth/csrf` | none | `204`, sets the `csrftoken` cookie |
+| `POST /auth/login` | `{ "email", "password" }` | `200` user (same body as `GET /users/me`); `400` `{ "errors": { "email"?, "password"? } }` or `{ "error": "InvalidJSON" }`; `401` `{ "error": "InvalidCredentials" }` |
+| `POST /auth/logout` | none | `204`, ends the session |
+| `GET /users/me` | none | `200` user `{ "id", "name", "email", "role", "area": { "id", "acronym", "name" }, ... }`; `401` without a session |
+
+Every other route requires a session and answers `401` `{ "error": "AuthenticationRequired" }`
+without one. The public routes are `/auth/csrf`, `/auth/login`, `/auth/logout`,
+`/legal-documents*` and `/health/`.
+
+How the frontend uses them:
+
+| Moment | Frontend |
+| --- | --- |
+| Login (`authStore.signIn`) | `GET /auth/csrf`, then `POST /auth/login`; the returned user opens the session in memory. `400` and `401` stay on the login screen with an inline message |
+| First navigation (`authStore.ensureSession`) | the router guard waits for one `GET /users/me`; `200` opens the session, `401` or a network error keeps the user signed out. Simultaneous checks share the same request |
+| Protected route without session | goes to `/login?redirect=<path>` (no `redirect` for `/` or `/home`); after login the user returns to that path |
+| Signed in user on `/login` | goes to `/home` |
+| `401` on any other request | the handler registered with `setUnauthorizedHandler` (`src/router/sessionExpiry.js`) clears the session, shows "Sua sessão expirou. Entre novamente." once and opens `/login?redirect=<current path>`. `401` from `/auth/login` is ignored |
+| `403` | the request fails with "Você não tem permissão para esta ação."; the session is kept |
+| Logout (`authStore.signOut`) | `POST /auth/logout`, then clears the user, the `csrftoken` cookie and the legacy `indice.profile` / `indice.user` keys, even if the request fails |
+
 ## Catalogs
 
 | Endpoint | Response |
@@ -110,7 +139,7 @@ The list is always fetched fresh from the API by query string; no client-side ca
 | `discipline_id` | yes | `form.disciplineId` |
 | `document_type` | yes | `form.documentType` (code, e.g. `DWG`) |
 | `confidentiality` | yes | `form.confidentiality` (`PUBLIC`, `CONFIDENTIAL`, `SECRET`) |
-| `responsible_id` | yes | `authStore.currentUser.id` (seeded user until authentication exists) |
+| `responsible_id` | yes | `authStore.currentUser.id` (the signed in user) |
 | `areas` | yes, at least one | `form.areas` (acronyms, e.g. `["EST"]`) |
 
 The mapping lives in `toDocumentPayload` (`src/api/documents.js`); the call is `createDocument`.

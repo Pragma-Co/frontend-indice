@@ -1,108 +1,100 @@
 import { defineStore } from 'pinia'
-import { endSession, startDevelopmentSession } from '../api/auth'
+import { endSession, fetchCsrfCookie, startSession } from '../api/auth'
 import { fetchCurrentUser } from '../api/users'
 import { clearCookie } from '../utils/cookies'
 import { getInitials } from '../utils/formatters'
 
-export const DEV_USER_STORAGE_KEY = 'indice.devUser'
-export const PROFILE_STORAGE_KEY = 'indice.profile'
 export const CSRF_COOKIE_NAME = 'csrftoken'
-
-const AUTH_STORAGE_KEYS = [PROFILE_STORAGE_KEY, DEV_USER_STORAGE_KEY]
+export const LEGACY_STORAGE_KEYS = ['indice.profile', 'indice.user']
 
 export const PROFILES = {
   COLLABORATOR: 'collaborator',
   MANAGER: 'manager',
 }
 
-const SEED_USER = {
-  id: 12,
-  name: 'Beatriz Canuto',
-  email: 'beatriz.canuto@akaer.local',
-  role: 'Colaborador',
-  department: 'Departamento de Engenharia',
-  area: 'Certificação e Aeronavegabilidade',
+const MANAGER_ROLES = ['AUDITOR', 'ADMIN']
+
+const PROFILE_LABELS = {
+  [PROFILES.COLLABORATOR]: 'Colaborador',
+  [PROFILES.MANAGER]: 'Gestor',
 }
 
-const SEED_MANAGER = {
-  id: 10,
-  name: 'Thiago Serpa',
-  email: 'thiago.serpa@akaer.local',
-  role: 'Gestor',
-  department: 'Departamento de Engenharia',
-  area: 'Qualidade e Inspeção',
+const pendingSessionChecks = new WeakMap()
+
+export function profileForRole(role) {
+  return MANAGER_ROLES.includes(role) ? PROFILES.MANAGER : PROFILES.COLLABORATOR
 }
 
-const PROFILE_USERS = {
-  [PROFILES.COLLABORATOR]: SEED_USER,
-  [PROFILES.MANAGER]: SEED_MANAGER,
-}
-
-function isKnownProfile(profile) {
-  return typeof profile === 'string' && Object.hasOwn(PROFILE_USERS, profile)
-}
-
-export function resolveDevelopmentUser(storage = globalThis.localStorage, baseUser = SEED_USER) {
-  if (!import.meta.env.DEV) return baseUser
-  try {
-    const stored = JSON.parse(storage?.getItem(DEV_USER_STORAGE_KEY) ?? 'null')
-    if (Number.isInteger(stored?.id) && typeof stored?.name === 'string' && stored.name.trim()) {
-      return { ...baseUser, ...stored }
-    }
-  } catch {
-    return baseUser
+export function toCurrentUser(account) {
+  const profile = profileForRole(account?.role)
+  return {
+    id: account.id,
+    name: account.name,
+    email: account.email ?? '',
+    role: PROFILE_LABELS[profile],
+    area: account.area?.name ?? '',
   }
-  return baseUser
 }
 
-export function resolveStoredProfile(storage = globalThis.localStorage) {
+async function fetchAccountOrNull() {
   try {
-    const stored = storage?.getItem(PROFILE_STORAGE_KEY)
-    return isKnownProfile(stored) ? stored : null
+    return await fetchCurrentUser()
   } catch {
     return null
   }
 }
 
-function resolveProfileUser(profile, storage) {
-  return profile ? resolveDevelopmentUser(storage, PROFILE_USERS[profile]) : null
+function removeLegacySession(storage) {
+  for (const key of LEGACY_STORAGE_KEYS) {
+    try {
+      storage?.removeItem(key)
+    } catch {
+      continue
+    }
+  }
 }
 
 export const useAuthStore = defineStore('auth', {
-  state: () => {
-    const profile = resolveStoredProfile()
-    return {
-      profile,
-      currentUser: resolveProfileUser(profile),
-    }
-  },
+  state: () => ({
+    profile: null,
+    currentUser: null,
+    sessionChecked: false,
+  }),
   getters: {
     isAuthenticated: (state) => Boolean(state.currentUser),
     isManager: (state) => state.profile === PROFILES.MANAGER,
     initials: (state) => getInitials(state.currentUser?.name),
   },
   actions: {
-    login(profile, storage = globalThis.localStorage) {
-      if (!isKnownProfile(profile)) return false
-      this.profile = profile
-      this.currentUser = resolveProfileUser(profile, storage)
-      try {
-        storage?.setItem(PROFILE_STORAGE_KEY, profile)
-      } catch {
-        return true
-      }
-      return true
+    setSession(account) {
+      this.profile = profileForRole(account.role)
+      this.currentUser = toCurrentUser(account)
+      this.sessionChecked = true
     },
-    async signIn(profile, storage = globalThis.localStorage) {
-      if (!this.login(profile, storage)) return false
-      if (!import.meta.env.DEV) return true
-      try {
-        await startDevelopmentSession(this.currentUser.id)
-      } catch {
-        return true
+    clearSession() {
+      this.profile = null
+      this.currentUser = null
+      this.sessionChecked = true
+    },
+    async restoreSession() {
+      const account = await fetchAccountOrNull()
+      if (this.sessionChecked) return
+      if (account) this.setSession(account)
+      else this.clearSession()
+    },
+    ensureSession() {
+      if (this.sessionChecked) return Promise.resolve()
+      if (!pendingSessionChecks.has(this)) {
+        const check = this.restoreSession().finally(() => pendingSessionChecks.delete(this))
+        pendingSessionChecks.set(this, check)
       }
-      await this.refreshAccount()
-      return true
+      return pendingSessionChecks.get(this)
+    },
+    async signIn(credentials) {
+      await fetchCsrfCookie()
+      const account = await startSession(credentials)
+      this.setSession(account)
+      return this.currentUser
     },
     applyAccount(account) {
       if (!this.currentUser || account?.id !== this.currentUser.id) return
@@ -110,14 +102,6 @@ export const useAuthStore = defineStore('auth', {
         ...this.currentUser,
         name: account.name ?? this.currentUser.name,
         email: account.email ?? this.currentUser.email,
-      }
-    },
-    async refreshAccount() {
-      if (!this.isAuthenticated) return
-      try {
-        this.applyAccount(await fetchCurrentUser())
-      } catch {
-        return
       }
     },
     async signOut(storage = globalThis.localStorage) {
@@ -130,15 +114,8 @@ export const useAuthStore = defineStore('auth', {
       this.logout(storage)
     },
     logout(storage = globalThis.localStorage) {
-      this.profile = null
-      this.currentUser = null
-      for (const key of AUTH_STORAGE_KEYS) {
-        try {
-          storage?.removeItem(key)
-        } catch {
-          continue
-        }
-      }
+      this.clearSession()
+      removeLegacySession(storage)
       clearCookie(CSRF_COOKIE_NAME)
     },
   },
