@@ -8,11 +8,16 @@ import {
 } from '@/utils/documentStatus.js'
 import Badge from '@/components/common/Badge.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import { Star } from '@lucide/vue'
 
 defineProps({
   documents: {
     type: Array,
     required: true,
+  },
+  favoritable: {
+    type: Boolean,
+    default: false,
   },
 })
 
@@ -118,6 +123,17 @@ function startNewRevision(document) {
                   {{ NEW_REVISION_BLOCKED_MESSAGE }}
                 </span>
               </span>
+              <button
+                v-if="favoritable"
+                type="button"
+                class="favorite-button"
+                aria-pressed="true"
+                aria-label="Desfavoritar documento"
+                title="Desfavoritar"
+                @click="emit('action', { document, action: 'toggle-favorite' })"
+              >
+                <Star :size="18" fill="currentColor" aria-hidden="true" />
+              </button>
             </div>
           </td>
         </tr>
@@ -157,6 +173,24 @@ function startNewRevision(document) {
 
 .col-actions {
   text-align: right;
+}
+
+.favorite-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-warning);
+  cursor: pointer;
+}
+
+.favorite-button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .cell-icon {

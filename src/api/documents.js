@@ -54,6 +54,15 @@ export function searchDocuments(query = {}) {
   return fetchDocumentPage('/api/documents/search', query)
 }
 
+export function fetchFavoriteDocuments(query = {}) {
+  return fetchDocumentPage('/api/users/me/library', query)
+}
+
+export function setDocumentFavorite(documentId, isFavorite) {
+  const path = `/users/me/library/${documentId}`
+  return isFavorite ? api.post(path) : api.delete(path)
+}
+
 export async function fetchResultsSummary(query = {}, { signal } = {}) {
   const filters = Object.fromEntries(new URLSearchParams(buildSummaryQueryKey(query)))
   return request('/documents/search/ai-summary', { method: 'POST', body: { filters }, signal })
