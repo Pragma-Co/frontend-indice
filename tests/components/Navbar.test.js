@@ -2,11 +2,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { createPinia, setActivePinia } from 'pinia'
-vi.mock('../../src/api/auth', () => ({ startDevelopmentSession: vi.fn(), endSession: vi.fn() }))
+vi.mock('../../src/api/auth', () => ({
+  fetchCsrfCookie: vi.fn(),
+  startSession: vi.fn(),
+  endSession: vi.fn(),
+}))
 
 import Navbar from '../../src/components/layout/Navbar.vue'
 import { endSession } from '../../src/api/auth'
 import { PROFILES, useAuthStore } from '../../src/stores/authStore'
+import { ACCOUNTS_BY_PROFILE } from '../fixtures/accounts'
 
 const Page = { template: '<div />' }
 
@@ -26,7 +31,7 @@ function createTestRouter() {
 }
 
 async function mountNavbar(path = '/home', profile = PROFILES.COLLABORATOR) {
-  useAuthStore().login(profile)
+  useAuthStore().setSession(ACCOUNTS_BY_PROFILE[profile])
   const router = createTestRouter()
   router.push(path)
   await router.isReady()
@@ -180,7 +185,6 @@ describe('Navbar', () => {
 
     expect(endSession).toHaveBeenCalledTimes(1)
     expect(useAuthStore().isAuthenticated).toBe(false)
-    expect(localStorage.getItem('indice.profile')).toBeNull()
     expect(router.currentRoute.value.path).toBe('/login')
   })
 })

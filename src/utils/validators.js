@@ -34,3 +34,40 @@ export function validateDocumentForm(form) {
   }
   return errors
 }
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)*\.[^\s@.]{2,}$/
+
+export const PASSWORD_MIN_LENGTH = 8
+export const PASSWORD_MAX_LENGTH = 128
+
+export function isValidEmail(value) {
+  return typeof value === 'string' && EMAIL_PATTERN.test(value)
+}
+
+function validateLoginEmail(email) {
+  const normalized = String(email ?? '').trim()
+  if (!normalized) return 'Informe o e-mail.'
+  if (!isValidEmail(normalized)) return 'Informe um e-mail válido, como nome@empresa.com.'
+  return null
+}
+
+function validateLoginPassword(password) {
+  const value = String(password ?? '')
+  if (!value) return 'Informe a senha.'
+  if (value.length < PASSWORD_MIN_LENGTH) {
+    return `A senha deve ter pelo menos ${PASSWORD_MIN_LENGTH} caracteres.`
+  }
+  if (value.length > PASSWORD_MAX_LENGTH) {
+    return `A senha deve ter no máximo ${PASSWORD_MAX_LENGTH} caracteres.`
+  }
+  return null
+}
+
+export function validateLoginForm({ email, password } = {}) {
+  const errors = {}
+  const emailError = validateLoginEmail(email)
+  const passwordError = validateLoginPassword(password)
+  if (emailError) errors.email = emailError
+  if (passwordError) errors.password = passwordError
+  return errors
+}

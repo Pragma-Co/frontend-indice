@@ -12,9 +12,9 @@ const auth = useAuthStore()
 const user = computed(() => ({
   name: auth.currentUser?.name,
   role: auth.currentUser?.role,
-  department: auth.currentUser?.department,
   area: auth.currentUser?.area,
 }))
+const subtitle = computed(() => [user.value.role, user.value.area].filter(Boolean).join(' • '))
 const fallbackFilters = {
   dates: [
     { value: 'last_7_days', label: 'Últimos 7 dias' },
@@ -47,11 +47,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <PageLayout
-    wide
-    :title="`Bem-vindo, ${user.name}`"
-    :subtitle="`${user.role} • ${user.department} • ${user.area}`"
-  >
+  <PageLayout wide :title="`Bem-vindo, ${user.name}`" :subtitle="subtitle">
     <SearchPanel
       :filters="filters"
       :filters-loading="filtersLoading"

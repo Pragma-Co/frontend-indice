@@ -1,5 +1,32 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { ApiError, api, request } from '../../src/api/client'
+import {
+  ApiError,
+  api,
+  request,
+  setUnauthorizedHandler,
+  uploadWithProgress,
+} from '../../src/api/client'
+
+function fakeXhrAnswering(status, body) {
+  return class {
+    constructor() {
+      this.upload = { addEventListener: () => null }
+      this.listeners = {}
+    }
+
+    open() {}
+
+    addEventListener(type, listener) {
+      this.listeners[type] = listener
+    }
+
+    send() {
+      this.status = status
+      this.responseText = JSON.stringify(body)
+      this.listeners.load()
+    }
+  }
+}
 
 function mockResponse(body, { status = 200 } = {}) {
   return {
@@ -64,6 +91,106 @@ describe('api client', () => {
       status: 500,
       message: 'Erro interno do servidor. Tente novamente mais tarde.',
       details: { error: 'DatabaseError' },
+    })
+  })
+
+  describe('status messages', () => {
+    it('should tell the user the session expired on a 401', async () => {
+      globalThis.fetch.mockResolvedValue(
+        mockResponse({ error: 'AuthenticationRequired' }, { status: 401 }),
+      )
+
+      await expect(api.get('/documents')).rejects.toMatchObject({
+        status: 401,
+        message: 'Sua sessão expirou. Entre novamente.',
+      })
+    })
+
+    it('should tell the user the action is not allowed on a 403', async () => {
+      globalThis.fetch.mockResolvedValue(mockResponse({ error: 'Forbidden' }, { status: 403 }))
+
+      await expect(api.get('/manager/revisions')).rejects.toMatchObject({
+        status: 403,
+        message: 'Você não tem permissão para esta ação.',
+      })
+    })
+  })
+
+  describe('unauthorized handler', () => {
+    let handler
+
+    beforeEach(() => {
+      handler = vi.fn()
+      setUnauthorizedHandler(handler)
+    })
+
+    afterEach(() => {
+      setUnauthorizedHandler(null)
+    })
+
+    it('should call the handler and still reject when a request answers 401', async () => {
+      globalThis.fetch.mockResolvedValue(
+        mockResponse({ error: 'AuthenticationRequired' }, { status: 401 }),
+      )
+
+      await expect(api.get('/documents')).rejects.toBeInstanceOf(ApiError)
+
+      expect(handler).toHaveBeenCalledTimes(1)
+      expect(handler).toHaveBeenCalledWith({ path: '/documents' })
+    })
+
+    it('should call the handler when an upload answers 401', async () => {
+      vi.stubGlobal('XMLHttpRequest', fakeXhrAnswering(401, { error: 'AuthenticationRequired' }))
+
+      await expect(uploadWithProgress('/documents/upload', new FormData())).rejects.toMatchObject({
+        status: 401,
+      })
+
+      expect(handler).toHaveBeenCalledWith({ path: '/documents/upload' })
+    })
+
+    it('should not call the handler when the login itself answers 401', async () => {
+      globalThis.fetch.mockResolvedValue(
+        mockResponse({ error: 'InvalidCredentials' }, { status: 401 }),
+      )
+
+      await expect(api.post('/auth/login', {})).rejects.toMatchObject({ status: 401 })
+
+      expect(handler).not.toHaveBeenCalled()
+    })
+
+    it.each([400, 403, 404, 500])('should not call the handler on a %i', async (status) => {
+      globalThis.fetch.mockResolvedValue(mockResponse({ error: 'Any' }, { status }))
+
+      await expect(api.get('/documents')).rejects.toMatchObject({ status })
+
+      expect(handler).not.toHaveBeenCalled()
+    })
+
+    it('should not call the handler on a successful response', async () => {
+      globalThis.fetch.mockResolvedValue(mockResponse({ id: 1 }))
+
+      await api.get('/users/me')
+
+      expect(handler).not.toHaveBeenCalled()
+    })
+
+    it('should still reject with the API error when the handler fails', async () => {
+      handler.mockImplementation(() => {
+        throw new Error('handler failed')
+      })
+      globalThis.fetch.mockResolvedValue(mockResponse(null, { status: 401 }))
+
+      await expect(api.get('/documents')).rejects.toMatchObject({ status: 401 })
+    })
+
+    it('should ignore a handler that is not a function', async () => {
+      setUnauthorizedHandler('not a function')
+      globalThis.fetch.mockResolvedValue(mockResponse(null, { status: 401 }))
+
+      await expect(api.get('/documents')).rejects.toMatchObject({ status: 401 })
+
+      expect(handler).not.toHaveBeenCalled()
     })
   })
 
