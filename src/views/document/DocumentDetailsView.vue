@@ -145,11 +145,16 @@ async function loadDocument() {
   }
 }
 
-async function handleRequestAccess() {
+async function handleRequestAccess(payload) {
+  if (requestingAccess.value || accessRequested.value) return
   requestingAccess.value = true
   requestError.value = ''
   try {
-    const result = await requestDocumentAccess(route.params.documentId, currentUserId.value)
+    const result = await requestDocumentAccess(
+      route.params.documentId,
+      currentUserId.value,
+      payload,
+    )
     if (result?.status === 'REJECTED') {
       await loadDocument()
       return
@@ -161,7 +166,13 @@ async function handleRequestAccess() {
       await loadDocument()
       return
     }
-    requestError.value = 'Não foi possível enviar a solicitação. Tente novamente.'
+    if (err?.status === 0) {
+      requestError.value = 'Sem conexão com o servidor. Verifique sua rede e tente novamente.'
+    } else if (err?.status === 400) {
+      requestError.value = 'Justificativa inválida. Revise o texto e tente novamente.'
+    } else {
+      requestError.value = 'Não foi possível enviar a solicitação. Tente novamente.'
+    }
     notifications.error(requestError.value)
   } finally {
     requestingAccess.value = false

@@ -6,6 +6,7 @@ import { buildDocumentSearchQuery } from '@/utils/searchParams'
 import { useSearchStore } from '@/stores/searchStore.js'
 import { useAuthStore } from '@/stores/authStore.js'
 import Button from '@/components/common/Button.vue'
+import DatePicker from '@/components/common/DatePicker.vue'
 
 const props = defineProps({
   filters: { type: Object, required: true },
@@ -18,10 +19,8 @@ const route = useRoute()
 const searchStore = useSearchStore()
 const authStore = useAuthStore()
 const form = reactive({ query: '', date: '', dateFrom: '', dateTo: '', area: '', type: '' })
-const dateInputs = reactive({ from: '', to: '' })
 const dateMenuOpen = ref(false)
 const filterMenuOpen = ref('')
-const datePickerRefs = { from: null, to: null }
 
 function formatDateForDisplay(value) {
   if (!value) return ''
@@ -29,40 +28,9 @@ function formatDateForDisplay(value) {
   return `${day}/${month}/${year}`
 }
 
-function parseDateInput(value) {
-  const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
-  if (!match) return ''
-
-  const [, day, month, year] = match
-  const parsedDate = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)))
-  if (
-    parsedDate.getUTCFullYear() !== Number(year) ||
-    parsedDate.getUTCMonth() !== Number(month) - 1 ||
-    parsedDate.getUTCDate() !== Number(day)
-  )
-    return ''
-  return `${year}-${month}-${day}`
-}
-
-function updateDateInput(field, event) {
-  const value = event.target.value.replace(/[^\d/]/g, '').slice(0, 10)
-  dateInputs[field] = value
-  form[field === 'from' ? 'dateFrom' : 'dateTo'] = parseDateInput(value)
+function setDate(formField, value) {
+  form[formField] = value
   form.date = ''
-}
-
-function selectNativeDate(field, event) {
-  const formField = field === 'from' ? 'dateFrom' : 'dateTo'
-  form[formField] = event.target.value
-  dateInputs[field] = formatDateForDisplay(event.target.value)
-  form.date = ''
-}
-
-function openDatePicker(field) {
-  const picker = datePickerRefs[field]
-  if (!picker) return
-  if (typeof picker.showPicker === 'function') picker.showPicker()
-  else picker.click()
 }
 
 const dateLabel = computed(() => {
@@ -84,8 +52,6 @@ function restoreFilters() {
   form.date = String(source.data ?? '')
   form.dateFrom = String(source.date_from ?? '')
   form.dateTo = String(source.date_to ?? '')
-  dateInputs.from = formatDateForDisplay(form.dateFrom)
-  dateInputs.to = formatDateForDisplay(form.dateTo)
   form.area = String(source.area ?? '')
   form.type = String(source.tipo ?? '')
 }
@@ -94,8 +60,6 @@ function selectDatePreset(event) {
   form.date = event.target.value
   form.dateFrom = ''
   form.dateTo = ''
-  dateInputs.from = ''
-  dateInputs.to = ''
 }
 
 function toggleFilterMenu(filter) {
@@ -115,8 +79,6 @@ function toggleDateMenu() {
 
 function resetFilters() {
   Object.assign(form, { query: '', date: '', dateFrom: '', dateTo: '', area: '', type: '' })
-  dateInputs.from = ''
-  dateInputs.to = ''
   dateMenuOpen.value = false
   filterMenuOpen.value = ''
   searchStore.forget()
@@ -179,51 +141,19 @@ onMounted(restoreFilters)
           </label>
           <label
             >De
-            <span class="date-input">
-              <input
-                class="date-display"
-                :value="dateInputs.from"
-                type="text"
-                inputmode="numeric"
-                placeholder="dd/mm/yyyy"
-                maxlength="10"
-                @click="openDatePicker('from')"
-                @input="updateDateInput('from', $event)"
-              />
-              <input
-                :ref="(element) => (datePickerRefs.from = element)"
-                class="date-picker"
-                :value="form.dateFrom"
-                lang="pt-BR"
-                type="date"
-                aria-label="Data inicial"
-                @change="selectNativeDate('from', $event)"
-              />
-            </span>
+            <DatePicker
+              label="Data inicial"
+              :model-value="form.dateFrom"
+              @update:model-value="setDate('dateFrom', $event)"
+            />
           </label>
           <label
             >Até
-            <span class="date-input">
-              <input
-                class="date-display"
-                :value="dateInputs.to"
-                type="text"
-                inputmode="numeric"
-                placeholder="dd/mm/yyyy"
-                maxlength="10"
-                @click="openDatePicker('to')"
-                @input="updateDateInput('to', $event)"
-              />
-              <input
-                :ref="(element) => (datePickerRefs.to = element)"
-                class="date-picker"
-                :value="form.dateTo"
-                lang="pt-BR"
-                type="date"
-                aria-label="Data final"
-                @change="selectNativeDate('to', $event)"
-              />
-            </span>
+            <DatePicker
+              label="Data final"
+              :model-value="form.dateTo"
+              @update:model-value="setDate('dateTo', $event)"
+            />
           </label>
           <button class="date-apply" type="button" @click="toggleDateMenu">Aplicar</button>
         </div>
@@ -467,23 +397,6 @@ onMounted(restoreFilters)
   border-radius: var(--radius-sm);
   background: white;
   font: inherit;
-}
-.date-input {
-  position: relative;
-  display: block;
-}
-.date-display {
-  position: relative;
-  z-index: 1;
-}
-.date-picker {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  padding: 0 !important;
-  border: 0 !important;
-  opacity: 0;
-  pointer-events: none;
 }
 .date-apply {
   padding: 0.5rem;

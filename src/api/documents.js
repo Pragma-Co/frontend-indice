@@ -102,9 +102,15 @@ export function requestDocumentSuggestions(documentId) {
   return api.post(`/documents/${documentId}/suggestions`)
 }
 
-export function requestDocumentAccess(documentId, userId, justification) {
+export function requestDocumentAccess(
+  documentId,
+  userId,
+  { justification, access_type, expires_on },
+) {
   return api.post(`/documents/${documentId}/request-access`, {
     user_id: userId,
     justification,
+    access_type,
+    ...(expires_on ? { expires_on } : {}),
   })
 }

@@ -1,14 +1,25 @@
 <script setup>
+import { ref, watch } from 'vue'
 import Button from '@/components/common/Button.vue'
+import AccessRequestDialog from '@/views/document/components/AccessRequestDialog.vue'
 
-defineProps({
+const props = defineProps({
   requesting: { type: Boolean, default: false },
   requested: { type: Boolean, default: false },
   rejected: { type: Boolean, default: false },
   errorMessage: { type: String, default: '' },
 })
 
-defineEmits(['request'])
+const emit = defineEmits(['request'])
+
+const dialogOpen = ref(false)
+
+watch(
+  () => [props.requested, props.rejected],
+  ([requested, rejected]) => {
+    if (requested || rejected) dialogOpen.value = false
+  },
+)
 </script>
 
 <template>
@@ -29,23 +40,30 @@ defineEmits(['request'])
       <p v-if="rejected" class="access-rejected" role="status">
         Sua solicitação de acesso foi recusada pelo responsável.
       </p>
-      <Button
-        v-else-if="!requested"
-        variant="primary"
-        class="access-button"
-        :loading="requesting"
-        :disabled="requesting"
-        @click="$emit('request')"
-      >
-        {{ requesting ? 'Enviando solicitação…' : 'Solicitar Acesso' }}
-      </Button>
-      <Button v-else variant="primary" class="access-button" disabled>Solicitação enviada</Button>
+      <template v-else>
+        <Button
+          v-if="!requested"
+          variant="primary"
+          class="access-button"
+          @click="dialogOpen = true"
+        >
+          Solicitar Acesso
+        </Button>
+        <Button v-else variant="primary" class="access-button" disabled>Solicitação enviada</Button>
+      </template>
 
       <p v-if="requested" class="access-hint" role="status">
         Você será avisado quando o responsável responder.
       </p>
-      <p v-if="errorMessage" class="access-error" role="alert">{{ errorMessage }}</p>
     </div>
+
+    <AccessRequestDialog
+      v-if="dialogOpen"
+      :requesting="requesting"
+      :error-message="errorMessage"
+      @submit="emit('request', $event)"
+      @cancel="dialogOpen = false"
+    />
   </div>
 </template>
 
@@ -114,10 +132,5 @@ defineEmits(['request'])
 
 .access-hint {
   font-size: 0.8rem;
-}
-
-.access-error {
-  font-size: 0.85rem;
-  color: var(--color-danger);
 }
 </style>
