@@ -33,9 +33,7 @@ const mockNotifications = [
 function mountNotificationsDropdown() {
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: [
-      { path: '/documents/:documentId', component: { template: '<div />' } },
-    ],
+    routes: [{ path: '/documents/:documentId', component: { template: '<div />' } }],
   })
 
   const wrapper = mount(NotificationsDropdown, {

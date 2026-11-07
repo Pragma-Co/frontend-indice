@@ -112,7 +112,8 @@ router.beforeEach(async (to, from) => {
 
 router.afterEach((to, from) => {
   const searchStore = useSearchStore()
-  const isLeavingSearchRoutes = ['home', 'results'].includes(from.name) && !['home', 'results'].includes(to.name)
+  const isLeavingSearchRoutes =
+    ['home', 'results'].includes(from.name) && !['home', 'results'].includes(to.name)
   if (isLeavingSearchRoutes) {
     searchStore.clearCurrentTerm()
     searchStore.forget()
