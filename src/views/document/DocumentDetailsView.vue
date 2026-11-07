@@ -539,7 +539,8 @@ onMounted(loadDocument)
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  height: calc(100vh - 132px);
+  max-height: calc(100vh - 462px);
+  min-height: 600px;
 }
 
 .preview-panel {

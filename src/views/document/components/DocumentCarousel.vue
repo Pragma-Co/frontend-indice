@@ -108,8 +108,9 @@ onBeforeUnmount(() => {
   margin: 0;
   padding: 0.25rem 0.25rem 0.75rem;
   overflow-x: auto;
+  overflow-y: hidden;
   scroll-snap-type: x mandatory;
-  scrollbar-width: thin;
+  scrollbar-width: none;
   list-style: none;
 }
 
@@ -119,6 +120,7 @@ onBeforeUnmount(() => {
 }
 
 .carousel-item {
+  height: 13rem;
   scroll-snap-align: start;
 }
 

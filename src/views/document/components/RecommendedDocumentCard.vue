@@ -98,6 +98,8 @@ const hiddenReasons = computed(() => props.document.reasons.length - visibleReas
   flex-wrap: wrap;
   gap: 0.3rem;
   margin-top: auto;
+  margin-bottom: 0;
+  padding-top: 0.5rem;
 }
 
 .reason-chip {
