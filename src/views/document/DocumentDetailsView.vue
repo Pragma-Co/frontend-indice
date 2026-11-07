@@ -24,7 +24,6 @@ const PARENT_CRUMBS = {
   favorites: { label: 'Favoritos', to: '/favorites' },
   results: { label: 'Resultados', to: '/results' },
 }
-// Reuses the previous URL (with filters) when it matches the origin page
 const parentCrumb = computed(() => {
   const crumb = PARENT_CRUMBS[route.query.from]
   if (!crumb) return { label: 'Documentos', to: '/documents' }
