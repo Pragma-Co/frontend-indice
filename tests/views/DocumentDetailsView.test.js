@@ -10,7 +10,7 @@ import { useNotificationStore } from '@/stores/notificationStore.js'
 import { fetchDocumentDetail, requestDocumentAccess } from '@/api/documents.js'
 import { fetchDocumentRecommendations } from '@/api/recommendations.js'
 
-const route = reactive({ params: { documentId: '23' } })
+const route = reactive({ params: { documentId: '23' }, query: {} })
 const routeParams = route.params
 vi.mock('vue-router', () => ({
   useRoute: () => route,
