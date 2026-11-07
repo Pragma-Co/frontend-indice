@@ -12,12 +12,14 @@ const auth = useAuthStore()
 
 const collaboratorLinks = [
   { label: 'Início', to: '/home' },
+  { label: 'Resultados', to: '/results' },
   { label: 'Documentos', to: '/documents' },
   { label: 'Favoritos', to: '/favorites' },
 ]
 
 const managerLinks = [
   { label: 'Início', to: '/home' },
+  { label: 'Resultados', to: '/results' },
   { label: 'Revisões', to: '/revisions' },
   { label: 'Colaboradores', to: '/collaborators' },
   { label: 'Favoritos', to: '/favorites' },
