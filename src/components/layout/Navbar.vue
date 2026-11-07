@@ -2,7 +2,8 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import logo from '@/assets/logo.svg'
-import { Bell, LogOut } from '@lucide/vue'
+import { LogOut } from '@lucide/vue'
+import NotificationsDropdown from './NotificationsDropdown.vue'
 import { useAuthStore } from '@/stores/authStore'
 
 const route = useRoute()
@@ -62,9 +63,7 @@ function isActive(to) {
     </nav>
 
     <div class="navbar-user">
-      <button class="navbar-notifications" type="button" aria-label="Notificações">
-        <Bell :size="18" class="navbar-bell" aria-hidden="true" />
-      </button>
+      <NotificationsDropdown />
       <RouterLink
         to="/profile"
         :class="['navbar-profile', { active: isActive('/profile') }]"
