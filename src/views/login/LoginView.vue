@@ -57,6 +57,7 @@ const { form, errors, serverError, submitting, onBlur, clearServerError, submit 
             name="password"
             autocomplete="current-password"
             aria-required="true"
+            placeholder="********"
             :aria-invalid="errors.password ? 'true' : 'false'"
             :aria-describedby="errors.password ? 'login-password-error' : undefined"
             :disabled="submitting"
