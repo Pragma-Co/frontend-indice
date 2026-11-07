@@ -7,7 +7,6 @@ import {
 } from '../../src/api/notifications'
 
 describe('notifications API', () => {
-  // Limpar estado entre testes
   afterEach(() => {
     vi.resetModules()
   })
@@ -63,7 +62,6 @@ describe('notifications API', () => {
     let result = await fetchNotifications()
     let notification = result.find((item) => item.is_new)
 
-    // Se não houver notificações não lidas, marcar uma como não lida para este teste
     if (!notification) {
       await markNotificationAsRead(result[0].document.id)
       result = await fetchNotifications()
@@ -71,7 +69,7 @@ describe('notifications API', () => {
     }
 
     if (!notification) {
-      expect(true).toBe(true) // Skip se nenhuma pode ser não lida
+      expect(true).toBe(true)
       return
     }
 
@@ -111,14 +109,11 @@ describe('notifications API', () => {
     const first = await fetchNotifications()
     const second = await fetchNotifications()
 
-    expect(first.map((item) => item.document.id)).toEqual(
-      second.map((item) => item.document.id),
-    )
+    expect(first.map((item) => item.document.id)).toEqual(second.map((item) => item.document.id))
   })
 
   it('should return independent copies to avoid mutations', async () => {
     const first = await fetchNotifications()
-    const second = await fetchNotifications()
 
     first[0].is_new = !first[0].is_new
     const secondCheck = await fetchNotifications()
