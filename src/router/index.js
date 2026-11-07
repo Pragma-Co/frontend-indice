@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
+import { useSearchStore } from '../stores/searchStore'
 
 const PATHS_WITHOUT_REDIRECT = ['/', '/home']
 
@@ -109,7 +110,13 @@ router.beforeEach(async (to, from) => {
   return true
 })
 
-router.afterEach((to) => {
+router.afterEach((to, from) => {
+  const searchStore = useSearchStore()
+  const isLeavingSearchRoutes = ['home', 'results'].includes(from.name) && !['home', 'results'].includes(to.name)
+  if (isLeavingSearchRoutes) {
+    searchStore.clearCurrentTerm()
+    searchStore.forget()
+  }
   document.title = to.meta.title ?? 'Índice'
 })
 

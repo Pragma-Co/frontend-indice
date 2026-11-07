@@ -48,7 +48,7 @@ const typeLabel = computed(() => (form.type ? `Tipo ${form.type}` : 'Tipo'))
 
 function restoreFilters() {
   const source = Object.keys(route.query).length ? route.query : searchStore.lastSearch
-  form.query = String(source.q ?? '')
+  form.query = searchStore.currentTerm || String(source.q ?? '')
   form.date = String(source.data ?? '')
   form.dateFrom = String(source.date_from ?? '')
   form.dateTo = String(source.date_to ?? '')
@@ -81,11 +81,13 @@ function resetFilters() {
   Object.assign(form, { query: '', date: '', dateFrom: '', dateTo: '', area: '', type: '' })
   dateMenuOpen.value = false
   filterMenuOpen.value = ''
+  searchStore.clearCurrentTerm()
   searchStore.forget()
 }
 
 function search() {
   const query = buildDocumentSearchQuery(form)
+  searchStore.setCurrentTerm(form.query)
   searchStore.remember(query)
   emit('search', query)
 }

@@ -12,7 +12,7 @@ const auth = useAuthStore()
 
 const collaboratorLinks = [
   { label: 'Início', to: '/home' },
-  { label: 'Documentos', to: '/documents', preserveQuery: true },
+  { label: 'Documentos', to: '/documents' },
   { label: 'Favoritos', to: '/favorites' },
 ]
 
@@ -30,7 +30,7 @@ const resolvedLinks = computed(() =>
     ...link,
     to: {
       path: link.to,
-      query: link.preserveQuery ? { ...route.query } : {},
+      query: {},
     },
   })),
 )
