@@ -14,6 +14,8 @@ import {
 } from '@/utils/documentStatus.js'
 import { formatDate } from '@/utils/formatters.js'
 import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
+import ProtectedContent from '@/components/common/ProtectedContent.vue'
+import ProtectedPdf from '@/components/common/ProtectedPdf.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import DocumentAccessOverlay from '@/views/document/components/DocumentAccessOverlay.vue'
 import RecommendedDocuments from '@/views/document/components/RecommendedDocuments.vue'
@@ -76,8 +78,23 @@ const accessRejected = computed(() => document.value?.access_request?.status ===
 
 const isRejectedRevision = computed(() => currentRevision.value?.status === 'REJECTED')
 
+const isProtected = computed(
+  () => !!document.value && document.value.confidentiality_level !== 'PUBLIC',
+)
+
+const hasViewerIdentity = computed(
+  () =>
+    !!authStore.currentUser?.name?.trim() &&
+    !!authStore.currentUser?.email?.trim() &&
+    authStore.currentUser?.id != null,
+)
+
 const canPreview = computed(
-  () => !!currentFile.value && hasAccess.value && !isRejectedRevision.value,
+  () =>
+    !!currentFile.value &&
+    hasAccess.value &&
+    !isRejectedRevision.value &&
+    (!isProtected.value || hasViewerIdentity.value),
 )
 
 const isPdf = computed(() => {
@@ -288,32 +305,48 @@ onMounted(loadDocument)
                 <span>{{ document.code }}</span>
               </div>
 
-              <iframe
-                v-else-if="isPdf"
-                :key="currentFile.id"
-                :src="fileUrl"
-                class="preview-frame"
-                title="Visualização do PDF"
-                type="application/pdf"
-              />
-
-              <img
-                v-else-if="isImage"
-                :key="currentFile.id"
-                :src="fileUrl"
-                class="preview-image"
-                :alt="currentFile.original_name || document.title"
-              />
-
-              <div v-else-if="isDocx" class="preview-docx-wrapper">
-                <p v-if="docxLoading" class="preview-docx-loading">Carregando documento...</p>
-                <div ref="docxContainer" class="preview-docx" />
+              <div v-else-if="isProtected && !hasViewerIdentity" class="preview-placeholder">
+                <p>
+                  Não foi possível identificar o usuário para exibir o documento protegido. Nome e
+                  e-mail são necessários.
+                </p>
               </div>
 
-              <div v-else class="preview-placeholder">
-                <p>Formato não suportado para visualização.</p>
-                <span>{{ currentFile?.original_name }}</span>
-              </div>
+              <component
+                :is="isProtected ? ProtectedContent : 'div'"
+                v-else
+                class="preview-content"
+                :user="isProtected ? authStore.currentUser : undefined"
+              >
+                <ProtectedPdf v-if="isPdf && isProtected" :key="currentFile.id" :url="fileUrl" />
+
+                <iframe
+                  v-else-if="isPdf"
+                  :key="currentFile.id"
+                  :src="fileUrl"
+                  class="preview-frame"
+                  title="Visualização do PDF"
+                  type="application/pdf"
+                />
+
+                <img
+                  v-else-if="isImage"
+                  :key="currentFile.id"
+                  :src="fileUrl"
+                  class="preview-image"
+                  :alt="currentFile.original_name || document.title"
+                />
+
+                <div v-else-if="isDocx" class="preview-docx-wrapper">
+                  <p v-if="docxLoading" class="preview-docx-loading">Carregando documento...</p>
+                  <div ref="docxContainer" class="preview-docx" />
+                </div>
+
+                <div v-else class="preview-placeholder">
+                  <p>Formato não suportado para visualização.</p>
+                  <span>{{ currentFile?.original_name }}</span>
+                </div>
+              </component>
             </div>
 
             <div v-if="canPreview && totalFiles > 0" class="preview-footer">
@@ -586,6 +619,13 @@ onMounted(loadDocument)
   flex: 1;
   min-height: 0;
   display: flex;
+}
+
+.preview-content {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
 }
 
 .preview-frame {
