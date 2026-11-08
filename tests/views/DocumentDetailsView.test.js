@@ -168,6 +168,68 @@ describe('DocumentDetailsView', () => {
     expect(iframe.exists()).toBe(true)
     expect(iframe.attributes('src')).toContain('/api/files/51/view')
     expect(iframe.attributes('src')).toContain(`user_id=${OTHER_USER_ID}`)
+    expect(wrapper.find('.protected-watermark').exists()).toBe(false)
+  })
+
+  it.each([
+    ['CONFIDENTIAL', 'teste.pdf', 'application/pdf', '.test-pdf'],
+    ['SECRET', 'teste.pdf', 'application/pdf', '.test-pdf'],
+    ['SECRET', 'foto.png', 'image/png', '.preview-image'],
+    ['CONFIDENTIAL', 'contrato.docx', 'application/octet-stream', '.preview-docx'],
+  ])('protects %s %s previews', async (level, name, mimeType, selector) => {
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante', email: 'visitante@example.com' }
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({ ok: true, blob: async () => new Blob(['docx']) }),
+    )
+    const base = makeDocument()
+    const wrapper = await mountAsStranger(
+      makeDocument({
+        confidentiality_level: level,
+        revision: {
+          ...base.revision,
+          files: [{ ...base.revision.files[0], original_name: name, mime_type: mimeType }],
+        },
+      }),
+      {
+        ...globalStubs,
+        ProtectedPdf: { props: ['url'], template: '<div class="test-pdf">{{ url }}</div>' },
+      },
+    )
+
+    expect(wrapper.find('iframe.preview-frame').exists()).toBe(false)
+    expect(wrapper.find(`.protected-content ${selector}`).exists()).toBe(true)
+    expect(wrapper.find('.protected-watermark').text()).toContain(
+      'Visitante · visitante@example.com',
+    )
+    if (selector === '.test-pdf') {
+      expect(wrapper.find(selector).text()).toContain(`/api/files/51/view?user_id=${OTHER_USER_ID}`)
+    }
+    if (selector === '.preview-docx') {
+      const { renderAsync } = await import('docx-preview')
+      expect(renderAsync).toHaveBeenCalled()
+    }
+    const copy = new Event('copy', { bubbles: true, cancelable: true })
+    wrapper.find(selector).element.dispatchEvent(copy)
+    expect(copy.defaultPrevented).toBe(true)
+    const outsideCopy = new Event('copy', { bubbles: true, cancelable: true })
+    wrapper.find('.document-card').element.dispatchEvent(outsideCopy)
+    expect(outsideCopy.defaultPrevented).toBe(false)
+  })
+
+  it.each([
+    { name: '', email: 'visitante@example.com' },
+    { name: 'Visitante', email: '' },
+  ])('does not display a protected preview without a name and email', async (identity) => {
+    authStore.currentUser = { id: OTHER_USER_ID, ...identity }
+    fetchDocumentDetail.mockResolvedValue(makeDocument({ confidentiality_level: 'SECRET' }))
+    const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
+    mountedViews.push(wrapper)
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Não foi possível identificar o usuário')
+    expect(wrapper.find('iframe').exists()).toBe(false)
+    expect(wrapper.find('.protected-watermark').exists()).toBe(false)
   })
 
   it('should render an img when the current file is an image', async () => {
