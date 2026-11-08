@@ -5,6 +5,7 @@ import { useNotificationStore } from '@/stores/notificationStore.js'
 
 export const TERM_STATES = {
   ACCEPTED: 'accepted',
+  DECLINED: 'declined',
   REVOKED: 'revoked',
   PENDING: 'pending',
 }
@@ -35,10 +36,16 @@ function updatedTime(row) {
 
 export function normalizeAcceptance(acceptance) {
   const revoked = Boolean(acceptance.revoked_at)
+  const accepted = acceptance.accepted !== false
+  const state = revoked
+    ? TERM_STATES.REVOKED
+    : accepted
+      ? TERM_STATES.ACCEPTED
+      : TERM_STATES.DECLINED
   return {
     key: `acceptance-${acceptance.id}`,
     id: acceptance.id,
-    state: revoked ? TERM_STATES.REVOKED : TERM_STATES.ACCEPTED,
+    state,
     slug: acceptance.document?.slug ?? null,
     title: acceptance.document?.title ?? '—',
     versionId: acceptance.version?.id ?? null,
@@ -48,7 +55,13 @@ export function normalizeAcceptance(acceptance) {
     revokedAt: acceptance.revoked_at ?? null,
     updatedAt: acceptance.revoked_at ?? acceptance.accepted_at ?? null,
     revoked,
-    status: revoked ? 'Revogado' : 'Aceito',
+    accepted,
+    status:
+      state === TERM_STATES.REVOKED
+        ? 'Revogado'
+        : state === TERM_STATES.DECLINED
+          ? 'Discordado'
+          : 'Aceito',
     decisions: (acceptance.consents ?? []).map((consent) => ({
       clause_id: consent.clause_id,
       accepted: consent.accepted,
@@ -93,54 +106,46 @@ export function sortByMostRecent(rows) {
   return [...rows].sort((first, second) => updatedTime(second) - updatedTime(first))
 }
 
-function latestBySlug(acceptances) {
-  const latest = new Map()
-  for (const acceptance of sortByMostRecent(acceptances)) {
-    const slug = acceptance.slug ?? acceptance.key
-    if (!latest.has(slug)) latest.set(slug, acceptance)
-  }
-  return latest
-}
-
-function rowForDocument(document, acceptances, latest) {
+function currentVersionManifestation(document, acceptances) {
   const target = acceptTargetOf(document)
-  const inForce = acceptances.find(
-    (acceptance) =>
-      acceptance.state === TERM_STATES.ACCEPTED && acceptance.versionId === target?.versionId,
-  )
-  if (inForce) return { ...inForce, key: `term-${document.slug}`, acceptTarget: null }
-
-  const last = latest.get(document.slug)
-  if (!last)
-    return {
-      ...normalizePendingDocument(document),
-      key: `term-${document.slug}`,
-      acceptTarget: target,
-    }
-  if (last.state === TERM_STATES.REVOKED) {
-    return { ...last, key: `term-${document.slug}`, acceptTarget: target }
-  }
-  return {
-    ...normalizePendingDocument(document),
-    key: `term-${document.slug}`,
-    status: 'Nova versão disponível',
-    updatedAt: last.updatedAt,
-    acceptTarget: target,
-  }
+  const manifestation = sortByMostRecent(
+    acceptances.filter(
+      (acceptance) =>
+        acceptance.versionId === target?.versionId && acceptance.slug === document.slug,
+    ),
+  )[0]
+  return { target, manifestation }
 }
 
 export function termRows(documents, acceptances) {
-  const latest = latestBySlug(acceptances)
-  const slugs = new Set()
-  const rows = documents
-    .filter((document) => document.slug)
-    .map((document) => {
-      slugs.add(document.slug)
-      return rowForDocument(document, acceptances, latest)
+  const rows = acceptances.map((acceptance) => ({ ...acceptance, acceptTarget: null }))
+
+  for (const document of documents.filter((item) => item.slug)) {
+    const { target, manifestation } = currentVersionManifestation(document, acceptances)
+    if (manifestation) {
+      if (
+        manifestation.state === TERM_STATES.DECLINED ||
+        manifestation.state === TERM_STATES.REVOKED
+      ) {
+        const row = rows.find((item) => item.id === manifestation.id)
+        row.acceptTarget = target
+      }
+      continue
+    }
+
+    const latest = sortByMostRecent(
+      acceptances.filter((acceptance) => acceptance.slug === document.slug),
+    )[0]
+    const pending = normalizePendingDocument(document)
+    rows.push({
+      ...pending,
+      key: `term-${document.slug}`,
+      status: latest ? 'Nova versão disponível' : pending.status,
+      updatedAt: latest?.updatedAt ?? null,
+      acceptTarget: target,
     })
-  for (const [slug, acceptance] of latest) {
-    if (!slugs.has(slug)) rows.push({ ...acceptance, key: `term-${slug}`, acceptTarget: null })
   }
+
   return sortByMostRecent(rows)
 }
 
