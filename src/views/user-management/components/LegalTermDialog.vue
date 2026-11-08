@@ -10,6 +10,7 @@ const props = defineProps({
   title: { type: String, required: true },
   versionLabel: { type: String, default: '' },
   decisions: { type: Array, default: () => [] },
+  accepted: { type: Boolean, default: true },
   acceptedAt: { type: String, default: null },
   revokedAt: { type: String, default: null },
 })
@@ -28,7 +29,8 @@ const clauses = computed(() =>
 
 const timeline = computed(() =>
   [
-    props.acceptedAt && `Aceito em ${formatDateAtTime(props.acceptedAt)}`,
+    props.acceptedAt &&
+      `${props.accepted ? 'Aceito' : 'Discordado'} em ${formatDateAtTime(props.acceptedAt)}`,
     props.revokedAt && `Revogado em ${formatDateAtTime(props.revokedAt)}`,
   ]
     .filter(Boolean)
