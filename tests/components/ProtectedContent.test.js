@@ -1,8 +1,16 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ProtectedContent from '@/components/common/ProtectedContent.vue'
+import { api } from '@/api/client'
+import { createPinia, setActivePinia } from 'pinia'
+import { useNotificationStore } from '@/stores/notificationStore'
+
+vi.mock('@/api/client', () => ({ api: { post: vi.fn().mockResolvedValue({}) } }))
 
 describe('ProtectedContent', () => {
+  beforeEach(() => setActivePinia(createPinia()))
+  afterEach(() => vi.useRealTimers())
+
   it('displays the current viewer on a repeated watermark', async () => {
     const wrapper = mount(ProtectedContent, {
       props: { user: { id: 15, name: 'Ana Silva', email: 'ana@example.com' } },
@@ -39,6 +47,7 @@ describe('ProtectedContent', () => {
     const wrapper = mount(ProtectedContent, {
       props: { user: { id: 15, name: 'Ana', email: 'ana@example.com' } },
       slots: { default: '<p>Conteúdo</p>' },
+      attachTo: document.body,
     })
     const content = wrapper.find('p').element
 
@@ -66,5 +75,41 @@ describe('ProtectedContent', () => {
     })
     content.dispatchEvent(scrollKey)
     expect(scrollKey.defaultPrevented).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('logs capture attempts, hides the content on focus loss and blocks printing shortcuts', async () => {
+    vi.useFakeTimers()
+    api.post.mockClear()
+    const wrapper = mount(ProtectedContent, {
+      props: { user: { id: 15, name: 'Ana', email: 'ana@example.com' }, documentId: 7, fileId: 3 },
+      slots: { default: '<p>Conteúdo</p>' },
+      attachTo: document.body,
+    })
+
+    const print = new KeyboardEvent('keydown', { key: 'p', ctrlKey: true, cancelable: true })
+    window.dispatchEvent(print)
+    window.dispatchEvent(new KeyboardEvent('keyup', { key: 'PrintScreen' }))
+    window.dispatchEvent(new Event('blur'))
+    await wrapper.vm.$nextTick()
+
+    expect(print.defaultPrevented).toBe(true)
+    expect(api.post.mock.calls.map(([, body]) => body.event)).toEqual([
+      'PRINT_ATTEMPT',
+      'PRINT_SCREEN_KEY',
+    ])
+    expect(useNotificationStore().items[0].message).toContain('Ação proibida')
+    vi.advanceTimersByTime(700)
+    expect(api.post.mock.calls.map(([, body]) => body.event)).toContain('FOCUS_LOST')
+    expect(api.post).toHaveBeenCalledWith('/documents/7/security-events', {
+      event: 'PRINT_ATTEMPT',
+      file_id: 3,
+      detail: undefined,
+    })
+    expect(wrapper.classes()).toContain('protected-content--obscured')
+    window.dispatchEvent(new Event('focus'))
+    await wrapper.vm.$nextTick()
+    expect(wrapper.classes()).not.toContain('protected-content--obscured')
+    wrapper.unmount()
   })
 })
