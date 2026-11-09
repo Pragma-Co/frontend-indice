@@ -96,7 +96,11 @@ export function useDocumentList({ fetchPage = fetchDocuments } = {}) {
   }
 
   function goToDocumentDetails(document) {
-    router.push({ name: 'document-details', params: { documentId: document.id } })
+    router.push({
+      name: 'document-details',
+      params: { documentId: document.id },
+      query: ['favorites', 'results'].includes(route.name) ? { from: route.name } : {},
+    })
   }
 
   function goToNewRevision(document) {

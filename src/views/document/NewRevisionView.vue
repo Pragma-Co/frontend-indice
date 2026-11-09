@@ -234,7 +234,11 @@ onUnmounted(() => {
 <style scoped>
 .status-message {
   color: var(--color-text-muted);
-  text-align: center;
+  height: calc(100vh - 280px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .revision-layout {

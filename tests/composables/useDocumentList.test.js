@@ -213,13 +213,14 @@ describe('useDocumentList', () => {
     list.handleDocumentAction({ document: { id: 7 }, action: 'unknown' })
 
     expect(router.push).toHaveBeenCalledTimes(2)
-    expect(router.push).toHaveBeenCalledWith({
+    expect(router.push).toHaveBeenNthCalledWith(1, {
       name: 'document-new-revision',
       params: { documentId: 7 },
     })
-    expect(router.push).toHaveBeenCalledWith({
+    expect(router.push).toHaveBeenNthCalledWith(2, {
       name: 'document-details',
       params: { documentId: 7 },
+      query: {},
     })
   })
 })
