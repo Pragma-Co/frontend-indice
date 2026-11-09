@@ -8,27 +8,43 @@ const mounted = []
 
 const mockNotifications = [
   {
+    id: 11,
     title: 'Documento 1 atualizado',
-    document: { id: 1, name: 'AK-0001' },
-    date: new Date(Date.now() - 5 * 60000).toISOString(),
+    document: { id: 1, code: 'AK-0001', title: 'Documento 1' },
+    created_at: new Date(Date.now() - 5 * 60000).toISOString(),
+    read_at: null,
     is_new: true,
-    type: 1,
+    type: 'DOCUMENT_UPDATED',
   },
   {
+    id: 12,
     title: 'Acesso aprovado',
-    document: { id: 2, name: 'AK-0002' },
-    date: new Date(Date.now() - 65 * 60000).toISOString(),
+    document: { id: 2, code: 'AK-0002', title: 'Documento 2' },
+    created_at: new Date(Date.now() - 65 * 60000).toISOString(),
+    read_at: null,
     is_new: true,
-    type: 2,
+    type: 'ACCESS_APPROVED',
   },
   {
+    id: 13,
     title: 'Acesso recusado',
-    document: { id: 3, name: 'AK-0003' },
-    date: new Date(Date.now() - 125 * 60000).toISOString(),
+    document: { id: 3, code: 'AK-0003', title: 'Documento 3' },
+    created_at: new Date(Date.now() - 125 * 60000).toISOString(),
+    read_at: new Date().toISOString(),
     is_new: false,
-    type: 3,
+    type: 'ACCESS_REJECTED',
   },
 ]
+
+function manyNotifications(total) {
+  return Array(total)
+    .fill(null)
+    .map((_, i) => ({
+      ...mockNotifications[0],
+      id: i + 1,
+      document: { id: i + 1, code: `AK-${String(i + 1).padStart(4, '0')}`, title: `Doc ${i + 1}` },
+    }))
+}
 
 function mountNotificationsDropdown() {
   const router = createRouter({
@@ -105,14 +121,7 @@ describe('NotificationsDropdown', () => {
   })
 
   it('should display 5 notifications initially', async () => {
-    vi.mocked(notificationsAPI.fetchNotifications).mockResolvedValue(
-      Array(12)
-        .fill(null)
-        .map((_, i) => ({
-          ...mockNotifications[0],
-          document: { id: i + 1, name: `AK-${String(i + 1).padStart(4, '0')}` },
-        })),
-    )
+    vi.mocked(notificationsAPI.fetchNotifications).mockResolvedValue(manyNotifications(12))
 
     const wrapper = mountNotificationsDropdown()
     await flushPromises()
@@ -124,14 +133,7 @@ describe('NotificationsDropdown', () => {
   })
 
   it('should load more items on scroll', async () => {
-    vi.mocked(notificationsAPI.fetchNotifications).mockResolvedValue(
-      Array(12)
-        .fill(null)
-        .map((_, i) => ({
-          ...mockNotifications[0],
-          document: { id: i + 1, name: `AK-${String(i + 1).padStart(4, '0')}` },
-        })),
-    )
+    vi.mocked(notificationsAPI.fetchNotifications).mockResolvedValue(manyNotifications(12))
 
     const wrapper = mountNotificationsDropdown()
     await flushPromises()
@@ -188,7 +190,7 @@ describe('NotificationsDropdown', () => {
     await item.trigger('click')
     await flushPromises()
 
-    expect(notificationsAPI.markNotificationAsRead).toHaveBeenCalledWith(1)
+    expect(notificationsAPI.markNotificationAsRead).toHaveBeenCalledWith(11)
   })
 
   it('should show relative time correctly', async () => {
@@ -263,14 +265,7 @@ describe('NotificationsDropdown', () => {
   })
 
   it('should reset visible count when reopening', async () => {
-    vi.mocked(notificationsAPI.fetchNotifications).mockResolvedValue(
-      Array(12)
-        .fill(null)
-        .map((_, i) => ({
-          ...mockNotifications[0],
-          document: { id: i + 1, name: `AK-${String(i + 1).padStart(4, '0')}` },
-        })),
-    )
+    vi.mocked(notificationsAPI.fetchNotifications).mockResolvedValue(manyNotifications(12))
 
     const wrapper = mountNotificationsDropdown()
     await flushPromises()

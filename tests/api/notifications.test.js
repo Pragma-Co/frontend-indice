@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   fetchNotifications,
   markAllNotificationsAsRead,
@@ -6,118 +6,85 @@ import {
   NOTIFICATION_TYPES,
 } from '../../src/api/notifications'
 
+function jsonResponse(status, body) {
+  return { ok: status >= 200 && status < 300, status, text: async () => JSON.stringify(body) }
+}
+
+const notification = {
+  id: 42,
+  type: 'DOCUMENT_UPDATED',
+  title: 'Nova revisão (REV02) publicada para o documento Memorial de cargas.',
+  document: { id: 7, code: 'AK-2200-AER-MEM-0002', title: 'Memorial de cargas' },
+  is_new: true,
+  created_at: '2026-11-08T14:05:12+00:00',
+  read_at: null,
+}
+
 describe('notifications API', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+    document.cookie = 'csrftoken=token-123; path=/'
+  })
+
   afterEach(() => {
-    vi.resetModules()
+    vi.unstubAllGlobals()
+    document.cookie = 'csrftoken=; path=/; max-age=0'
   })
 
-  it('should fetch notifications with correct structure', async () => {
+  it('should expose the notification types sent by the backend', () => {
+    expect(Object.values(NOTIFICATION_TYPES)).toEqual([
+      'DOCUMENT_UPDATED',
+      'ACCESS_APPROVED',
+      'ACCESS_REJECTED',
+    ])
+  })
+
+  it('should fetch the latest notifications and return the results', async () => {
+    globalThis.fetch.mockResolvedValue(
+      jsonResponse(200, { count: 1, unread_count: 1, results: [notification] }),
+    )
+
     const result = await fetchNotifications()
 
-    expect(Array.isArray(result)).toBe(true)
-    expect(result.length).toBeGreaterThan(0)
-
-    result.forEach((notification) => {
-      expect(notification).toHaveProperty('title')
-      expect(notification).toHaveProperty('document')
-      expect(notification).toHaveProperty('date')
-      expect(notification).toHaveProperty('is_new')
-      expect(notification).toHaveProperty('type')
-
-      expect(typeof notification.title).toBe('string')
-      expect(typeof notification.document.id).toBe('number')
-      expect(typeof notification.document.name).toBe('string')
-      expect(typeof notification.date).toBe('string')
-      expect(typeof notification.is_new).toBe('boolean')
-      expect([
-        NOTIFICATION_TYPES.DOCUMENT_UPDATED,
-        NOTIFICATION_TYPES.ACCESS_APPROVED,
-        NOTIFICATION_TYPES.ACCESS_DENIED,
-      ]).toContain(notification.type)
-    })
+    const [url, init] = globalThis.fetch.mock.calls[0]
+    expect(url).toBe('/api/notifications?page_size=100')
+    expect(init.method).toBe('GET')
+    expect(result).toEqual([notification])
   })
 
-  it('should have some unread notifications initially', async () => {
+  it('should return an empty list when the backend sends no results', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(200, {}))
+
     const result = await fetchNotifications()
-    const unread = result.filter((item) => item.is_new)
 
-    expect(unread.length).toBeGreaterThan(0)
+    expect(result).toEqual([])
   })
 
-  it('should mark all notifications as read', async () => {
-    let result = await fetchNotifications()
-    const unreadBefore = result.filter((item) => item.is_new).length
+  it('should mark one notification as read by its id with the CSRF token', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(200, { ...notification, is_new: false }))
 
-    expect(unreadBefore).toBeGreaterThan(0)
+    await markNotificationAsRead(42)
 
-    await markAllNotificationsAsRead()
-
-    result = await fetchNotifications()
-    const unreadAfter = result.filter((item) => item.is_new).length
-
-    expect(unreadAfter).toBe(0)
+    const [url, init] = globalThis.fetch.mock.calls[0]
+    expect(url).toBe('/api/notifications/42/read')
+    expect(init.method).toBe('PATCH')
+    expect(init.headers['X-CSRFToken']).toBe('token-123')
   })
 
-  it('should mark a specific notification as read', async () => {
-    let result = await fetchNotifications()
-    let notification = result.find((item) => item.is_new)
+  it('should mark every notification as read', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(200, { updated: 3, unread_count: 0 }))
 
-    if (!notification) {
-      await markNotificationAsRead(result[0].document.id)
-      result = await fetchNotifications()
-      notification = result.find((item) => item.is_new)
-    }
+    const result = await markAllNotificationsAsRead()
 
-    if (!notification) {
-      expect(true).toBe(true)
-      return
-    }
-
-    expect(notification.is_new).toBe(true)
-
-    await markNotificationAsRead(notification.document.id)
-
-    result = await fetchNotifications()
-    const updated = result.find((item) => item.document.id === notification.document.id)
-
-    expect(updated.is_new).toBe(false)
+    const [url, init] = globalThis.fetch.mock.calls[0]
+    expect(url).toBe('/api/notifications/read-all')
+    expect(init.method).toBe('PATCH')
+    expect(result).toEqual({ updated: 3, unread_count: 0 })
   })
 
-  it('should not affect other notifications when marking one as read', async () => {
-    let result = await fetchNotifications()
-    const notifications = result.filter((item) => item.is_new)
+  it('should reject when the backend answers with an error', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(404, { error: 'NotificationNotFound' }))
 
-    if (notifications.length < 2) {
-      expect(true).toBe(true)
-      return
-    }
-
-    const first = notifications[0]
-    const second = notifications[1]
-
-    await markNotificationAsRead(first.document.id)
-
-    result = await fetchNotifications()
-    const firstAfter = result.find((item) => item.document.id === first.document.id)
-    const secondAfter = result.find((item) => item.document.id === second.document.id)
-
-    expect(firstAfter.is_new).toBe(false)
-    expect(secondAfter.is_new).toBe(true)
-  })
-
-  it('should persist notifications across multiple fetches', async () => {
-    const first = await fetchNotifications()
-    const second = await fetchNotifications()
-
-    expect(first.map((item) => item.document.id)).toEqual(second.map((item) => item.document.id))
-  })
-
-  it('should return independent copies to avoid mutations', async () => {
-    const first = await fetchNotifications()
-
-    first[0].is_new = !first[0].is_new
-    const secondCheck = await fetchNotifications()
-
-    expect(secondCheck[0].is_new).not.toBe(first[0].is_new)
+    await expect(markNotificationAsRead(99)).rejects.toMatchObject({ status: 404 })
   })
 })

@@ -17,7 +17,7 @@ const SCROLL_THRESHOLD_PX = 24
 const TYPE_META = {
   [NOTIFICATION_TYPES.DOCUMENT_UPDATED]: { icon: FileText, variant: 'info' },
   [NOTIFICATION_TYPES.ACCESS_APPROVED]: { icon: ShieldCheck, variant: 'success' },
-  [NOTIFICATION_TYPES.ACCESS_DENIED]: { icon: ShieldX, variant: 'danger' },
+  [NOTIFICATION_TYPES.ACCESS_REJECTED]: { icon: ShieldX, variant: 'danger' },
 }
 
 const router = useRouter()
@@ -89,7 +89,7 @@ async function openNotification(item) {
   router.push(`/documents/${item.document.id}`)
   if (!wasNew) return
   try {
-    await markNotificationAsRead(item.document.id)
+    await markNotificationAsRead(item.id)
   } catch {
     item.is_new = true
   }
@@ -134,7 +134,7 @@ onBeforeUnmount(() => clearInterval(timer))
     </div>
 
     <ul v-if="visible.length" ref="list" class="notifications-list" @scroll="onScroll">
-      <li v-for="item in visible" :key="`${item.document.id}-${item.date}`">
+      <li v-for="item in visible" :key="item.id">
         <button
           type="button"
           class="notification-item"
@@ -146,8 +146,8 @@ onBeforeUnmount(() => clearInterval(timer))
           </span>
           <span class="notification-body">
             <span class="notification-text">{{ item.title }}</span>
-            <span class="notification-code">{{ item.document.name }}</span>
-            <span class="notification-date">{{ relativeTime(item.date) }}</span>
+            <span class="notification-code">{{ item.document.code }}</span>
+            <span class="notification-date">{{ relativeTime(item.created_at) }}</span>
           </span>
           <span v-if="item.is_new" class="notification-dot" aria-label="Não lida" />
         </button>
