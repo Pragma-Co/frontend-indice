@@ -43,6 +43,27 @@ How the frontend uses them:
 
 Document types and areas are static lists in `src/utils/documentCatalog.js`, mirroring the seed.
 
+## Access groups (manager, `/collaborators`)
+
+Requires an active `AUDITOR` or `ADMIN` in an active area. Only the area groups of the caller's
+area are reachable; any other group answers `404`.
+
+| Endpoint | Request | Responses |
+| --- | --- | --- |
+| `GET /manager/access-groups` | none | `200` `{ "results": [group] }`, inactive groups included. Group: `{ "id", "name", "description", "scope", "area_id", "secrecy_level", "active", "created_by", "created_at" }` |
+| `POST /manager/access-groups` | `{ "name", "description"?, "secrecy_level" }` | `201` group; `400` `{ "errors": { field: message } }`; `409` `{ "error": "AccessGroupConflict" }` for a repeated name or a second group for the same area and level |
+| `GET /manager/access-groups/{id}/users` | none | `200` `{ "results": [member] }`. Member: `{ "user_id", "name", "email", "added_by", "added_at" }` |
+| `POST /manager/access-groups/{id}/users` | `{ "user_id" }` | `201` member; `404` for a missing group or user; `409` `{ "error": "AccessGroupMemberExists" }` or `{ "error": "AccessGroupInactive" }` |
+| `DELETE /manager/access-groups/{id}/users/{user_id}` | none | `204`; `404` `{ "error": "AccessGroupMemberNotFound" }` |
+
+How the frontend uses them (`useCollaboratorsPanel`):
+
+| Moment | Frontend |
+| --- | --- |
+| Opening the page | loads the groups and the members of each group; the table is the union of those members, because the API has no route that lists the users of an area |
+| Saving a collaborator's groups | sends one `POST` or `DELETE` per changed group and updates the row as each call succeeds. `AccessGroupMemberExists` and `AccessGroupMemberNotFound` count as already applied; other failures keep the dialog open listing the groups that failed |
+| Creating a group | the levels that already have a group are disabled; `409` is shown on the name field |
+
 ## Documents list
 
 `GET /documents` is paginated by the server. Every parameter is optional and they combine with AND:

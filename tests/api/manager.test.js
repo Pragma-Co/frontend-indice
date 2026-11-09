@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  addAccessGroupMember,
+  createAccessGroup,
+  fetchAccessGroupMembers,
+  fetchAccessGroups,
   fetchPendingAccessRequests,
   fetchPendingRevisions,
+  removeAccessGroupMember,
   submitRevisionDecision,
 } from '../../src/api/manager'
 
@@ -91,5 +96,62 @@ describe('manager api', () => {
       status: 409,
       details: { error: 'RevisionAlreadyDecided' },
     })
+  })
+
+  it('should list the access groups of the area', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(200, { results: [] }))
+
+    await fetchAccessGroups()
+
+    expect(globalThis.fetch.mock.calls[0][0]).toBe('/api/manager/access-groups')
+  })
+
+  it('should create an access group translating the secrecy level field', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(201, { id: 4 }))
+
+    const created = await createAccessGroup({
+      name: 'Estruturas',
+      description: 'Documentação técnica',
+      secrecyLevel: 'SECRET',
+    })
+
+    const [url, init] = globalThis.fetch.mock.calls[0]
+    expect(url).toBe('/api/manager/access-groups')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual({
+      name: 'Estruturas',
+      description: 'Documentação técnica',
+      secrecy_level: 'SECRET',
+    })
+    expect(created).toEqual({ id: 4 })
+  })
+
+  it('should list the members of an access group', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(200, { results: [] }))
+
+    await fetchAccessGroupMembers(4)
+
+    expect(globalThis.fetch.mock.calls[0][0]).toBe('/api/manager/access-groups/4/users')
+  })
+
+  it('should add a user to an access group', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(201, { user_id: 9 }))
+
+    await addAccessGroupMember(4, 9)
+
+    const [url, init] = globalThis.fetch.mock.calls[0]
+    expect(url).toBe('/api/manager/access-groups/4/users')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual({ user_id: 9 })
+  })
+
+  it('should remove a user from an access group', async () => {
+    globalThis.fetch.mockResolvedValue({ ok: true, status: 204, text: async () => '' })
+
+    await removeAccessGroupMember(4, 9)
+
+    const [url, init] = globalThis.fetch.mock.calls[0]
+    expect(url).toBe('/api/manager/access-groups/4/users/9')
+    expect(init.method).toBe('DELETE')
   })
 })
