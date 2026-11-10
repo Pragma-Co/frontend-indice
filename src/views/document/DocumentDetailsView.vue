@@ -182,7 +182,7 @@ async function handleRequestAccess(payload) {
       return
     }
     accessRequested.value = true
-    notifications.success('Solicitação enviada. O responsável pelo documento foi notificado.')
+    notifications.success('Solicitação enviada para análise de um gestor.')
   } catch (err) {
     if (err?.status === 409) {
       await loadDocument()
