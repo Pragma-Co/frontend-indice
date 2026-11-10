@@ -184,7 +184,12 @@ describe('DocumentDetailsView', () => {
     authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante', email: 'visitante@example.com' }
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: true, blob: async () => new Blob(['docx']) }),
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        blob: async () => new Blob(['docx']),
+        text: async () => '',
+      }),
     )
     const base = makeDocument()
     const wrapper = await mountAsStranger(
@@ -285,7 +290,9 @@ describe('DocumentDetailsView', () => {
       'fetch',
       vi.fn().mockResolvedValue({
         ok: true,
+        status: 200,
         blob: () => Promise.resolve(new Blob(['fake-docx'])),
+        text: async () => '',
       }),
     )
 
