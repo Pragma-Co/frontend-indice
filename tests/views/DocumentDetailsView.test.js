@@ -628,7 +628,7 @@ describe('DocumentDetailsView', () => {
     expect(requestButton(wrapper).attributes('disabled')).toBeDefined()
     expect(notifications.items[0]).toMatchObject({
       type: 'success',
-      message: 'Solicitação enviada. O responsável pelo documento foi notificado.',
+      message: 'Solicitação enviada para análise de um gestor.',
     })
   })
 
@@ -719,7 +719,7 @@ describe('DocumentDetailsView', () => {
       }),
     )
 
-    expect(wrapper.find('.access-overlay').text()).toContain('recusada pelo responsável')
+    expect(wrapper.find('.access-overlay').text()).toContain('recusada pelo gestor')
     expect(wrapper.find('.access-overlay button').exists()).toBe(false)
   })
 

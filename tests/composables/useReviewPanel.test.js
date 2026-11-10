@@ -15,12 +15,18 @@ vi.mock('vue-router', () => ({
 }))
 
 vi.mock('@/api/manager.js', () => ({
+  ACCESS_REQUEST_DECISIONS: { APPROVED: 'APPROVED', REJECTED: 'REJECTED' },
   REVISION_DECISIONS: { APPROVED: 'APPROVED', REJECTED: 'REJECTED' },
   fetchPendingRevisions: vi.fn(),
   fetchPendingAccessRequests: vi.fn(),
+  submitAccessRequestDecision: vi.fn(),
 }))
 
-import { fetchPendingAccessRequests, fetchPendingRevisions } from '@/api/manager.js'
+import {
+  fetchPendingAccessRequests,
+  fetchPendingRevisions,
+  submitAccessRequestDecision,
+} from '@/api/manager.js'
 import { useNotificationStore } from '@/stores/notificationStore.js'
 import {
   PANEL_TABS,
@@ -55,6 +61,7 @@ function makeAccessRequest(overrides = {}) {
   return {
     id: 7,
     status: 'PENDING',
+    justification: '  Preciso consultar o memorial.  ',
     requested_at: '2026-09-25T17:46:00',
     requester: { id: 3, name: 'Caio Bertoni', area: { acronym: 'EST', name: 'Estruturas' } },
     document: {
@@ -163,8 +170,15 @@ describe('normalizeAccessRequest', () => {
       discipline: 'Hidráulica',
       requesterName: 'Caio Bertoni',
       requesterArea: 'EST',
+      justification: 'Preciso consultar o memorial.',
       requestedAt: '2026-09-25T17:46:00',
     })
+  })
+
+  it('should use an empty justification when the backend does not provide one', () => {
+    expect(normalizeAccessRequest(makeAccessRequest({ justification: null })).justification).toBe(
+      '',
+    )
   })
 })
 
@@ -177,6 +191,7 @@ describe('useReviewPanel', () => {
     fetchPendingAccessRequests.mockResolvedValue(
       page([makeAccessRequest(), makeAccessRequest({ id: 8 })]),
     )
+    submitAccessRequestDecision.mockResolvedValue({ id: 7, status: 'APPROVED' })
   })
 
   it('should load both pending lists on mount', async () => {
@@ -365,6 +380,53 @@ describe('useReviewPanel', () => {
     expect(useNotificationStore().items.at(-1).message).toBe(
       'Revisão REV02 de AK-3100-EST-ESP-0001 recusada.',
     )
+  })
+
+  it('should submit the decision, confirm it and refresh the pending access requests', async () => {
+    const panel = await mountPanel()
+    const [request] = panel.accessRequests.items
+    fetchPendingAccessRequests.mockResolvedValue(page([makeAccessRequest({ id: 8 })]))
+
+    await panel.handleAccessRequestDecision({
+      request,
+      decision: 'APPROVED',
+      opinion: 'Parecer técnico detalhado.',
+    })
+
+    expect(submitAccessRequestDecision).toHaveBeenCalledWith(7, {
+      decision: 'APPROVED',
+      opinion: 'Parecer técnico detalhado.',
+    })
+    expect(useNotificationStore().items.at(-1)).toMatchObject({
+      type: 'success',
+      message: 'Pedido de acesso a AK-3100-HID-MEM-0018 aprovado.',
+    })
+    expect(fetchPendingAccessRequests).toHaveBeenCalledTimes(2)
+    expect(panel.accessRequests.items.map((item) => item.id)).toEqual([8])
+    expect(panel.accessRequestDecision.value).toBeNull()
+  })
+
+  it('should refresh a request that another manager has already decided', async () => {
+    submitAccessRequestDecision.mockRejectedValue(
+      Object.assign(new Error('already decided'), {
+        status: 409,
+        details: { error: 'AccessRequestAlreadyDecided' },
+      }),
+    )
+    const panel = await mountPanel()
+    const [request] = panel.accessRequests.items
+
+    await panel.handleAccessRequestDecision({
+      request,
+      decision: 'REJECTED',
+      opinion: 'Parecer técnico detalhado.',
+    })
+
+    expect(useNotificationStore().items.at(-1)).toMatchObject({
+      type: 'error',
+      message: 'Este pedido já não está disponível para decisão.',
+    })
+    expect(fetchPendingAccessRequests).toHaveBeenCalledTimes(2)
   })
 
   it('should go back one page when the decided revision was the last of its page', async () => {
