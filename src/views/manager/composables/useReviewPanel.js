@@ -1,9 +1,11 @@
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  ACCESS_REQUEST_DECISIONS,
   REVISION_DECISIONS,
   fetchPendingAccessRequests,
   fetchPendingRevisions,
+  submitAccessRequestDecision,
 } from '@/api/manager.js'
 import { useNotificationStore } from '@/stores/notificationStore.js'
 import { findConfidentiality } from '@/utils/documentCatalog.js'
@@ -22,6 +24,8 @@ export const PANEL_AUTO_REFRESH_INTERVAL = 60_000
 const PERMISSION_ERROR_MESSAGE = 'Você não tem permissão para acessar o painel de gestão.'
 const REVISIONS_ERROR_MESSAGE = 'Não foi possível carregar as revisões pendentes.'
 const ACCESS_REQUESTS_ERROR_MESSAGE = 'Não foi possível carregar os pedidos de acesso.'
+const ACCESS_REQUEST_DECISION_ERROR_MESSAGE =
+  'Não foi possível registrar a decisão. Tente novamente.'
 
 export function normalizePendingRevision(revision) {
   const version = revision.version ?? 1
@@ -53,6 +57,7 @@ export function normalizeAccessRequest(request) {
     discipline: request.document?.discipline?.name ?? '-',
     requesterName: request.requester?.name ?? '-',
     requesterArea: request.requester?.area?.acronym ?? null,
+    justification: request.justification?.trim() ?? '',
     requestedAt: request.requested_at ?? null,
     status: request.status ?? null,
     source: request,
@@ -144,6 +149,8 @@ export function useReviewPanel() {
     ACCESS_REQUESTS_ERROR_MESSAGE,
   )
   const revisionUnderReview = ref(null)
+  const accessRequestDecision = ref(null)
+  const accessRequestUnderReview = ref(null)
 
   const activeTab = computed(() =>
     Object.values(PANEL_TABS).includes(route.query.tab) ? route.query.tab : PANEL_TABS.REVISIONS,
@@ -189,6 +196,42 @@ export function useReviewPanel() {
     return revisions.refresh()
   }
 
+  function openAccessRequestReview(request) {
+    accessRequestUnderReview.value = request
+  }
+
+  function closeAccessRequestReview() {
+    if (!accessRequestDecision.value) accessRequestUnderReview.value = null
+  }
+
+  async function handleAccessRequestDecision({ request, decision, opinion }) {
+    if (accessRequestDecision.value) return
+
+    accessRequestDecision.value = { requestId: request.id, decision }
+    try {
+      await submitAccessRequestDecision(request.id, { decision, opinion })
+      accessRequestUnderReview.value = null
+      const outcome = decision === ACCESS_REQUEST_DECISIONS.APPROVED ? 'aprovado' : 'recusado'
+      notifications.success(`Pedido de acesso a ${request.code} ${outcome}.`)
+      await accessRequests.refresh()
+    } catch (failure) {
+      const code = failure?.details?.error
+      if (code === 'AccessRequestAlreadyDecided' || failure?.status === 404) {
+        accessRequestUnderReview.value = null
+        notifications.error('Este pedido já não está disponível para decisão.')
+        await accessRequests.refresh()
+      } else if (code === 'AccessRequestExpired') {
+        notifications.error('O prazo deste pedido expirou e ele não pode ser aprovado.')
+      } else if (failure?.status === 401 || failure?.status === 403) {
+        notifications.error(PERMISSION_ERROR_MESSAGE)
+      } else {
+        notifications.error(ACCESS_REQUEST_DECISION_ERROR_MESSAGE)
+      }
+    } finally {
+      accessRequestDecision.value = null
+    }
+  }
+
   function refreshActiveList() {
     if (activeTab.value === PANEL_TABS.REVISIONS) return revisions.refresh()
     if (activeTab.value === PANEL_TABS.ACCESS_REQUESTS) return accessRequests.refresh()
@@ -216,11 +259,16 @@ export function useReviewPanel() {
     revisions,
     accessRequests,
     revisionUnderReview,
+    accessRequestDecision,
+    accessRequestUnderReview,
     selectTab,
     openRevisionReview,
     closeRevisionReview,
     handleRevisionDecided,
     handleRevisionUnavailable,
+    handleAccessRequestDecision,
+    openAccessRequestReview,
+    closeAccessRequestReview,
     refreshActiveList,
   }
 }

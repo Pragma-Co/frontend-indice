@@ -34,11 +34,11 @@ watch(
       <h2>Conteúdo restrito</h2>
       <p>
         Este documento é sigiloso e você ainda não tem permissão para visualizá-lo. Solicite o
-        acesso e o responsável pelo documento será notificado.
+        acesso para que um gestor avalie seu pedido.
       </p>
 
       <p v-if="rejected" class="access-rejected" role="status">
-        Sua solicitação de acesso foi recusada pelo responsável.
+        Sua solicitação de acesso foi recusada pelo gestor.
       </p>
       <template v-else>
         <Button
@@ -53,7 +53,7 @@ watch(
       </template>
 
       <p v-if="requested" class="access-hint" role="status">
-        Você será avisado quando o responsável responder.
+        Você será avisado quando um gestor responder.
       </p>
     </div>
 

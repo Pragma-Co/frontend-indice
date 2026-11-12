@@ -184,7 +184,12 @@ describe('DocumentDetailsView', () => {
     authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante', email: 'visitante@example.com' }
     vi.stubGlobal(
       'fetch',
-      vi.fn().mockResolvedValue({ ok: true, blob: async () => new Blob(['docx']) }),
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        blob: async () => new Blob(['docx']),
+        text: async () => '',
+      }),
     )
     const base = makeDocument()
     const wrapper = await mountAsStranger(
@@ -285,7 +290,9 @@ describe('DocumentDetailsView', () => {
       'fetch',
       vi.fn().mockResolvedValue({
         ok: true,
+        status: 200,
         blob: () => Promise.resolve(new Blob(['fake-docx'])),
+        text: async () => '',
       }),
     )
 
@@ -628,7 +635,7 @@ describe('DocumentDetailsView', () => {
     expect(requestButton(wrapper).attributes('disabled')).toBeDefined()
     expect(notifications.items[0]).toMatchObject({
       type: 'success',
-      message: 'Solicitação enviada. O responsável pelo documento foi notificado.',
+      message: 'Solicitação enviada para análise de um gestor.',
     })
   })
 
@@ -719,7 +726,7 @@ describe('DocumentDetailsView', () => {
       }),
     )
 
-    expect(wrapper.find('.access-overlay').text()).toContain('recusada pelo responsável')
+    expect(wrapper.find('.access-overlay').text()).toContain('recusada pelo gestor')
     expect(wrapper.find('.access-overlay button').exists()).toBe(false)
   })
 

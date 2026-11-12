@@ -85,7 +85,7 @@ onUnmounted(() => document.removeEventListener('keydown', onKeydown))
     >
       <h2 id="access-dialog-title" class="dialog-title">Solicitar acesso ao documento</h2>
       <p class="dialog-text">
-        Informe o tipo de acesso e a justificativa. O responsável pelo documento será notificado.
+        Informe o tipo de acesso e a justificativa para análise por um gestor.
       </p>
 
       <RadioGroup
