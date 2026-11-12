@@ -3,6 +3,7 @@ import {
   addAccessGroupMember,
   fetchAccessGroupMembers,
   fetchAccessGroups,
+  fetchAreaCollaborators,
   fetchPendingAccessRequests,
   fetchPendingRevisions,
   removeAccessGroupMember,
@@ -114,6 +115,14 @@ describe('manager api', () => {
       status: 409,
       details: { error: 'RevisionAlreadyDecided' },
     })
+  })
+
+  it('should list the active collaborators of the area', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(200, { results: [] }))
+
+    await fetchAreaCollaborators()
+
+    expect(globalThis.fetch.mock.calls[0][0]).toBe('/api/manager/users')
   })
 
   it('should list the access groups of the area', async () => {

@@ -6,6 +6,7 @@ import { MANAGER_ACCOUNT } from '../../fixtures/accounts'
 
 vi.mock('@/api/manager.js', () => ({
   fetchAccessGroups: vi.fn(),
+  fetchAreaCollaborators: vi.fn(),
   fetchAccessGroupMembers: vi.fn(),
   addAccessGroupMember: vi.fn(),
   removeAccessGroupMember: vi.fn(),
@@ -15,6 +16,7 @@ import {
   addAccessGroupMember,
   fetchAccessGroupMembers,
   fetchAccessGroups,
+  fetchAreaCollaborators,
   removeAccessGroupMember,
 } from '@/api/manager.js'
 import { useAuthStore } from '@/stores/authStore'
@@ -37,6 +39,11 @@ const LOADS = {
 }
 const MARINA = { user_id: 7, name: 'Marina Duarte', email: 'marina.duarte@empresa.com' }
 const RAFAEL = { user_id: 8, name: 'Rafael Nunes', email: 'rafael.nunes@empresa.com' }
+const JULIA = { id: 9, name: 'Júlia Prado', email: 'julia.prado@empresa.com' }
+
+function asAreaUser({ user_id, name, email }) {
+  return { id: user_id, name, email }
+}
 
 let wrapper
 
@@ -84,6 +91,7 @@ describe('CollaboratorsView', () => {
     setActivePinia(createPinia())
     useAuthStore().setSession(MANAGER_ACCOUNT)
     fetchAccessGroups.mockResolvedValue({ results: [STRUCTURES, LOADS] })
+    fetchAreaCollaborators.mockResolvedValue({ results: [MARINA, RAFAEL].map(asAreaUser) })
     fetchAccessGroupMembers.mockImplementation(async (groupId) => ({
       results: groupId === 1 ? [MARINA, RAFAEL] : [MARINA],
     }))
@@ -126,12 +134,31 @@ describe('CollaboratorsView', () => {
     expect(wrapper.text()).toContain('Nenhum colaborador encontrado')
   })
 
-  it('should explain when no collaborator belongs to a group yet', async () => {
+  it('should explain when the area has no active collaborator', async () => {
     fetchAccessGroups.mockResolvedValue({ results: [] })
+    fetchAreaCollaborators.mockResolvedValue({ results: [] })
 
     await mountView()
 
-    expect(wrapper.text()).toContain('Nenhum colaborador em grupos da área')
+    expect(wrapper.text()).toContain('Nenhum colaborador na área')
+  })
+
+  it('should list a collaborator without groups and let the manager add one', async () => {
+    fetchAreaCollaborators.mockResolvedValue({
+      results: [MARINA, RAFAEL].map(asAreaUser).concat(JULIA),
+    })
+    addAccessGroupMember.mockResolvedValue({ user_id: 9, name: JULIA.name, email: JULIA.email })
+    await mountView()
+    expect(wrapper.find('.collaborators-count').text()).toBe('3 colaboradores')
+    expect(rowOf('Júlia Prado').text()).toContain('Nenhum grupo')
+
+    await openEditorOf('Júlia Prado')
+    await checkboxOf('Estruturas').setValue(true)
+    await buttonNamed('Salvar Alterações').trigger('click')
+    await flushPromises()
+
+    expect(addAccessGroupMember).toHaveBeenCalledWith(1, 9)
+    expect(chipsOf('Júlia Prado')).toEqual(['Estruturas'])
   })
 
   it('should offer a retry when loading fails', async () => {

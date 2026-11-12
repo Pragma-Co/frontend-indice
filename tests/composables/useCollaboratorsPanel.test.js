@@ -6,6 +6,7 @@ import { ApiError } from '@/api/client.js'
 
 vi.mock('@/api/manager.js', () => ({
   fetchAccessGroups: vi.fn(),
+  fetchAreaCollaborators: vi.fn(),
   fetchAccessGroupMembers: vi.fn(),
   addAccessGroupMember: vi.fn(),
   removeAccessGroupMember: vi.fn(),
@@ -15,6 +16,7 @@ import {
   addAccessGroupMember,
   fetchAccessGroupMembers,
   fetchAccessGroups,
+  fetchAreaCollaborators,
   removeAccessGroupMember,
 } from '@/api/manager.js'
 import { useNotificationStore } from '@/stores/notificationStore.js'
@@ -40,9 +42,19 @@ const LOADS = {
 }
 const MARINA = { user_id: 7, name: 'Marina Duarte', email: 'marina.duarte@empresa.com' }
 const RAFAEL = { user_id: 8, name: 'Rafael Nunes', email: 'rafael.nunes@empresa.com' }
+const JULIA = { id: 9, name: 'Júlia Prado', email: 'julia.prado@empresa.com' }
 
-function respondWith(membersByGroup, groups = [STRUCTURES, LOADS]) {
+function asAreaUser({ user_id, name, email }) {
+  return { id: user_id, name, email }
+}
+
+function respondWith(
+  membersByGroup,
+  groups = [STRUCTURES, LOADS],
+  areaUsers = [MARINA, RAFAEL].map(asAreaUser),
+) {
   fetchAccessGroups.mockResolvedValue({ results: groups })
+  fetchAreaCollaborators.mockResolvedValue({ results: areaUsers })
   fetchAccessGroupMembers.mockImplementation(async (groupId) => ({
     results: membersByGroup[groupId] ?? [],
   }))
@@ -75,7 +87,13 @@ describe('normalizeAccessGroup', () => {
 
 describe('mergeCollaborators', () => {
   it('should join the memberships of each person and sort by name', () => {
-    const result = mergeCollaborators([], [{ id: 1 }, { id: 2 }], [[RAFAEL, MARINA], [MARINA]])
+    const areaUsers = [RAFAEL, MARINA].map(asAreaUser)
+
+    const result = mergeCollaborators(
+      areaUsers,
+      [{ id: 1 }, { id: 2 }],
+      [[RAFAEL, MARINA], [MARINA]],
+    )
 
     expect(result.map((person) => [person.name, person.groupIds])).toEqual([
       ['Marina Duarte', [1, 2]],
@@ -84,10 +102,14 @@ describe('mergeCollaborators', () => {
     expect(result[0].initials).toBe('MD')
   })
 
-  it('should keep a known person who no longer belongs to any group', () => {
-    const known = [{ id: 7, name: 'Marina Duarte', email: 'm@x', initials: 'MD', groupIds: [1] }]
+  it('should list a person of the area who belongs to no group', () => {
+    const result = mergeCollaborators([JULIA], [{ id: 1 }], [[MARINA]])
 
-    expect(mergeCollaborators(known, [{ id: 1 }], [[]])[0].groupIds).toEqual([])
+    expect(result.map((person) => [person.name, person.groupIds])).toEqual([
+      ['Júlia Prado', []],
+      ['Marina Duarte', [1]],
+    ])
+    expect(result[0].initials).toBe('JP')
   })
 })
 
@@ -217,5 +239,39 @@ describe('useCollaboratorsPanel', () => {
     await panel.saveMemberships([])
 
     expect(panel.collaboratorRows.value.find((row) => row.id === 8).groups).toEqual([])
+  })
+
+  it('should add a collaborator of the area who had no group yet', async () => {
+    respondWith(
+      { 1: [MARINA] },
+      [STRUCTURES, LOADS],
+      [MARINA, RAFAEL].map(asAreaUser).concat(JULIA),
+    )
+    addAccessGroupMember.mockResolvedValue({ user_id: 9, name: JULIA.name, email: JULIA.email })
+    const panel = await mountPanel()
+    panel.openMembershipDialog(9)
+
+    await panel.saveMemberships([1])
+
+    expect(addAccessGroupMember.mock.calls).toEqual([[1, 9]])
+    expect(panel.collaboratorRows.value.find((row) => row.id === 9).groupIds).toEqual([1])
+  })
+
+  it('should keep a collaborator without groups after reloading', async () => {
+    respondWith({}, [STRUCTURES], [asAreaUser(RAFAEL)])
+    const panel = await mountPanel()
+
+    await panel.load()
+
+    expect(panel.collaboratorRows.value.map((row) => [row.id, row.groupIds])).toEqual([[8, []]])
+  })
+
+  it('should fail the load when the collaborators of the area cannot be read', async () => {
+    fetchAreaCollaborators.mockRejectedValue(new ApiError('negado', { status: 403 }))
+
+    const panel = await mountPanel()
+
+    expect(panel.error.value).toBe('Você não tem permissão para gerenciar os grupos desta área.')
+    expect(panel.collaboratorRows.value).toEqual([])
   })
 })

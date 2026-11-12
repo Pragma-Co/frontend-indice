@@ -3,6 +3,7 @@ import {
   addAccessGroupMember,
   fetchAccessGroupMembers,
   fetchAccessGroups,
+  fetchAreaCollaborators,
   removeAccessGroupMember,
 } from '@/api/manager.js'
 import { useNotificationStore } from '@/stores/notificationStore.js'
@@ -31,17 +32,17 @@ export function normalizeAccessGroup(group) {
   }
 }
 
-export function mergeCollaborators(known, groups, memberLists) {
-  const byId = new Map(known.map((person) => [person.id, { ...person, groupIds: [] }]))
+function toCollaborator({ id, name, email }) {
+  return { id, name, email, initials: getInitials(name), groupIds: [] }
+}
+
+export function mergeCollaborators(areaUsers, groups, memberLists) {
+  const byId = new Map(areaUsers.map((user) => [user.id, toCollaborator(user)]))
   groups.forEach((group, index) => {
     for (const member of memberLists[index]) {
-      const person = byId.get(member.user_id) ?? {
-        id: member.user_id,
-        name: member.name,
-        email: member.email,
-        initials: getInitials(member.name),
-        groupIds: [],
-      }
+      const person =
+        byId.get(member.user_id) ??
+        toCollaborator({ id: member.user_id, name: member.name, email: member.email })
       person.groupIds.push(group.id)
       byId.set(person.id, person)
     }
@@ -93,15 +94,21 @@ export function useCollaboratorsPanel() {
     loading.value = true
     error.value = ''
     try {
-      const response = await fetchAccessGroups()
-      const loadedGroups = (response?.results ?? []).map(normalizeAccessGroup).sort(compareNames)
+      const [groupsResponse, usersResponse] = await Promise.all([
+        fetchAccessGroups(),
+        fetchAreaCollaborators(),
+      ])
+      const loadedGroups = (groupsResponse?.results ?? [])
+        .map(normalizeAccessGroup)
+        .sort(compareNames)
       const memberResponses = await Promise.all(
         loadedGroups.map((group) => fetchAccessGroupMembers(group.id)),
       )
       if (request !== latestLoad) return
       groups.value = loadedGroups
       const memberLists = memberResponses.map((members) => members?.results ?? [])
-      collaborators.value = mergeCollaborators(collaborators.value, groups.value, memberLists)
+      const areaUsers = usersResponse?.results ?? []
+      collaborators.value = mergeCollaborators(areaUsers, groups.value, memberLists)
     } catch (failure) {
       if (request !== latestLoad) return
       const forbidden = failure?.status === 401 || failure?.status === 403

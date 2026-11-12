@@ -80,8 +80,8 @@ const isSearching = computed(() => Boolean(search.value.trim()))
 
       <PanelEmptyState
         v-else-if="!collaboratorRows.length"
-        title="Nenhum colaborador em grupos da área"
-        description="Os colaboradores aparecem aqui quando fazem parte de um grupo de acesso da área."
+        title="Nenhum colaborador na área"
+        description="Os colaboradores ativos da área aparecem aqui, mesmo sem grupo de acesso."
       />
 
       <CollaboratorsTable v-else :collaborators="collaboratorRows" @edit="openMembershipDialog" />

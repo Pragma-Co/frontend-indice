@@ -32,6 +32,10 @@ export function submitRevisionDecision(revisionId, { decision, justification = '
   return api.post(`/manager/revisions/${revisionId}/decision`, { decision, justification })
 }
 
+export function fetchAreaCollaborators() {
+  return api.get('/manager/users')
+}
+
 export function fetchAccessGroups() {
   return api.get('/manager/access-groups')
 }
