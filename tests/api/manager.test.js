@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  submitAccessRequestDecision,
   fetchPendingAccessRequests,
   fetchPendingRevisions,
   submitRevisionDecision,
@@ -45,6 +46,24 @@ describe('manager api', () => {
     expect(globalThis.fetch.mock.calls[0][0]).toBe(
       '/api/manager/pending-access-requests?page=2&page_size=20',
     )
+  })
+
+  it('should submit an access request decision', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(200, { id: 7, status: 'APPROVED' }))
+
+    const result = await submitAccessRequestDecision(7, {
+      decision: 'APPROVED',
+      opinion: 'Parecer do gestor detalhado.',
+    })
+
+    const [url, init] = globalThis.fetch.mock.calls[0]
+    expect(url).toBe('/api/manager/access-requests/7/decision')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual({
+      decision: 'APPROVED',
+      opinion: 'Parecer do gestor detalhado.',
+    })
+    expect(result).toEqual({ id: 7, status: 'APPROVED' })
   })
 
   it('should reject with the status when the user is not allowed', async () => {
