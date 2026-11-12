@@ -9,6 +9,8 @@ const FORM_FIELD_BY_PAYLOAD_KEY = {
   confidentiality: 'confidentiality',
   responsible_id: 'author',
   areas: 'areas',
+  authorized_group_ids: 'authorizedGroups',
+  authorized_user_ids: 'authorizedUsers',
 }
 
 const FIELD_LABELS = {
@@ -21,6 +23,8 @@ const FIELD_LABELS = {
   confidentiality: 'Grau de confidencialidade',
   author: 'Responsável/Autor',
   areas: 'Área(s) relacionada(s)',
+  authorizedGroups: 'Grupos de acesso',
+  authorizedUsers: 'Usuários com acesso',
 }
 
 export const FIELD_ERROR_MESSAGES = {
@@ -60,6 +64,18 @@ export const FIELD_ERROR_MESSAGES = {
     required: 'Selecione ao menos uma área.',
     invalid: 'Informe as áreas como uma lista de siglas.',
     not_found: 'Uma ou mais áreas não existem ou estão inativas.',
+  },
+  authorizedGroups: {
+    invalid: 'Informe os grupos como uma lista de identificadores.',
+    not_found: 'Um ou mais grupos não existem ou estão inativos.',
+    not_allowed: 'Grupos de acesso só são aceitos em documentos confidenciais.',
+    insufficient_level: 'Um grupo selecionado tem nível de sigilo inferior ao do documento.',
+  },
+  authorizedUsers: {
+    required: 'Selecione ao menos um usuário com acesso.',
+    invalid: 'Informe os usuários como uma lista de identificadores.',
+    not_found: 'Um ou mais usuários não existem ou estão inativos.',
+    not_allowed: 'Usuários com acesso só são aceitos em documentos sigilosos.',
   },
 }
 

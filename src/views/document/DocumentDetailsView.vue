@@ -14,10 +14,25 @@ import {
 } from '@/utils/documentStatus.js'
 import { formatDate } from '@/utils/formatters.js'
 import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
+import ProtectedContent from '@/components/common/ProtectedContent.vue'
+import ProtectedImage from '@/components/common/ProtectedImage.vue'
+import ProtectedPdf from '@/components/common/ProtectedPdf.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import DocumentAccessOverlay from '@/views/document/components/DocumentAccessOverlay.vue'
+import RecommendedDocuments from '@/views/document/components/RecommendedDocuments.vue'
 
 const route = useRoute()
+
+const PARENT_CRUMBS = {
+  favorites: { label: 'Favoritos', to: '/favorites' },
+  results: { label: 'Resultados', to: '/results' },
+}
+const parentCrumb = computed(() => {
+  const crumb = PARENT_CRUMBS[route.query.from]
+  if (!crumb) return { label: 'Documentos', to: '/documents' }
+  const back = window.history.state?.back
+  return typeof back === 'string' && back.startsWith(crumb.to) ? { ...crumb, to: back } : crumb
+})
 const authStore = useAuthStore()
 const notifications = useNotificationStore()
 const document = ref(null)
@@ -75,8 +90,16 @@ const accessRejected = computed(() => document.value?.access_request?.status ===
 
 const isRejectedRevision = computed(() => currentRevision.value?.status === 'REJECTED')
 
+const hasViewerIdentity = computed(
+  () =>
+    !!authStore.currentUser?.name?.trim() &&
+    !!authStore.currentUser?.email?.trim() &&
+    authStore.currentUser?.id != null,
+)
+
 const canPreview = computed(
-  () => !!currentFile.value && hasAccess.value && !isRejectedRevision.value,
+  () =>
+    !!currentFile.value && hasAccess.value && !isRejectedRevision.value && hasViewerIdentity.value,
 )
 
 const isPdf = computed(() => {
@@ -144,23 +167,34 @@ async function loadDocument() {
   }
 }
 
-async function handleRequestAccess() {
+async function handleRequestAccess(payload) {
+  if (requestingAccess.value || accessRequested.value) return
   requestingAccess.value = true
   requestError.value = ''
   try {
-    const result = await requestDocumentAccess(route.params.documentId, currentUserId.value)
+    const result = await requestDocumentAccess(
+      route.params.documentId,
+      currentUserId.value,
+      payload,
+    )
     if (result?.status === 'REJECTED') {
       await loadDocument()
       return
     }
     accessRequested.value = true
-    notifications.success('Solicitação enviada. O responsável pelo documento foi notificado.')
+    notifications.success('Solicitação enviada para análise de um gestor.')
   } catch (err) {
     if (err?.status === 409) {
       await loadDocument()
       return
     }
-    requestError.value = 'Não foi possível enviar a solicitação. Tente novamente.'
+    if (err?.status === 0) {
+      requestError.value = 'Sem conexão com o servidor. Verifique sua rede e tente novamente.'
+    } else if (err?.status === 400) {
+      requestError.value = 'Justificativa inválida. Revise o texto e tente novamente.'
+    } else {
+      requestError.value = 'Não foi possível enviar a solicitação. Tente novamente.'
+    }
     notifications.error(requestError.value)
   } finally {
     requestingAccess.value = false
@@ -209,13 +243,26 @@ watch(
   { immediate: false },
 )
 
+watch(
+  () => route.params.documentId,
+  (documentId, previousId) => {
+    if (!documentId || documentId === previousId) return
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    loadDocument()
+  },
+)
+
 onMounted(loadDocument)
 </script>
 
 <template>
   <main class="details-page">
     <div class="details-shell">
-      <Breadcrumbs :title="document?.title ?? 'Documento'" />
+      <Breadcrumbs
+        :title="document?.title ?? 'Documento'"
+        :parent-label="parentCrumb.label"
+        :parent-to="parentCrumb.to"
+      />
 
       <div v-if="loading" class="details-grid" aria-busy="true" aria-live="polite">
         <section class="preview-panel preview-panel--skeleton" aria-label="Carregando documento">
@@ -267,32 +314,39 @@ onMounted(loadDocument)
                 <span>{{ document.code }}</span>
               </div>
 
-              <iframe
-                v-else-if="isPdf"
-                :key="currentFile.id"
-                :src="fileUrl"
-                class="preview-frame"
-                title="Visualização do PDF"
-                type="application/pdf"
-              />
-
-              <img
-                v-else-if="isImage"
-                :key="currentFile.id"
-                :src="fileUrl"
-                class="preview-image"
-                :alt="currentFile.original_name || document.title"
-              />
-
-              <div v-else-if="isDocx" class="preview-docx-wrapper">
-                <p v-if="docxLoading" class="preview-docx-loading">Carregando documento...</p>
-                <div ref="docxContainer" class="preview-docx" />
+              <div v-else-if="!hasViewerIdentity" class="preview-placeholder">
+                <p>
+                  Não foi possível identificar o usuário para exibir o documento protegido. Nome e
+                  e-mail são necessários.
+                </p>
               </div>
 
-              <div v-else class="preview-placeholder">
-                <p>Formato não suportado para visualização.</p>
-                <span>{{ currentFile?.original_name }}</span>
-              </div>
+              <ProtectedContent
+                v-else
+                class="preview-content"
+                :user="authStore.currentUser"
+                :document-id="document.id"
+                :file-id="currentFile?.id"
+              >
+                <ProtectedPdf v-if="isPdf" :key="currentFile.id" :url="fileUrl" />
+
+                <ProtectedImage
+                  v-else-if="isImage"
+                  :key="currentFile.id"
+                  :url="fileUrl"
+                  :alt="currentFile.original_name || document.title"
+                />
+
+                <div v-else-if="isDocx" class="preview-docx-wrapper">
+                  <p v-if="docxLoading" class="preview-docx-loading">Carregando documento...</p>
+                  <div ref="docxContainer" class="preview-docx" />
+                </div>
+
+                <div v-else class="preview-placeholder">
+                  <p>Formato não suportado para visualização.</p>
+                  <span>{{ currentFile?.original_name }}</span>
+                </div>
+              </ProtectedContent>
             </div>
 
             <div v-if="canPreview && totalFiles > 0" class="preview-footer">
@@ -444,6 +498,11 @@ onMounted(loadDocument)
           </aside>
         </div>
       </template>
+
+      <RecommendedDocuments
+        v-if="!notFound && route.params.documentId"
+        :document-id="route.params.documentId"
+      />
     </div>
   </main>
 </template>
@@ -513,7 +572,8 @@ onMounted(loadDocument)
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  height: calc(100vh - 132px);
+  height: calc(100vh - 462px);
+  min-height: 600px;
 }
 
 .preview-panel {
@@ -562,19 +622,11 @@ onMounted(loadDocument)
   display: flex;
 }
 
-.preview-frame {
+.preview-content {
+  display: flex;
   flex: 1;
-  width: 100%;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-muted);
-}
-
-.preview-image {
-  max-width: 100%;
-  max-height: 100%;
-  margin: auto;
-  object-fit: contain;
+  min-width: 0;
+  min-height: 0;
 }
 
 .preview-docx-wrapper {

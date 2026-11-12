@@ -2,7 +2,8 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import logo from '@/assets/logo.svg'
-import { Bell, LogOut } from '@lucide/vue'
+import { LogOut } from '@lucide/vue'
+import NotificationsDropdown from './NotificationsDropdown.vue'
 import { useAuthStore } from '@/stores/authStore'
 
 const route = useRoute()
@@ -11,13 +12,17 @@ const auth = useAuthStore()
 
 const collaboratorLinks = [
   { label: 'Início', to: '/home' },
-  { label: 'Documentos', to: '/documents', preserveQuery: true },
+  { label: 'Resultados', to: '/results' },
+  { label: 'Documentos', to: '/documents' },
+  { label: 'Favoritos', to: '/favorites' },
 ]
 
 const managerLinks = [
   { label: 'Início', to: '/home' },
+  { label: 'Resultados', to: '/results' },
   { label: 'Revisões', to: '/revisions' },
   { label: 'Colaboradores', to: '/collaborators' },
+  { label: 'Favoritos', to: '/favorites' },
 ]
 
 const links = computed(() => (auth.isManager ? managerLinks : collaboratorLinks))
@@ -27,7 +32,7 @@ const resolvedLinks = computed(() =>
     ...link,
     to: {
       path: link.to,
-      query: link.preserveQuery ? { ...route.query } : {},
+      query: {},
     },
   })),
 )
@@ -60,9 +65,7 @@ function isActive(to) {
     </nav>
 
     <div class="navbar-user">
-      <button class="navbar-notifications" type="button" aria-label="Notificações">
-        <Bell :size="18" class="navbar-bell" aria-hidden="true" />
-      </button>
+      <NotificationsDropdown />
       <RouterLink
         to="/profile"
         :class="['navbar-profile', { active: isActive('/profile') }]"

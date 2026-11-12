@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { listProjects } from '../api/projects'
 import { listAreas } from '../api/areas'
+import { listUsers } from '../api/users'
+import { listAccessGroups } from '../api/accessGroups'
 import { listDisciplines } from '../api/disciplines'
 import { createDocument, toDocumentPayload, listDocumentTypes } from '../api/documents'
 import { useAuthStore } from './authStore'
@@ -21,6 +23,8 @@ export function emptyForm(author = '') {
     author,
     areas: [],
     confidentiality: DEFAULT_CONFIDENTIALITY,
+    authorizedGroups: [],
+    authorizedUsers: [],
     version: INITIAL_VERSION,
   }
 }
@@ -47,6 +51,12 @@ export const useDocumentFormStore = defineStore('documentForm', {
     disciplines: [],
     areas: [],
     documentTypes: [],
+    users: [],
+    usersLoading: false,
+    usersError: null,
+    accessGroups: [],
+    accessGroupsLoading: false,
+    accessGroupsError: null,
     catalogsLoading: false,
     catalogsError: null,
     publishing: false,
@@ -105,6 +115,44 @@ export const useDocumentFormStore = defineStore('documentForm', {
         })
       catalogRequests.set(this, request)
       return request
+    },
+
+    setConfidentiality(level) {
+      if (this.form.confidentiality === level) return
+      this.form.confidentiality = level
+      this.form.authorizedGroups = []
+      this.form.authorizedUsers = []
+      this.clearServerError('authorizedGroups')
+      this.clearServerError('authorizedUsers')
+    },
+
+    async loadAccessGroups() {
+      if (this.accessGroups.length || this.accessGroupsLoading) return
+      this.accessGroupsLoading = true
+      this.accessGroupsError = null
+      try {
+        const groups = await listAccessGroups()
+        this.accessGroups = Array.isArray(groups) ? groups : []
+      } catch (error) {
+        this.accessGroupsError =
+          error.message || 'Não foi possível carregar a lista de grupos de acesso.'
+      } finally {
+        this.accessGroupsLoading = false
+      }
+    },
+
+    async loadUsers() {
+      if (this.users.length || this.usersLoading) return
+      this.usersLoading = true
+      this.usersError = null
+      try {
+        const users = await listUsers()
+        this.users = Array.isArray(users) ? users : []
+      } catch (error) {
+        this.usersError = error.message || 'Não foi possível carregar a lista de usuários.'
+      } finally {
+        this.usersLoading = false
+      }
     },
 
     selectProject(projectId) {

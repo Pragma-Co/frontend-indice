@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { reactive, ref } from 'vue'
 import { mount } from '@vue/test-utils'
 
@@ -38,6 +38,7 @@ const ACCESS_REQUEST = {
   discipline: 'Hidráulica',
   requesterName: 'Caio Bertoni',
   requesterArea: 'EST',
+  justification: 'Preciso consultar o documento para a inspeção.',
   requestedAt: '2026-09-25T17:46:00',
   status: 'PENDING',
 }
@@ -47,6 +48,14 @@ const selectTab = vi.fn((tab) => {
   activeTab.value = tab
 })
 const revisionUnderReview = ref(null)
+const accessRequestDecision = ref(null)
+const accessRequestUnderReview = ref(null)
+const openAccessRequestReview = vi.fn((request) => {
+  accessRequestUnderReview.value = request
+})
+const closeAccessRequestReview = vi.fn(() => {
+  accessRequestUnderReview.value = null
+})
 const openRevisionReview = vi.fn((revision) => {
   revisionUnderReview.value = revision
 })
@@ -55,6 +64,7 @@ const closeRevisionReview = vi.fn(() => {
 })
 const handleRevisionDecided = vi.fn()
 const handleRevisionUnavailable = vi.fn()
+const handleAccessRequestDecision = vi.fn()
 let revisions
 let accessRequests
 
@@ -75,11 +85,16 @@ vi.mock('@/views/manager/composables/useReviewPanel.js', () => ({
     revisions,
     accessRequests,
     revisionUnderReview,
+    accessRequestDecision,
+    accessRequestUnderReview,
+    openAccessRequestReview,
+    closeAccessRequestReview,
     selectTab,
     openRevisionReview,
     closeRevisionReview,
     handleRevisionDecided,
     handleRevisionUnavailable,
+    handleAccessRequestDecision,
   }),
 }))
 
@@ -101,10 +116,19 @@ function findTab(wrapper, label) {
 describe('ReviewPanelView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    HTMLDialogElement.prototype.showModal = vi.fn()
+    HTMLDialogElement.prototype.close = vi.fn()
     activeTab.value = 'revisions'
     revisionUnderReview.value = null
+    accessRequestDecision.value = null
+    accessRequestUnderReview.value = null
     revisions = makeList({ items: [REVISION], count: 1 })
     accessRequests = makeList({ items: [ACCESS_REQUEST], count: 1 })
+  })
+
+  afterEach(() => {
+    delete HTMLDialogElement.prototype.showModal
+    delete HTMLDialogElement.prototype.close
   })
 
   it('should present the panel with its three tabs', () => {
@@ -205,7 +229,21 @@ describe('ReviewPanelView', () => {
     expect(selectTab).toHaveBeenCalledWith('access-requests')
     expect(wrapper.find('[role="tabpanel"] h2').text()).toBe('Pedidos de acesso aguardando decisão')
     expect(wrapper.find('tbody').text()).toContain('Caio Bertoni')
-    expect(wrapper.find('tbody button').exists()).toBe(false)
+    expect(wrapper.findAll('tbody button').map((button) => button.text())).toEqual([
+      'Avaliar Acesso',
+    ])
+  })
+
+  it('should open the selected access request and show its justification', async () => {
+    const wrapper = mount(ReviewPanelView, { global: { stubs: { teleport: true } } })
+    await findTab(wrapper, 'Pedidos de Acesso').trigger('click')
+
+    await wrapper.get('button[aria-label^="Avaliar acesso"]').trigger('click')
+
+    expect(openAccessRequestReview).toHaveBeenCalledWith(ACCESS_REQUEST)
+    expect(wrapper.get('dialog .justification').text()).toBe(ACCESS_REQUEST.justification)
+    await wrapper.get('dialog button[aria-label="Fechar"]').trigger('click')
+    expect(wrapper.find('dialog').exists()).toBe(false)
   })
 
   it('should show an empty state when there is no access request', async () => {

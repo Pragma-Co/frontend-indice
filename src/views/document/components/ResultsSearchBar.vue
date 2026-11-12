@@ -1,5 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue'
+import { useSearchStore } from '@/stores/searchStore.js'
 import Button from '@/components/common/Button.vue'
 
 const props = defineProps({
@@ -7,6 +8,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits(['search'])
+const searchStore = useSearchStore()
 
 const draft = ref(props.term)
 
@@ -18,7 +20,9 @@ watch(
 )
 
 function submit() {
-  emit('search', draft.value.trim())
+  const trimmed = draft.value.trim()
+  searchStore.setCurrentTerm(trimmed)
+  emit('search', trimmed)
 }
 </script>
 

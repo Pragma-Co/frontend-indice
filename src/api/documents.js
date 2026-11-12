@@ -54,6 +54,15 @@ export function searchDocuments(query = {}) {
   return fetchDocumentPage('/api/documents/search', query)
 }
 
+export function fetchFavoriteDocuments(query = {}) {
+  return fetchDocumentPage('/api/users/me/library', query)
+}
+
+export function setDocumentFavorite(documentId, isFavorite) {
+  const path = `/users/me/library/${documentId}`
+  return isFavorite ? api.post(path) : api.delete(path)
+}
+
 export async function fetchResultsSummary(query = {}, { signal } = {}) {
   const filters = Object.fromEntries(new URLSearchParams(buildSummaryQueryKey(query)))
   return request('/documents/search/ai-summary', { method: 'POST', body: { filters }, signal })
@@ -69,6 +78,12 @@ export function toDocumentPayload(form, { tempFileIds, tempFileId, responsibleId
     confidentiality: form.confidentiality,
     responsible_id: responsibleId,
     areas: [...form.areas],
+  }
+  if (form.confidentiality === 'CONFIDENTIAL' && form.authorizedGroups?.length) {
+    payload.authorized_group_ids = form.authorizedGroups.map(Number)
+  }
+  if (form.confidentiality === 'SECRET' && form.authorizedUsers?.length) {
+    payload.authorized_user_ids = form.authorizedUsers.map(Number)
   }
   if (tempFileIds) payload.temp_file_ids = tempFileIds
   else payload.temp_file_id = tempFileId
@@ -93,9 +108,15 @@ export function requestDocumentSuggestions(documentId) {
   return api.post(`/documents/${documentId}/suggestions`)
 }
 
-export function requestDocumentAccess(documentId, userId, justification) {
+export function requestDocumentAccess(
+  documentId,
+  userId,
+  { justification, access_type, expires_on },
+) {
   return api.post(`/documents/${documentId}/request-access`, {
     user_id: userId,
     justification,
+    access_type,
+    ...(expires_on ? { expires_on } : {}),
   })
 }

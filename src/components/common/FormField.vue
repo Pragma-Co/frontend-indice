@@ -6,6 +6,7 @@ defineProps({
   htmlFor: { type: String, default: undefined },
   required: { type: Boolean, default: false },
   error: { type: String, default: '' },
+  errorId: { type: String, default: undefined },
   icon: {
     type: String,
     default: '',
@@ -47,7 +48,7 @@ defineProps({
       </span>
       <slot />
     </div>
-    <p v-if="error" class="field__error" role="alert">{{ error }}</p>
+    <p v-if="error" :id="errorId" class="field__error" role="alert">{{ error }}</p>
   </div>
 </template>
 

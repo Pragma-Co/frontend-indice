@@ -132,6 +132,19 @@ npm install                  # (re)install dependencies after a git pull
 - **API errors shown in the UI must never expose connection internals** — display only a status and an error name; hosts, usernames, passwords and stack traces stay out of the interface.
 - **Team rules:** never commit `.env`; never hardcode backend URLs, ports or credentials in the source; never log or display real personal data during development; collect only the data the application actually needs (data minimization).
 
+### Protected document previews
+
+On the document details page, `CONFIDENTIAL` and `SECRET` previews display the signed-in
+user's name and email as randomly positioned watermarks and discourage selection, copying, dragging and the context
+menu. Protected PDFs are rendered as images instead of using the browser's PDF viewer; this means
+their text is not available for selection or to screen readers. Public previews are unchanged.
+The review panel is outside this protection's scope.
+
+These controls are deterrents, not a security boundary: browsers cannot reliably prevent
+screenshots, photographs, developer-tool inspection or access to a file already delivered to
+the client. The backend must enforce authorization independently. The watermark identifies the
+viewer but is not embedded in the original file.
+
 ## Troubleshooting
 
 | Problem | Fix |
