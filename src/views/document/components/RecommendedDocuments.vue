@@ -140,7 +140,7 @@ const { collections, activeKey, activeCollection, loading, error, load, selectCo
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  height: 9.5rem;
+  height: 13rem;
   padding: 1rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
@@ -194,16 +194,18 @@ const { collections, activeKey, activeCollection, loading, error, load, selectCo
 }
 
 .recommended-state {
-  padding: 1.5rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 15rem;
+  padding: 0 1rem;
   color: var(--color-text-muted);
   font-size: 0.88rem;
   text-align: center;
 }
 
 .recommended-error {
-  display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 0.75rem;
   color: var(--color-warning);
 }

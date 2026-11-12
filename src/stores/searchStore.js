@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 export const useSearchStore = defineStore('search', {
   state: () => ({
     lastSearch: {},
+    currentTerm: '',
   }),
 
   getters: {
@@ -16,6 +17,14 @@ export const useSearchStore = defineStore('search', {
 
     forget() {
       this.lastSearch = {}
+    },
+
+    setCurrentTerm(term = '') {
+      this.currentTerm = String(term ?? '').trim()
+    },
+
+    clearCurrentTerm() {
+      this.currentTerm = ''
     },
   },
 })

@@ -4,6 +4,7 @@ import Button from '@/components/common/Button.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import AccessRequestsTable from '@/views/manager/components/AccessRequestsTable.vue'
+import AccessReviewModal from '@/views/manager/components/AccessReviewModal.vue'
 import PanelEmptyState from '@/views/manager/components/PanelEmptyState.vue'
 import PanelTableSkeleton from '@/views/manager/components/PanelTableSkeleton.vue'
 import PanelTabs from '@/views/manager/components/PanelTabs.vue'
@@ -22,11 +23,16 @@ const {
   revisions,
   accessRequests,
   revisionUnderReview,
+  accessRequestDecision,
+  accessRequestUnderReview,
   selectTab,
   openRevisionReview,
   closeRevisionReview,
   handleRevisionDecided,
   handleRevisionUnavailable,
+  handleAccessRequestDecision,
+  openAccessRequestReview,
+  closeAccessRequestReview,
   refreshActiveList,
 } = useReviewPanel()
 
@@ -42,7 +48,7 @@ const SECTIONS = {
   [PANEL_TABS.ACCESS_REQUESTS]: {
     title: 'Pedidos de acesso aguardando decisão',
     loadingLabel: 'Carregando pedidos de acesso',
-    columns: 6,
+    columns: 7,
     itemLabel: 'pedidos',
     emptyTitle: 'Nenhum pedido de acesso pendente',
     emptyDescription: 'Não há pedidos de acesso a documentos restritos no momento.',
@@ -138,7 +144,12 @@ const updatedLabel = computed(() =>
         :revisions="activeList.items"
         @evaluate="openRevisionReview"
       />
-      <AccessRequestsTable v-else class="panel-content" :requests="activeList.items" />
+      <AccessRequestsTable
+        v-else
+        class="panel-content"
+        :requests="activeList.items"
+        @evaluate="openAccessRequestReview"
+      />
 
       <footer v-if="activeList && !activeList.error" class="panel-pagination">
         <Pagination
@@ -161,6 +172,13 @@ const updatedLabel = computed(() =>
       @close="closeRevisionReview"
       @decided="handleRevisionDecided"
       @unavailable="handleRevisionUnavailable"
+    />
+    <AccessReviewModal
+      v-if="accessRequestUnderReview"
+      :request="accessRequestUnderReview"
+      :pending-decision="accessRequestDecision?.decision ?? null"
+      @close="closeAccessRequestReview"
+      @decide="handleAccessRequestDecision"
     />
   </PageLayout>
 </template>

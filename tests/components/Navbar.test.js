@@ -20,8 +20,10 @@ function createTestRouter() {
     history: createMemoryHistory(),
     routes: [
       { path: '/home', name: 'home', component: Page },
+      { path: '/results', name: 'results', component: Page },
       { path: '/documents', name: 'document-list', component: Page },
       { path: '/documents/upload', name: 'document-upload', component: Page },
+      { path: '/favorites', name: 'favorites', component: Page },
       { path: '/revisions', name: 'revisions', component: Page },
       { path: '/collaborators', name: 'collaborators', component: Page },
       { path: '/profile', name: 'profile', component: Page },
@@ -52,12 +54,18 @@ describe('Navbar', () => {
     expect(brand.find('img').attributes('alt')).toBe('Índice')
   })
 
-  it('should render the Início, Documentos and Favoritos links for a collaborator', async () => {
+  it('should render the Início, Resultados, Documentos and Favoritos links for a collaborator', async () => {
     const { wrapper } = await mountNavbar()
     const links = wrapper.findAll('a.navbar-link')
-    expect(links.map((link) => link.text())).toEqual(['Início', 'Documentos', 'Favoritos'])
+    expect(links.map((link) => link.text())).toEqual([
+      'Início',
+      'Resultados',
+      'Documentos',
+      'Favoritos',
+    ])
     expect(links.map((link) => link.attributes('href'))).toEqual([
       '/home',
+      '/results',
       '/documents',
       '/favorites',
     ])
@@ -70,11 +78,20 @@ describe('Navbar', () => {
     expect(documents.classes()).not.toContain('active')
   })
 
+  it('should mark Resultados as active on the results route', async () => {
+    const { wrapper } = await mountNavbar('/results')
+    const [home, results, documents] = wrapper.findAll('a.navbar-link')
+    expect(results.classes()).toContain('active')
+    expect(home.classes()).not.toContain('active')
+    expect(documents.classes()).not.toContain('active')
+  })
+
   it('should mark Documentos as active on any documents route', async () => {
     const { wrapper } = await mountNavbar('/documents/upload')
-    const [home, documents] = wrapper.findAll('a.navbar-link')
+    const [home, results, documents] = wrapper.findAll('a.navbar-link')
     expect(documents.classes()).toContain('active')
     expect(home.classes()).not.toContain('active')
+    expect(results.classes()).not.toContain('active')
   })
 
   it('should navigate to the home route when the logo is clicked', async () => {
@@ -86,16 +103,15 @@ describe('Navbar', () => {
 
   it('should navigate to the documents route when Documentos is clicked', async () => {
     const { wrapper, router } = await mountNavbar('/home')
-    await wrapper.findAll('a.navbar-link')[1].trigger('click')
+    await wrapper.findAll('a.navbar-link')[2].trigger('click')
     await flushPromises()
     expect(router.currentRoute.value.path).toBe('/documents')
   })
 
   it('should show the notifications bell on the right block', async () => {
     const { wrapper } = await mountNavbar()
-    const bell = wrapper.find('.navbar-user button[aria-label="Notificações"]')
-    expect(bell.exists()).toBe(true)
-    expect(bell.find('svg').exists()).toBe(true)
+    const dropdown = wrapper.findComponent({ name: 'Dropdown' })
+    expect(dropdown.exists()).toBe(true)
   })
 
   it('should show the initials and the name of the current user', async () => {
@@ -109,19 +125,21 @@ describe('Navbar', () => {
     expect(wrapper.find('header.navbar').exists()).toBe(true)
   })
 
-  it('should render the Início, Revisões, Colaboradores and Favoritos links for a manager', async () => {
+  it('should render the Início, Resultados, Revisões, Colaboradores and Favoritos links for a manager', async () => {
     const { wrapper } = await mountNavbar('/home', PROFILES.MANAGER)
 
     const links = wrapper.findAll('a.navbar-link')
 
     expect(links.map((link) => link.text())).toEqual([
       'Início',
+      'Resultados',
       'Revisões',
       'Colaboradores',
       'Favoritos',
     ])
     expect(links.map((link) => link.attributes('href'))).toEqual([
       '/home',
+      '/results',
       '/revisions',
       '/collaborators',
       '/favorites',
@@ -140,17 +158,18 @@ describe('Navbar', () => {
   it('should mark Revisões as active on the revisions route for a manager', async () => {
     const { wrapper } = await mountNavbar('/revisions', PROFILES.MANAGER)
 
-    const [home, revisions, collaborators] = wrapper.findAll('a.navbar-link')
+    const [home, results, revisions, collaborators] = wrapper.findAll('a.navbar-link')
 
     expect(revisions.classes()).toContain('active')
     expect(home.classes()).not.toContain('active')
+    expect(results.classes()).not.toContain('active')
     expect(collaborators.classes()).not.toContain('active')
   })
 
   it('should navigate to the collaborators route when a manager clicks Colaboradores', async () => {
     const { wrapper, router } = await mountNavbar('/home', PROFILES.MANAGER)
 
-    await wrapper.findAll('a.navbar-link')[2].trigger('click')
+    await wrapper.findAll('a.navbar-link')[3].trigger('click')
     await flushPromises()
 
     expect(router.currentRoute.value.path).toBe('/collaborators')

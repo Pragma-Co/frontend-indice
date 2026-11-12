@@ -65,13 +65,13 @@ describe('DocumentAccessOverlay', () => {
     expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
     expect(openButton(wrapper).text()).toBe('Solicitação enviada')
     expect(openButton(wrapper).attributes('disabled')).toBeDefined()
-    expect(wrapper.find('[role="status"]').text()).toContain('responsável responder')
+    expect(wrapper.find('[role="status"]').text()).toContain('gestor responder')
   })
 
   it('should tell the user a rejected request instead of offering the button', () => {
     const wrapper = mount(DocumentAccessOverlay, { props: { rejected: true } })
 
-    expect(wrapper.text()).toContain('recusada pelo responsável')
+    expect(wrapper.text()).toContain('recusada pelo gestor')
     expect(wrapper.find('button').exists()).toBe(false)
   })
 })

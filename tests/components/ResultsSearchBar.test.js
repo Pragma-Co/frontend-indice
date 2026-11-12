@@ -1,8 +1,13 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
 import ResultsSearchBar from '@/views/document/components/ResultsSearchBar.vue'
 
 describe('ResultsSearchBar', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
   it('should start with the term that came from the URL', () => {
     const wrapper = mount(ResultsSearchBar, { props: { term: 'tubulação' } })
 

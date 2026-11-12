@@ -14,6 +14,15 @@ export function fetchPendingAccessRequests(options) {
   return api.get(`/manager/pending-access-requests?${pageQuery(options)}`)
 }
 
+export const ACCESS_REQUEST_DECISIONS = {
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+}
+
+export function submitAccessRequestDecision(accessRequestId, { decision, opinion }) {
+  return api.post(`/manager/access-requests/${accessRequestId}/decision`, { decision, opinion })
+}
+
 export const REVISION_DECISIONS = {
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',

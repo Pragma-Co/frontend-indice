@@ -22,6 +22,17 @@ import DocumentAccessOverlay from '@/views/document/components/DocumentAccessOve
 import RecommendedDocuments from '@/views/document/components/RecommendedDocuments.vue'
 
 const route = useRoute()
+
+const PARENT_CRUMBS = {
+  favorites: { label: 'Favoritos', to: '/favorites' },
+  results: { label: 'Resultados', to: '/results' },
+}
+const parentCrumb = computed(() => {
+  const crumb = PARENT_CRUMBS[route.query.from]
+  if (!crumb) return { label: 'Documentos', to: '/documents' }
+  const back = window.history.state?.back
+  return typeof back === 'string' && back.startsWith(crumb.to) ? { ...crumb, to: back } : crumb
+})
 const authStore = useAuthStore()
 const notifications = useNotificationStore()
 const document = ref(null)
@@ -171,7 +182,7 @@ async function handleRequestAccess(payload) {
       return
     }
     accessRequested.value = true
-    notifications.success('Solicitação enviada. O responsável pelo documento foi notificado.')
+    notifications.success('Solicitação enviada para análise de um gestor.')
   } catch (err) {
     if (err?.status === 409) {
       await loadDocument()
@@ -247,7 +258,11 @@ onMounted(loadDocument)
 <template>
   <main class="details-page">
     <div class="details-shell">
-      <Breadcrumbs :title="document?.title ?? 'Documento'" />
+      <Breadcrumbs
+        :title="document?.title ?? 'Documento'"
+        :parent-label="parentCrumb.label"
+        :parent-to="parentCrumb.to"
+      />
 
       <div v-if="loading" class="details-grid" aria-busy="true" aria-live="polite">
         <section class="preview-panel preview-panel--skeleton" aria-label="Carregando documento">
@@ -557,7 +572,8 @@ onMounted(loadDocument)
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  height: calc(100vh - 132px);
+  height: calc(100vh - 462px);
+  min-height: 600px;
 }
 
 .preview-panel {
