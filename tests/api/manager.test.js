@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   addAccessGroupMember,
-  createAccessGroup,
   fetchAccessGroupMembers,
   fetchAccessGroups,
   fetchPendingAccessRequests,
@@ -104,26 +103,6 @@ describe('manager api', () => {
     await fetchAccessGroups()
 
     expect(globalThis.fetch.mock.calls[0][0]).toBe('/api/manager/access-groups')
-  })
-
-  it('should create an access group translating the secrecy level field', async () => {
-    globalThis.fetch.mockResolvedValue(jsonResponse(201, { id: 4 }))
-
-    const created = await createAccessGroup({
-      name: 'Estruturas',
-      description: 'Documentação técnica',
-      secrecyLevel: 'SECRET',
-    })
-
-    const [url, init] = globalThis.fetch.mock.calls[0]
-    expect(url).toBe('/api/manager/access-groups')
-    expect(init.method).toBe('POST')
-    expect(JSON.parse(init.body)).toEqual({
-      name: 'Estruturas',
-      description: 'Documentação técnica',
-      secrecy_level: 'SECRET',
-    })
-    expect(created).toEqual({ id: 4 })
   })
 
   it('should list the members of an access group', async () => {

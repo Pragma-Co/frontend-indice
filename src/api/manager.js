@@ -27,10 +27,6 @@ export function fetchAccessGroups() {
   return api.get('/manager/access-groups')
 }
 
-export function createAccessGroup({ name, description, secrecyLevel }) {
-  return api.post('/manager/access-groups', { name, description, secrecy_level: secrecyLevel })
-}
-
 export function fetchAccessGroupMembers(groupId) {
   return api.get(`/manager/access-groups/${groupId}/users`)
 }

@@ -82,6 +82,15 @@ describe('ManageAccessGroupsDialog', () => {
     expect(wrapper.emitted('save')).toEqual([[[2]]])
   })
 
+  it('should allow assigning groups of different secrecy levels at once', async () => {
+    mountDialog()
+
+    await checkboxes()[1].setValue(true)
+    await saveButton().trigger('click')
+
+    expect(wrapper.emitted('save')).toEqual([[[1, 2]]])
+  })
+
   it('should block adding to an inactive group', () => {
     mountDialog()
 

@@ -7,14 +7,12 @@ import { MANAGER_ACCOUNT } from '../../fixtures/accounts'
 vi.mock('@/api/manager.js', () => ({
   fetchAccessGroups: vi.fn(),
   fetchAccessGroupMembers: vi.fn(),
-  createAccessGroup: vi.fn(),
   addAccessGroupMember: vi.fn(),
   removeAccessGroupMember: vi.fn(),
 }))
 
 import {
   addAccessGroupMember,
-  createAccessGroup,
   fetchAccessGroupMembers,
   fetchAccessGroups,
   removeAccessGroupMember,
@@ -80,13 +78,6 @@ async function openEditorOf(name) {
   await wrapper.find(`button[aria-label="Gerenciar grupos de ${name}"]`).trigger('click')
 }
 
-async function fillAndSubmitNewGroup(name) {
-  await buttonNamed('Criar Grupo de Acesso').trigger('click')
-  await wrapper.find('#access-group-name').setValue(name)
-  await wrapper.find('form').trigger('submit')
-  await flushPromises()
-}
-
 describe('CollaboratorsView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -108,7 +99,6 @@ describe('CollaboratorsView', () => {
     await mountView()
 
     expect(wrapper.find('[aria-label="Carregando colaboradores"]').exists()).toBe(true)
-    expect(buttonNamed('Criar Grupo de Acesso').attributes('disabled')).toBeDefined()
   })
 
   it('should present the area and its collaborators', async () => {
@@ -237,47 +227,5 @@ describe('CollaboratorsView', () => {
     expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
     expect(addAccessGroupMember).not.toHaveBeenCalled()
     expect(chipsOf('Rafael Nunes')).toEqual(['Estruturas'])
-  })
-
-  it('should create a group and offer it right away to the collaborators', async () => {
-    createAccessGroup.mockResolvedValue({
-      id: 3,
-      name: 'Fadiga',
-      description: 'Vida útil',
-      secrecy_level: 'CONFIDENTIAL',
-      active: true,
-    })
-    addAccessGroupMember.mockResolvedValue(RAFAEL)
-    await mountView()
-
-    await fillAndSubmitNewGroup('Fadiga')
-
-    expect(createAccessGroup).toHaveBeenCalledWith({
-      name: 'Fadiga',
-      description: '',
-      secrecyLevel: 'CONFIDENTIAL',
-    })
-    expect(wrapper.find('[role="dialog"]').exists()).toBe(false)
-    expect(useNotificationStore().items[0].message).toBe('Grupo Fadiga criado.')
-
-    await openEditorOf('Rafael Nunes')
-    await checkboxOf('Fadiga').setValue(true)
-    await buttonNamed('Salvar Alterações').trigger('click')
-    await flushPromises()
-
-    expect(addAccessGroupMember).toHaveBeenCalledWith(3, 8)
-    expect(chipsOf('Rafael Nunes')).toEqual(['Estruturas', 'Fadiga'])
-  })
-
-  it('should keep the form open with the conflict message', async () => {
-    createAccessGroup.mockRejectedValue(new ApiError('conflito', { status: 409 }))
-    await mountView()
-
-    await fillAndSubmitNewGroup('Estruturas')
-
-    expect(wrapper.find('#access-group-name-error').text()).toBe(
-      'Já existe um grupo com este nome ou com este nível de sigilo.',
-    )
-    expect(wrapper.find('#access-group-name').element.value).toBe('Estruturas')
   })
 })

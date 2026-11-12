@@ -1,7 +1,6 @@
 import { computed, onMounted, ref } from 'vue'
 import {
   addAccessGroupMember,
-  createAccessGroup,
   fetchAccessGroupMembers,
   fetchAccessGroups,
   removeAccessGroupMember,
@@ -11,18 +10,6 @@ import { getInitials } from '@/utils/formatters.js'
 
 const LOAD_ERROR_MESSAGE = 'Não foi possível carregar os colaboradores da área.'
 const PERMISSION_ERROR_MESSAGE = 'Você não tem permissão para gerenciar os grupos desta área.'
-const GROUP_CONFLICT_MESSAGE = 'Já existe um grupo com este nome ou com este nível de sigilo.'
-const CREATE_ERROR_MESSAGE = 'Não foi possível criar o grupo de acesso.'
-const INVALID_FIELD_MESSAGES = {
-  name: 'Informe um nome válido com até 120 caracteres.',
-  description: 'Informe uma descrição com até 500 caracteres.',
-  secrecy_level: 'Selecione um nível de sigilo válido.',
-}
-const FIELD_BY_API_KEY = {
-  name: 'name',
-  description: 'description',
-  secrecy_level: 'secrecyLevel',
-}
 const MEMBER_ALREADY_ADDED = 'AccessGroupMemberExists'
 const MEMBER_ALREADY_REMOVED = 'AccessGroupMemberNotFound'
 
@@ -62,18 +49,6 @@ export function mergeCollaborators(known, groups, memberLists) {
   return [...byId.values()].sort(compareNames)
 }
 
-function createGroupErrorsFor(failure) {
-  if (failure?.status === 409) return { name: GROUP_CONFLICT_MESSAGE }
-  const fieldErrors = failure?.status === 400 ? failure.details?.errors : null
-  const invalidFields = Object.keys(fieldErrors ?? {}).filter((key) => FIELD_BY_API_KEY[key])
-  if (!invalidFields.length) {
-    return { general: failure?.status === 403 ? failure.message : CREATE_ERROR_MESSAGE }
-  }
-  return Object.fromEntries(
-    invalidFields.map((key) => [FIELD_BY_API_KEY[key], INVALID_FIELD_MESSAGES[key]]),
-  )
-}
-
 function membershipErrorFor(failedGroups, savedSomething) {
   const names = failedGroups.map((group) => group.name).join(', ')
   const saved = savedSomething ? ' As demais alterações foram salvas.' : ''
@@ -92,10 +67,6 @@ export function useCollaboratorsPanel() {
   const editingCollaboratorId = ref(null)
   const savingMemberships = ref(false)
   const membershipError = ref('')
-
-  const creatingGroup = ref(false)
-  const submittingGroup = ref(false)
-  const createGroupErrors = ref({})
 
   let latestLoad = 0
 
@@ -211,38 +182,6 @@ export function useCollaboratorsPanel() {
     notifications.success(`Grupos de acesso de ${person.name} atualizados.`)
   }
 
-  function openCreateGroupDialog() {
-    createGroupErrors.value = {}
-    creatingGroup.value = true
-  }
-
-  function closeCreateGroupDialog() {
-    if (submittingGroup.value) return
-    creatingGroup.value = false
-    createGroupErrors.value = {}
-  }
-
-  function clearCreateGroupErrors() {
-    createGroupErrors.value = {}
-  }
-
-  async function submitCreateGroup(form) {
-    if (submittingGroup.value) return
-    submittingGroup.value = true
-    createGroupErrors.value = {}
-    try {
-      const created = normalizeAccessGroup(await createAccessGroup(form))
-      groups.value = [...groups.value, created].sort(compareNames)
-      submittingGroup.value = false
-      closeCreateGroupDialog()
-      notifications.success(`Grupo ${created.name} criado.`)
-    } catch (failure) {
-      createGroupErrors.value = createGroupErrorsFor(failure)
-    } finally {
-      submittingGroup.value = false
-    }
-  }
-
   onMounted(load)
 
   return {
@@ -258,12 +197,5 @@ export function useCollaboratorsPanel() {
     openMembershipDialog,
     closeMembershipDialog,
     saveMemberships,
-    creatingGroup,
-    submittingGroup,
-    createGroupErrors,
-    openCreateGroupDialog,
-    closeCreateGroupDialog,
-    clearCreateGroupErrors,
-    submitCreateGroup,
   }
 }

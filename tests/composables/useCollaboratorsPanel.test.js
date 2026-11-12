@@ -7,14 +7,12 @@ import { ApiError } from '@/api/client.js'
 vi.mock('@/api/manager.js', () => ({
   fetchAccessGroups: vi.fn(),
   fetchAccessGroupMembers: vi.fn(),
-  createAccessGroup: vi.fn(),
   addAccessGroupMember: vi.fn(),
   removeAccessGroupMember: vi.fn(),
 }))
 
 import {
   addAccessGroupMember,
-  createAccessGroup,
   fetchAccessGroupMembers,
   fetchAccessGroups,
   removeAccessGroupMember,
@@ -219,69 +217,5 @@ describe('useCollaboratorsPanel', () => {
     await panel.saveMemberships([])
 
     expect(panel.collaboratorRows.value.find((row) => row.id === 8).groups).toEqual([])
-  })
-
-  it('should add the created group to the list right away', async () => {
-    createAccessGroup.mockResolvedValue({
-      id: 3,
-      name: 'Fadiga',
-      description: '',
-      secrecy_level: 'CONFIDENTIAL',
-      active: true,
-    })
-    const panel = await mountPanel()
-    panel.openCreateGroupDialog()
-
-    await panel.submitCreateGroup({ name: 'Fadiga', description: '', secrecyLevel: 'CONFIDENTIAL' })
-
-    expect(panel.groups.value.map((group) => group.name)).toEqual([
-      'Análise de Cargas',
-      'Estruturas',
-      'Fadiga',
-    ])
-    expect(panel.creatingGroup.value).toBe(false)
-    expect(panel.submittingGroup.value).toBe(false)
-    expect(useNotificationStore().items[0].message).toBe('Grupo Fadiga criado.')
-  })
-
-  it('should show a conflict on the name field and keep the dialog open', async () => {
-    createAccessGroup.mockRejectedValue(new ApiError('conflito', { status: 409 }))
-    const panel = await mountPanel()
-    panel.openCreateGroupDialog()
-
-    await panel.submitCreateGroup({ name: 'Fadiga', description: '', secrecyLevel: 'SECRET' })
-
-    expect(panel.createGroupErrors.value).toEqual({
-      name: 'Já existe um grupo com este nome ou com este nível de sigilo.',
-    })
-    expect(panel.creatingGroup.value).toBe(true)
-    expect(panel.submittingGroup.value).toBe(false)
-  })
-
-  it('should map invalid fields from the API to translated messages', async () => {
-    createAccessGroup.mockRejectedValue(
-      new ApiError('invalido', {
-        status: 400,
-        details: { errors: { secrecy_level: 'Must be an existing secrecy level code.' } },
-      }),
-    )
-    const panel = await mountPanel()
-
-    await panel.submitCreateGroup({ name: 'Fadiga', description: '', secrecyLevel: 'X' })
-
-    expect(panel.createGroupErrors.value).toEqual({
-      secrecyLevel: 'Selecione um nível de sigilo válido.',
-    })
-  })
-
-  it('should show a general message for unexpected creation failures', async () => {
-    createAccessGroup.mockRejectedValue(new ApiError('falha', { status: 500 }))
-    const panel = await mountPanel()
-
-    await panel.submitCreateGroup({ name: 'Fadiga', description: '', secrecyLevel: 'SECRET' })
-
-    expect(panel.createGroupErrors.value).toEqual({
-      general: 'Não foi possível criar o grupo de acesso.',
-    })
   })
 })

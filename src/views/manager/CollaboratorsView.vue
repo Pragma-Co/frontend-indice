@@ -1,11 +1,10 @@
 <script setup>
 import { computed } from 'vue'
-import { Plus, Search, ShieldCheck } from '@lucide/vue'
+import { Search, ShieldCheck } from '@lucide/vue'
 import Button from '@/components/common/Button.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import { useAuthStore } from '@/stores/authStore'
 import CollaboratorsTable from '@/views/manager/components/CollaboratorsTable.vue'
-import CreateAccessGroupDialog from '@/views/manager/components/CreateAccessGroupDialog.vue'
 import ManageAccessGroupsDialog from '@/views/manager/components/ManageAccessGroupsDialog.vue'
 import PanelEmptyState from '@/views/manager/components/PanelEmptyState.vue'
 import PanelTableSkeleton from '@/views/manager/components/PanelTableSkeleton.vue'
@@ -26,13 +25,6 @@ const {
   openMembershipDialog,
   closeMembershipDialog,
   saveMemberships,
-  creatingGroup,
-  submittingGroup,
-  createGroupErrors,
-  openCreateGroupDialog,
-  closeCreateGroupDialog,
-  clearCreateGroupErrors,
-  submitCreateGroup,
 } = useCollaboratorsPanel()
 
 const areaName = computed(() => auth.currentUser?.area ?? '')
@@ -63,14 +55,6 @@ const isSearching = computed(() => Boolean(search.value.trim()))
           aria-label="Pesquisar colaboradores por nome ou e-mail"
         />
       </div>
-      <Button
-        class="collaborators-create"
-        :disabled="loading || Boolean(error)"
-        @click="openCreateGroupDialog"
-      >
-        <Plus :size="16" aria-hidden="true" class="collaborators-create-icon" />Criar Grupo de
-        Acesso
-      </Button>
     </div>
 
     <section class="collaborators-card" aria-labelledby="collaborators-card-title">
@@ -119,17 +103,6 @@ const isSearching = computed(() => Boolean(search.value.trim()))
       @close="closeMembershipDialog"
       @save="saveMemberships"
     />
-
-    <CreateAccessGroupDialog
-      v-if="creatingGroup"
-      :groups="groups"
-      :area-name="areaName"
-      :submitting="submittingGroup"
-      :server-errors="createGroupErrors"
-      @close="closeCreateGroupDialog"
-      @edit="clearCreateGroupErrors"
-      @submit="submitCreateGroup"
-    />
   </PageLayout>
 </template>
 
@@ -170,17 +143,6 @@ const isSearching = computed(() => Boolean(search.value.trim()))
 .collaborators-search input:focus {
   outline: 2px solid var(--color-primary-bg);
   border-color: var(--color-primary);
-}
-
-.collaborators-create {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.85rem;
-}
-
-.collaborators-create-icon {
-  margin-right: 0.35rem;
 }
 
 .collaborators-card {
@@ -237,10 +199,6 @@ const isSearching = computed(() => Boolean(search.value.trim()))
   .collaborators-search {
     flex-basis: 100%;
     max-width: none;
-  }
-
-  .collaborators-create {
-    width: 100%;
   }
 }
 </style>
