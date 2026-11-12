@@ -6,6 +6,7 @@ import {
   fetchPendingAccessRequests,
   fetchPendingRevisions,
   removeAccessGroupMember,
+  submitAccessRequestDecision,
   submitRevisionDecision,
 } from '../../src/api/manager'
 
