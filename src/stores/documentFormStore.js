@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { listProjects } from '../api/projects'
 import { listAreas } from '../api/areas'
+import { listUsers } from '../api/users'
 import { listDisciplines } from '../api/disciplines'
 import { createDocument, toDocumentPayload, listDocumentTypes } from '../api/documents'
 import { useAuthStore } from './authStore'
@@ -21,6 +22,8 @@ export function emptyForm(author = '') {
     author,
     areas: [],
     confidentiality: DEFAULT_CONFIDENTIALITY,
+    authorizedAreas: [],
+    authorizedUsers: [],
     version: INITIAL_VERSION,
   }
 }
@@ -47,6 +50,9 @@ export const useDocumentFormStore = defineStore('documentForm', {
     disciplines: [],
     areas: [],
     documentTypes: [],
+    users: [],
+    usersLoading: false,
+    usersError: null,
     catalogsLoading: false,
     catalogsError: null,
     publishing: false,
@@ -105,6 +111,29 @@ export const useDocumentFormStore = defineStore('documentForm', {
         })
       catalogRequests.set(this, request)
       return request
+    },
+
+    setConfidentiality(level) {
+      if (this.form.confidentiality === level) return
+      this.form.confidentiality = level
+      this.form.authorizedAreas = []
+      this.form.authorizedUsers = []
+      this.clearServerError('authorizedAreas')
+      this.clearServerError('authorizedUsers')
+    },
+
+    async loadUsers() {
+      if (this.users.length || this.usersLoading) return
+      this.usersLoading = true
+      this.usersError = null
+      try {
+        const users = await listUsers()
+        this.users = Array.isArray(users) ? users : []
+      } catch (error) {
+        this.usersError = error.message || 'Não foi possível carregar a lista de usuários.'
+      } finally {
+        this.usersLoading = false
+      }
     },
 
     selectProject(projectId) {

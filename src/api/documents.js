@@ -79,6 +79,12 @@ export function toDocumentPayload(form, { tempFileIds, tempFileId, responsibleId
     responsible_id: responsibleId,
     areas: [...form.areas],
   }
+  if (form.confidentiality === 'CONFIDENTIAL' && form.authorizedAreas?.length) {
+    payload.authorized_area_codes = [...form.authorizedAreas]
+  }
+  if (form.confidentiality === 'SECRET' && form.authorizedUsers?.length) {
+    payload.authorized_user_ids = form.authorizedUsers.map(Number)
+  }
   if (tempFileIds) payload.temp_file_ids = tempFileIds
   else payload.temp_file_id = tempFileId
   if (userId != null) payload.user_id = userId

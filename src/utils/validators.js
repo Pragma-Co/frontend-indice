@@ -32,6 +32,9 @@ export function validateDocumentForm(form) {
     const empty = Array.isArray(value) ? value.length === 0 : isBlank(value)
     if (empty) errors[field] = `${label} é obrigatório.`
   }
+  if (form?.confidentiality === 'SECRET' && !form.authorizedUsers?.length) {
+    errors.authorizedUsers = 'Selecione ao menos um usuário com acesso.'
+  }
   return errors
 }
 
