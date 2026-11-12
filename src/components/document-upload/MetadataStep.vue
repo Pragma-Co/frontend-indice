@@ -22,6 +22,21 @@ const areaOptions = computed(() =>
 const canProceed = computed(() => store.isValid && !store.catalogsLoading)
 const isSecret = computed(() => store.form.confidentiality === 'SECRET')
 const isConfidential = computed(() => store.form.confidentiality === 'CONFIDENTIAL')
+const GROUP_PREFIX = 'group:'
+const groupOptions = computed(() =>
+  store.accessGroups
+    .filter((group) => group.secrecy_level !== 'PUBLIC')
+    .map((group) => ({ value: `${GROUP_PREFIX}${group.id}`, label: `Grupo: ${group.name}` })),
+)
+const confidentialOptions = computed(() => {
+  const grantable = new Set(
+    store.accessGroups
+      .filter((group) => group.scope === 'AREA' && group.secrecy_level === 'CONFIDENTIAL')
+      .map((group) => group.area),
+  )
+  const grantableAreas = areaOptions.value.filter((option) => grantable.has(option.value))
+  return [...grantableAreas, ...groupOptions.value]
+})
 const userOptions = computed(() =>
   store.users
     .filter((user) => user.id !== authStore.currentUser?.id)
@@ -39,10 +54,10 @@ const accessField = computed(() => {
   }
   if (isConfidential.value) {
     return {
-      label: 'Áreas com acesso',
+      label: 'Áreas e grupos com acesso',
       model: 'authorizedAreas',
-      options: areaOptions.value,
-      placeholder: 'Adicionar área…',
+      options: confidentialOptions.value,
+      placeholder: 'Adicionar área ou grupo…',
       required: false,
     }
   }
@@ -55,11 +70,34 @@ const accessField = computed(() => {
   }
 })
 const accessSelection = computed({
-  get: () => (accessField.value.model ? store.form[accessField.value.model] : []),
+  get: () => {
+    if (isConfidential.value) {
+      return [
+        ...store.form.authorizedAreas,
+        ...store.form.authorizedGroups.map((id) => `${GROUP_PREFIX}${id}`),
+      ]
+    }
+    return accessField.value.model ? store.form[accessField.value.model] : []
+  },
   set: (value) => {
-    if (accessField.value.model) store.form[accessField.value.model] = value
+    if (isConfidential.value) {
+      store.form.authorizedAreas = value.filter((item) => !item.startsWith(GROUP_PREFIX))
+      store.form.authorizedGroups = value
+        .filter((item) => item.startsWith(GROUP_PREFIX))
+        .map((item) => item.slice(GROUP_PREFIX.length))
+    } else if (accessField.value.model) {
+      store.form[accessField.value.model] = value
+    }
   },
 })
+
+watch(
+  isConfidential,
+  (confidential) => {
+    if (confidential) store.loadAccessGroups()
+  },
+  { immediate: true },
+)
 
 watch(isSecret, (secret) => {
   if (secret) store.loadUsers()
@@ -324,6 +362,13 @@ function back(event) {
         />
         <p v-if="isSecret && store.usersError" class="metadata__author-error" role="alert">
           {{ store.usersError }}
+        </p>
+        <p
+          v-if="isConfidential && store.accessGroupsError"
+          class="metadata__author-error"
+          role="alert"
+        >
+          {{ store.accessGroupsError }}
         </p>
       </FormField>
 

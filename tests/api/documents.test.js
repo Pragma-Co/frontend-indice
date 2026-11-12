@@ -64,6 +64,15 @@ describe('toDocumentPayload', () => {
     expect(payload).not.toHaveProperty('authorized_user_ids')
   })
 
+  it('should send the authorized access groups of a confidential document as numbers', () => {
+    const payload = toDocumentPayload(
+      { ...FORM, authorizedGroups: ['7', '9'] },
+      { tempFileId: 'temp-1', responsibleId: 12 },
+    )
+
+    expect(payload.authorized_group_ids).toEqual([7, 9])
+  })
+
   it('should send the authorized users of a secret document as numbers', () => {
     const payload = toDocumentPayload(
       { ...FORM, confidentiality: 'SECRET', authorizedAreas: ['QUA'], authorizedUsers: ['3', '4'] },

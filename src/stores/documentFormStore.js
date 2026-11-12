@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { listProjects } from '../api/projects'
 import { listAreas } from '../api/areas'
 import { listUsers } from '../api/users'
+import { listAccessGroups } from '../api/accessGroups'
 import { listDisciplines } from '../api/disciplines'
 import { createDocument, toDocumentPayload, listDocumentTypes } from '../api/documents'
 import { useAuthStore } from './authStore'
@@ -23,6 +24,7 @@ export function emptyForm(author = '') {
     areas: [],
     confidentiality: DEFAULT_CONFIDENTIALITY,
     authorizedAreas: [],
+    authorizedGroups: [],
     authorizedUsers: [],
     version: INITIAL_VERSION,
   }
@@ -53,6 +55,9 @@ export const useDocumentFormStore = defineStore('documentForm', {
     users: [],
     usersLoading: false,
     usersError: null,
+    accessGroups: [],
+    accessGroupsLoading: false,
+    accessGroupsError: null,
     catalogsLoading: false,
     catalogsError: null,
     publishing: false,
@@ -117,9 +122,25 @@ export const useDocumentFormStore = defineStore('documentForm', {
       if (this.form.confidentiality === level) return
       this.form.confidentiality = level
       this.form.authorizedAreas = []
+      this.form.authorizedGroups = []
       this.form.authorizedUsers = []
       this.clearServerError('authorizedAreas')
       this.clearServerError('authorizedUsers')
+    },
+
+    async loadAccessGroups() {
+      if (this.accessGroups.length || this.accessGroupsLoading) return
+      this.accessGroupsLoading = true
+      this.accessGroupsError = null
+      try {
+        const groups = await listAccessGroups()
+        this.accessGroups = Array.isArray(groups) ? groups : []
+      } catch (error) {
+        this.accessGroupsError =
+          error.message || 'Não foi possível carregar a lista de grupos de acesso.'
+      } finally {
+        this.accessGroupsLoading = false
+      }
     },
 
     async loadUsers() {

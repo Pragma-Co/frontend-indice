@@ -10,6 +10,7 @@ vi.mock('../../src/api/projects', () => ({ listProjects: vi.fn() }))
 vi.mock('../../src/api/disciplines', () => ({ listDisciplines: vi.fn() }))
 vi.mock('../../src/api/areas', () => ({ listAreas: vi.fn() }))
 vi.mock('../../src/api/users', () => ({ listUsers: vi.fn(), fetchCurrentUser: vi.fn() }))
+vi.mock('../../src/api/accessGroups', () => ({ listAccessGroups: vi.fn() }))
 vi.mock('../../src/api/documents', async (importOriginal) => ({
   ...(await importOriginal()),
   listDocumentTypes: vi.fn(),
@@ -20,6 +21,7 @@ import { listProjects } from '../../src/api/projects'
 import { listDisciplines } from '../../src/api/disciplines'
 import { listAreas } from '../../src/api/areas'
 import { listUsers } from '../../src/api/users'
+import { listAccessGroups } from '../../src/api/accessGroups'
 import { listDocumentTypes, requestDocumentSuggestions } from '../../src/api/documents'
 
 const PROJECTS = [{ id: 1, code: 'AK-2100', name: 'Aeroestrutura de Fuselagem Central' }]
@@ -71,6 +73,16 @@ describe('MetadataStep', () => {
     listProjects.mockResolvedValue(PROJECTS)
     listDisciplines.mockResolvedValue(DISCIPLINES)
     listAreas.mockResolvedValue(AREAS)
+    listAccessGroups.mockResolvedValue([
+      {
+        id: 7,
+        name: 'Qualidade — sigiloso',
+        scope: 'AREA',
+        area: 'QUA',
+        secrecy_level: 'CONFIDENTIAL',
+      },
+      { id: 8, name: 'Qualidade — público', scope: 'AREA', area: 'QUA', secrecy_level: 'PUBLIC' },
+    ])
     listDocumentTypes.mockResolvedValue(DOCUMENT_TYPES)
     requestDocumentSuggestions.mockResolvedValue(null)
     await store.loadCatalogs()
@@ -134,12 +146,14 @@ describe('MetadataStep', () => {
       expect(wrapper.find('#access-select').attributes('disabled')).toBeDefined()
     })
 
-    it('should list the registered areas for confidential documents', async () => {
+    it('should list only the areas with an active confidential group', async () => {
       const wrapper = mount(MetadataStep)
+      await flushPromises()
 
       const select = wrapper.find('#access-select')
       expect(select.attributes('disabled')).toBeUndefined()
       expect(select.text()).toContain('Qualidade e Inspeção')
+      expect(select.text()).not.toContain('Engenharia Estrutural')
 
       await select.setValue('QUA')
 
@@ -160,6 +174,21 @@ describe('MetadataStep', () => {
       expect(wrapper.find('#access-select').text()).toContain('Ana (ana@example.com)')
       await wrapper.find('#access-select').setValue('2')
       expect(store.form.authorizedUsers).toEqual(['2'])
+    })
+
+    it('should list the access groups above public next to the areas', async () => {
+      const wrapper = mount(MetadataStep)
+      await flushPromises()
+
+      const select = wrapper.find('#access-select')
+      expect(select.text()).toContain('Grupo: Qualidade — sigiloso')
+      expect(select.text()).not.toContain('Qualidade — público')
+
+      await select.setValue('group:7')
+
+      expect(store.form.authorizedGroups).toEqual(['7'])
+      expect(store.form.authorizedAreas).toEqual([])
+      expect(listAccessGroups).toHaveBeenCalledTimes(1)
     })
 
     it('should clear the selection when the confidentiality changes', async () => {

@@ -10,6 +10,7 @@ const FORM_FIELD_BY_PAYLOAD_KEY = {
   responsible_id: 'author',
   areas: 'areas',
   authorized_area_codes: 'authorizedAreas',
+  authorized_group_ids: 'authorizedAreas',
   authorized_user_ids: 'authorizedUsers',
 }
 
@@ -69,6 +70,7 @@ export const FIELD_ERROR_MESSAGES = {
     invalid: 'Informe as áreas como uma lista de siglas.',
     not_found: 'Uma ou mais áreas não existem ou estão inativas.',
     not_allowed: 'Áreas com acesso só são aceitas em documentos confidenciais.',
+    insufficient_level: 'Um grupo selecionado tem nível de sigilo inferior ao do documento.',
   },
   authorizedUsers: {
     required: 'Selecione ao menos um usuário com acesso.',
