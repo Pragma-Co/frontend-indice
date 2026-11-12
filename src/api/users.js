@@ -4,6 +4,10 @@ export function fetchCurrentUser() {
   return api.get('/users/me')
 }
 
+export function listUsers() {
+  return api.get('/users')
+}
+
 export function updateCurrentUser({ name, email }) {
   return api.put('/users/me', { name, email })
 }

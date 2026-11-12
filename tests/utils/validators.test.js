@@ -66,6 +66,14 @@ describe('validateDocumentForm', () => {
       author: 'Responsável/Autor é obrigatório.',
     })
   })
+
+  it('should require at least one authorized user for secret documents', () => {
+    const form = { ...validForm, confidentiality: 'SECRET', authorizedUsers: [] }
+    expect(validateDocumentForm(form)).toEqual({
+      authorizedUsers: 'Selecione ao menos um usuário com acesso.',
+    })
+    expect(validateDocumentForm({ ...form, authorizedUsers: ['2'] })).toEqual({})
+  })
 })
 
 describe('isBlank', () => {
