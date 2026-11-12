@@ -146,18 +146,19 @@ describe('MetadataStep', () => {
       expect(wrapper.find('#access-select').attributes('disabled')).toBeDefined()
     })
 
-    it('should list only the areas with an active confidential group', async () => {
+    it('should list the access groups above public for confidential documents', async () => {
       const wrapper = mount(MetadataStep)
       await flushPromises()
 
       const select = wrapper.find('#access-select')
       expect(select.attributes('disabled')).toBeUndefined()
-      expect(select.text()).toContain('Qualidade e Inspeção')
-      expect(select.text()).not.toContain('Engenharia Estrutural')
+      expect(select.text()).toContain('Qualidade — sigiloso')
+      expect(select.text()).not.toContain('Qualidade — público')
 
-      await select.setValue('QUA')
+      await select.setValue('7')
 
-      expect(store.form.authorizedAreas).toEqual(['QUA'])
+      expect(store.form.authorizedGroups).toEqual(['7'])
+      expect(listAccessGroups).toHaveBeenCalledTimes(1)
     })
 
     it('should list the users for secret documents and load them once', async () => {
@@ -176,28 +177,13 @@ describe('MetadataStep', () => {
       expect(store.form.authorizedUsers).toEqual(['2'])
     })
 
-    it('should list the access groups above public next to the areas', async () => {
-      const wrapper = mount(MetadataStep)
-      await flushPromises()
-
-      const select = wrapper.find('#access-select')
-      expect(select.text()).toContain('Grupo: Qualidade — sigiloso')
-      expect(select.text()).not.toContain('Qualidade — público')
-
-      await select.setValue('group:7')
-
-      expect(store.form.authorizedGroups).toEqual(['7'])
-      expect(store.form.authorizedAreas).toEqual([])
-      expect(listAccessGroups).toHaveBeenCalledTimes(1)
-    })
-
     it('should clear the selection when the confidentiality changes', async () => {
-      store.form.authorizedAreas = ['QUA']
+      store.form.authorizedGroups = ['7']
       const wrapper = mount(MetadataStep)
 
       await wrapper.find('input[type="radio"][value="PUBLIC"]').setValue()
 
-      expect(store.form.authorizedAreas).toEqual([])
+      expect(store.form.authorizedGroups).toEqual([])
     })
   })
 

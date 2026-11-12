@@ -23,7 +23,6 @@ export function emptyForm(author = '') {
     author,
     areas: [],
     confidentiality: DEFAULT_CONFIDENTIALITY,
-    authorizedAreas: [],
     authorizedGroups: [],
     authorizedUsers: [],
     version: INITIAL_VERSION,
@@ -121,10 +120,9 @@ export const useDocumentFormStore = defineStore('documentForm', {
     setConfidentiality(level) {
       if (this.form.confidentiality === level) return
       this.form.confidentiality = level
-      this.form.authorizedAreas = []
       this.form.authorizedGroups = []
       this.form.authorizedUsers = []
-      this.clearServerError('authorizedAreas')
+      this.clearServerError('authorizedGroups')
       this.clearServerError('authorizedUsers')
     },
 
