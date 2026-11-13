@@ -82,8 +82,8 @@ const router = createRouter({
     {
       path: '/collaborators',
       name: 'collaborators',
-      component: () => import('../views/UnderConstructionView.vue'),
-      meta: { title: 'Gestor - Colaboradores', heading: 'Colaboradores', managerOnly: true },
+      component: () => import('../views/manager/CollaboratorsView.vue'),
+      meta: { title: 'Gestor - Colaboradores', managerOnly: true },
     },
     {
       path: '/profile',
