@@ -54,6 +54,36 @@ describe('toDocumentPayload', () => {
     expect(FORM.areas).toEqual(['EST', 'QUA'])
   })
 
+  it('should send the authorized access groups of a confidential document as numbers', () => {
+    const payload = toDocumentPayload(
+      { ...FORM, authorizedGroups: ['7', '9'], authorizedUsers: ['3'] },
+      { tempFileId: 'temp-1', responsibleId: 12 },
+    )
+
+    expect(payload.authorized_group_ids).toEqual([7, 9])
+    expect(payload).not.toHaveProperty('authorized_user_ids')
+  })
+
+  it('should send the authorized users of a secret document as numbers', () => {
+    const payload = toDocumentPayload(
+      { ...FORM, confidentiality: 'SECRET', authorizedGroups: ['7'], authorizedUsers: ['3', '4'] },
+      { tempFileId: 'temp-1', responsibleId: 12 },
+    )
+
+    expect(payload.authorized_user_ids).toEqual([3, 4])
+    expect(payload).not.toHaveProperty('authorized_group_ids')
+  })
+
+  it('should not send access lists for a public document', () => {
+    const payload = toDocumentPayload(
+      { ...FORM, confidentiality: 'PUBLIC', authorizedGroups: ['7'], authorizedUsers: ['3'] },
+      { tempFileId: 'temp-1', responsibleId: 12 },
+    )
+
+    expect(payload).not.toHaveProperty('authorized_group_ids')
+    expect(payload).not.toHaveProperty('authorized_user_ids')
+  })
+
   it('should map multiple temporary files to one document payload', () => {
     const payload = toDocumentPayload(FORM, {
       tempFileIds: ['temp-1', 'temp-2'],

@@ -2,6 +2,7 @@
 import { computed, reactive, ref, watch, onMounted } from 'vue'
 import { useDocumentFormStore } from '../../stores/documentFormStore'
 import { useUploadStore } from '@/stores/uploadStore.js'
+import { useAuthStore } from '@/stores/authStore.js'
 import { requestDocumentSuggestions } from '@/api/documents.js'
 import { CONFIDENTIALITY_LEVELS } from '../../utils/documentCatalog'
 import Button from '../common/Button.vue'
@@ -11,6 +12,7 @@ import TagMultiSelect from '../common/TagMultiSelect.vue'
 const emit = defineEmits(['back', 'next'])
 const store = useDocumentFormStore()
 const uploadStore = useUploadStore()
+const authStore = useAuthStore()
 const files = computed(() => uploadStore.uploadedDocuments)
 
 const code = computed(() => store.codePreview ?? '')
@@ -18,6 +20,63 @@ const areaOptions = computed(() =>
   store.areas.map((area) => ({ value: area.acronym, label: area.name })),
 )
 const canProceed = computed(() => store.isValid && !store.catalogsLoading)
+const isSecret = computed(() => store.form.confidentiality === 'SECRET')
+const isConfidential = computed(() => store.form.confidentiality === 'CONFIDENTIAL')
+const groupOptions = computed(() =>
+  store.accessGroups
+    .filter((group) => group.secrecy_level !== 'PUBLIC')
+    .map((group) => ({ value: String(group.id), label: group.name })),
+)
+const userOptions = computed(() =>
+  store.users
+    .filter((user) => user.id !== authStore.currentUser?.id)
+    .map((user) => ({ value: String(user.id), label: `${user.name} (${user.email})` })),
+)
+const accessField = computed(() => {
+  if (isSecret.value) {
+    return {
+      label: 'Usuários com acesso',
+      model: 'authorizedUsers',
+      options: userOptions.value,
+      placeholder: store.usersLoading ? 'Carregando…' : 'Adicionar usuário…',
+      required: true,
+    }
+  }
+  if (isConfidential.value) {
+    return {
+      label: 'Grupos de acesso',
+      model: 'authorizedGroups',
+      options: groupOptions.value,
+      placeholder: store.accessGroupsLoading ? 'Carregando…' : 'Adicionar grupo…',
+      required: false,
+    }
+  }
+  return {
+    label: 'Acesso restrito a',
+    model: null,
+    options: [],
+    placeholder: 'Não se aplica a documentos públicos',
+    required: false,
+  }
+})
+const accessSelection = computed({
+  get: () => (accessField.value.model ? store.form[accessField.value.model] : []),
+  set: (value) => {
+    if (accessField.value.model) store.form[accessField.value.model] = value
+  },
+})
+
+watch(
+  isConfidential,
+  (confidential) => {
+    if (confidential) store.loadAccessGroups()
+  },
+  { immediate: true },
+)
+
+watch(isSecret, (secret) => {
+  if (secret) store.loadUsers()
+})
 const disciplinePlaceholder = computed(() => {
   if (store.catalogsLoading) return 'Carregando…'
   return 'Selecione a disciplina'
@@ -58,6 +117,7 @@ onMounted(async () => {
   }
   if (!store.projects.length || !store.disciplines.length || !store.areas.length)
     await store.loadCatalogs()
+  if (isSecret.value) store.loadUsers()
   if (!isFormEmpty()) return
   const file = files.value.reduce((biggest, current) => {
     return current.size > biggest.size ? current : biggest
@@ -250,14 +310,41 @@ function back(event) {
         <div class="metadata__radios" role="radiogroup" aria-label="Grau de Confidencialidade">
           <label v-for="level in CONFIDENTIALITY_LEVELS" :key="level.value" class="metadata__radio">
             <input
-              v-model="store.form.confidentiality"
               type="radio"
               name="confidentiality"
               :value="level.value"
+              :checked="store.form.confidentiality === level.value"
+              @change="store.setConfidentiality(level.value)"
             />
             {{ level.label }}
           </label>
         </div>
+      </FormField>
+
+      <FormField
+        :label="accessField.label"
+        html-for="access-select"
+        :required="accessField.required"
+        :error="fieldError(accessField.model ?? '')"
+        @focusout="accessField.model && touch(accessField.model)"
+      >
+        <TagMultiSelect
+          id="access-select"
+          v-model="accessSelection"
+          :options="accessField.options"
+          :placeholder="accessField.placeholder"
+          :disabled="!accessField.model || (isSecret && store.usersLoading)"
+        />
+        <p v-if="isSecret && store.usersError" class="metadata__author-error" role="alert">
+          {{ store.usersError }}
+        </p>
+        <p
+          v-if="isConfidential && store.accessGroupsError"
+          class="metadata__author-error"
+          role="alert"
+        >
+          {{ store.accessGroupsError }}
+        </p>
       </FormField>
 
       <div class="metadata__author-field">
@@ -284,10 +371,9 @@ function back(event) {
       </div>
 
       <FormField
-        label="Área(s) relacionada(s)"
+        label="Área(s) relacionada(s) ao documento"
         html-for="areas"
         required
-        class="metadata__full"
         :error="fieldError('areas')"
         :suggested="store.isFieldSuggested('areas')"
         @focusout="touch('areas')"

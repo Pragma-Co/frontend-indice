@@ -6,6 +6,7 @@ const props = defineProps({
   options: { type: Array, default: () => [] },
   id: { type: String, default: undefined },
   placeholder: { type: String, default: 'Adicionar...' },
+  disabled: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:modelValue'])
@@ -35,7 +36,7 @@ function remove(value) {
 
 <template>
   <div class="tags">
-    <select :id="id" class="tags__select" :disabled="!available.length" @change="add">
+    <select :id="id" class="tags__select" :disabled="disabled || !available.length" @change="add">
       <option value="">
         {{ available.length ? placeholder : 'Todas as opções selecionadas' }}
       </option>

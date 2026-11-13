@@ -9,6 +9,8 @@ import formFieldSource from '../../src/components/common/FormField.vue?raw'
 vi.mock('../../src/api/projects', () => ({ listProjects: vi.fn() }))
 vi.mock('../../src/api/disciplines', () => ({ listDisciplines: vi.fn() }))
 vi.mock('../../src/api/areas', () => ({ listAreas: vi.fn() }))
+vi.mock('../../src/api/users', () => ({ listUsers: vi.fn(), fetchCurrentUser: vi.fn() }))
+vi.mock('../../src/api/accessGroups', () => ({ listAccessGroups: vi.fn() }))
 vi.mock('../../src/api/documents', async (importOriginal) => ({
   ...(await importOriginal()),
   listDocumentTypes: vi.fn(),
@@ -18,6 +20,8 @@ vi.mock('../../src/api/documents', async (importOriginal) => ({
 import { listProjects } from '../../src/api/projects'
 import { listDisciplines } from '../../src/api/disciplines'
 import { listAreas } from '../../src/api/areas'
+import { listUsers } from '../../src/api/users'
+import { listAccessGroups } from '../../src/api/accessGroups'
 import { listDocumentTypes, requestDocumentSuggestions } from '../../src/api/documents'
 
 const PROJECTS = [{ id: 1, code: 'AK-2100', name: 'Aeroestrutura de Fuselagem Central' }]
@@ -69,6 +73,16 @@ describe('MetadataStep', () => {
     listProjects.mockResolvedValue(PROJECTS)
     listDisciplines.mockResolvedValue(DISCIPLINES)
     listAreas.mockResolvedValue(AREAS)
+    listAccessGroups.mockResolvedValue([
+      {
+        id: 7,
+        name: 'Qualidade — sigiloso',
+        scope: 'AREA',
+        area: 'QUA',
+        secrecy_level: 'CONFIDENTIAL',
+      },
+      { id: 8, name: 'Qualidade — público', scope: 'AREA', area: 'QUA', secrecy_level: 'PUBLIC' },
+    ])
     listDocumentTypes.mockResolvedValue(DOCUMENT_TYPES)
     requestDocumentSuggestions.mockResolvedValue(null)
     await store.loadCatalogs()
@@ -122,6 +136,55 @@ describe('MetadataStep', () => {
     await wrapper.find('form').trigger('submit')
 
     expect(wrapper.emitted('next')).toBeUndefined()
+  })
+
+  describe('access select', () => {
+    it('should be disabled for public documents', async () => {
+      store.form.confidentiality = 'PUBLIC'
+      const wrapper = mount(MetadataStep)
+
+      expect(wrapper.find('#access-select').attributes('disabled')).toBeDefined()
+    })
+
+    it('should list the access groups above public for confidential documents', async () => {
+      const wrapper = mount(MetadataStep)
+      await flushPromises()
+
+      const select = wrapper.find('#access-select')
+      expect(select.attributes('disabled')).toBeUndefined()
+      expect(select.text()).toContain('Qualidade — sigiloso')
+      expect(select.text()).not.toContain('Qualidade — público')
+
+      await select.setValue('7')
+
+      expect(store.form.authorizedGroups).toEqual(['7'])
+      expect(listAccessGroups).toHaveBeenCalledTimes(1)
+    })
+
+    it('should list the users for secret documents and load them once', async () => {
+      listUsers.mockResolvedValue([
+        { id: 1, name: 'Ana', email: 'ana@example.com' },
+        { id: 2, name: 'Bruno', email: 'bruno@example.com' },
+      ])
+      const wrapper = mount(MetadataStep)
+
+      await wrapper.find('input[type="radio"][value="SECRET"]').setValue()
+      await flushPromises()
+
+      expect(listUsers).toHaveBeenCalledTimes(1)
+      expect(wrapper.find('#access-select').text()).toContain('Ana (ana@example.com)')
+      await wrapper.find('#access-select').setValue('2')
+      expect(store.form.authorizedUsers).toEqual(['2'])
+    })
+
+    it('should clear the selection when the confidentiality changes', async () => {
+      store.form.authorizedGroups = ['7']
+      const wrapper = mount(MetadataStep)
+
+      await wrapper.find('input[type="radio"][value="PUBLIC"]').setValue()
+
+      expect(store.form.authorizedGroups).toEqual([])
+    })
   })
 
   it('should remove an area when clicking the × on its tag', async () => {
