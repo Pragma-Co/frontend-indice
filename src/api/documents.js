@@ -1,4 +1,4 @@
-import { api, request, uploadWithProgress } from './client'
+import { api, request, streamJsonLines, uploadWithProgress } from './client'
 import { buildDocumentQueryKey, buildSummaryQueryKey } from '../utils/searchParams'
 
 let simpleFiltersCache = null
@@ -106,6 +106,13 @@ export function fetchDocumentDetail(documentId, userId) {
 
 export function requestDocumentSuggestions(documentId) {
   return api.post(`/documents/${documentId}/suggestions`)
+}
+
+export function streamDocumentSuggestions(documentId, { onEvent, signal } = {}) {
+  return streamJsonLines(`/documents/${documentId}/suggestions/stream`, {
+    onLine: onEvent,
+    signal,
+  })
 }
 
 export function requestDocumentAccess(
