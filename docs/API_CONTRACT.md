@@ -50,6 +50,7 @@ area are reachable; any other group answers `404`.
 
 | Endpoint | Request | Responses |
 | --- | --- | --- |
+| `GET /manager/users` | none | `200` `{ "results": [user] }`, active users of the caller's area ordered by name. User: `{ "id", "name", "email" }` |
 | `GET /manager/access-groups` | none | `200` `{ "results": [group] }`, inactive groups included. Group: `{ "id", "name", "description", "scope", "area_id", "secrecy_level", "active", "created_by", "created_at" }` |
 | `GET /manager/access-groups/{id}/users` | none | `200` `{ "results": [member] }`. Member: `{ "user_id", "name", "email", "added_by", "added_at" }` |
 | `POST /manager/access-groups/{id}/users` | `{ "user_id" }` | `201` member; `404` for a missing group or user; `409` `{ "error": "AccessGroupMemberExists" }` or `{ "error": "AccessGroupInactive" }` |
@@ -59,7 +60,7 @@ How the frontend uses them (`useCollaboratorsPanel`):
 
 | Moment | Frontend |
 | --- | --- |
-| Opening the page | loads the groups and the members of each group; the table is the union of those members, because the API has no route that lists the users of an area |
+| Opening the page | loads the users of the area (`GET /manager/users`) and the groups in parallel, then the members of each group. The table starts from the users of the area, so collaborators without any group are listed and can be added to one; members of the area groups who belong to other areas are listed too |
 | Saving a collaborator's groups | sends one `POST` or `DELETE` per changed group and updates the row as each call succeeds. `AccessGroupMemberExists` and `AccessGroupMemberNotFound` count as already applied; other failures keep the dialog open listing the groups that failed |
 | Choosing the groups | a collaborator can belong to any number of the area groups, one per secrecy level or more; only inactive groups the collaborator is not in yet are locked |
 
