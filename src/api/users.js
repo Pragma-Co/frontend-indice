@@ -16,6 +16,10 @@ export function requestAccountDeletion() {
   return api.post('/users/me/request-deletion')
 }
 
+export function fetchPendingLegalTerms() {
+  return api.get('/users/me/legal-pending')
+}
+
 export function fetchLegalAcceptances() {
   return api.get('/users/me/legal-acceptances')
 }
