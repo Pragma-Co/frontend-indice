@@ -113,7 +113,9 @@ onBeforeUnmount(() => {
       </div>
 
       <footer class="access-footer">
-        <p>A aprovação concederá ao solicitante acesso ao documento nos termos solicitados.</p>
+        <p class="hint">
+          A aprovação concederá ao solicitante acesso ao documento nos termos solicitados.
+        </p>
         <div class="actions">
           <Button
             v-for="decision in decisions"
@@ -229,10 +231,15 @@ textarea {
   border-top: 1px solid var(--color-border);
   background: var(--color-surface-muted);
 }
+.hint {
+  flex: 1;
+}
 .actions {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+  justify-content: flex-end;
+  flex: 1;
 }
 @media (max-width: 640px) {
   .access-footer {
