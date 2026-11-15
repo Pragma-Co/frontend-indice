@@ -179,6 +179,8 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 1.2rem;
+  height: 2rem;
+  width: 2rem;
 }
 .access-body {
   padding: 1.25rem 1.5rem;

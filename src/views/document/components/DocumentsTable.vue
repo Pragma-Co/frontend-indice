@@ -51,15 +51,7 @@ function startNewRevision(document) {
         </tr>
       </thead>
       <tbody>
-        <tr
-          v-for="document in documents"
-          :key="document.id"
-          class="document-row"
-          tabindex="0"
-          @click="openDetails(document)"
-          @keydown.enter="openDetails(document)"
-        >
-          <!-- TODO: map this icon by file extension once documents carry one. -->
+        <tr v-for="document in documents" :key="document.id" class="document-row" tabindex="0">
           <td class="cell-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path
@@ -77,7 +69,9 @@ function startNewRevision(document) {
             </svg>
           </td>
           <td class="cell-code">{{ document.code }}</td>
-          <td class="cell-title">{{ document.title }}</td>
+          <td class="cell-title">
+            <a class="cell-title-text" @click="openDetails(document)">{{ document.title }}</a>
+          </td>
           <td class="cell-type">
             <span>{{ document.type }}</span>
             <span v-if="document.discipline?.name" class="cell-discipline">
@@ -210,6 +204,14 @@ function startNewRevision(document) {
   min-width: 11rem;
 }
 
+.cell-title-text {
+  cursor: pointer;
+}
+
+.cell-title-text:hover {
+  text-decoration: underline;
+}
+
 .cell-discipline {
   display: block;
   font-size: 0.78rem;
@@ -299,10 +301,6 @@ function startNewRevision(document) {
 .action-wrapper:hover .action-tooltip,
 .action-wrapper:focus-within .action-tooltip {
   display: block;
-}
-
-.document-row {
-  cursor: pointer;
 }
 
 .document-row:hover {
