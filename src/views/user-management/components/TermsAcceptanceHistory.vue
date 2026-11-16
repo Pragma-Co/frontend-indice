@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { Lock } from '@lucide/vue'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import Button from '@/components/common/Button.vue'
@@ -9,9 +10,12 @@ import {
   TERM_STATES,
   useTermsAcceptanceHistory,
 } from '@/views/user-management/composables/useTermsAcceptanceHistory.js'
+import { useAuthStore } from '@/stores/authStore.js'
 import { formatDateAtTime } from '@/utils/formatters.js'
 
 const { rows, loading, error, busyKey, load, revoke, accept } = useTermsAcceptanceHistory()
+const auth = useAuthStore()
+const router = useRouter()
 
 const countLabel = computed(() =>
   rows.value.length === 1 ? '1 registro' : `${rows.value.length} registros`,
@@ -62,8 +66,21 @@ const changeDialog = computed(() => {
 
 async function confirmChange() {
   const row = rowToChange.value
-  if (row.state === TERM_STATES.ACCEPTED) await revoke(row)
-  else await accept(row)
+  if (!row) return
+
+  if (row.state === TERM_STATES.ACCEPTED) {
+    const revoked = await revoke(row)
+    rowToChange.value = null
+    if (!revoked) return
+    await auth.signOut()
+    const navigation = router.push({ name: 'login' })
+    if (navigation && typeof navigation.catch === 'function') {
+      await navigation.catch(() => null)
+    }
+    return
+  }
+
+  await accept(row)
   rowToChange.value = null
 }
 </script>

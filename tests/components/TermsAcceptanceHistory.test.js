@@ -2,12 +2,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
+const authSignOut = vi.fn()
+const routerPush = vi.fn()
+
 vi.mock('@/api/users.js', () => ({
   fetchLegalAcceptances: vi.fn(),
   revokeLegalAcceptance: vi.fn(),
   acceptLegalTerms: vi.fn(),
 }))
 vi.mock('@/api/legal.js', () => ({ fetchLegalDocuments: vi.fn(), fetchLegalVersion: vi.fn() }))
+vi.mock('@/stores/authStore.js', () => ({
+  useAuthStore: () => ({ signOut: authSignOut }),
+}))
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ push: (...args) => Promise.resolve(routerPush(...args)) }),
+}))
 
 import { fetchLegalDocuments, fetchLegalVersion } from '@/api/legal.js'
 import { acceptLegalTerms, fetchLegalAcceptances, revokeLegalAcceptance } from '@/api/users.js'
@@ -80,6 +89,8 @@ describe('TermsAcceptanceHistory', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    authSignOut.mockReset()
+    routerPush.mockReset()
     fetchLegalAcceptances.mockResolvedValue({ count: 2, results: ACCEPTANCES })
     fetchLegalDocuments.mockResolvedValue({ count: 0, results: [] })
   })
@@ -273,6 +284,24 @@ describe('TermsAcceptanceHistory', () => {
     expect(message).toContain('pode aceitar o termo de novo')
     expect(revokeLegalAcceptance).toHaveBeenCalledWith(2)
     expect(rowOf(wrapper, 'Termos de Uso').find('.status-pill').text()).toBe('Revogado')
+  })
+
+  it('should sign the user out after revoking an acceptance', async () => {
+    authSignOut.mockResolvedValue(undefined)
+    revokeLegalAcceptance.mockResolvedValue({
+      ...ACCEPTANCES[1],
+      revoked_at: '2026-10-15T10:00:00',
+    })
+    const wrapper = await mountHistory()
+
+    await chooseAction(wrapper, 'Termos de Uso', 'Alterar aceite')
+    await wrapper.find('[role="alertdialog"]').findAll('button')[1].trigger('click')
+    await flushPromises()
+
+    expect(revokeLegalAcceptance).toHaveBeenCalledWith(2)
+    expect(authSignOut).toHaveBeenCalledTimes(1)
+    expect(routerPush).toHaveBeenCalledWith({ name: 'login' })
+    expect(wrapper.find('[role="alertdialog"]').exists()).toBe(false)
   })
 
   it('should accept a term that was not accepted from "Alterar aceite"', async () => {
