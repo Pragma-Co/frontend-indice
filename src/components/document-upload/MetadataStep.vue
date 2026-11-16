@@ -1,13 +1,14 @@
 <script setup>
-import { computed, reactive, ref, watch, onMounted } from 'vue'
+import { computed, reactive, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useDocumentFormStore } from '../../stores/documentFormStore'
 import { useUploadStore } from '@/stores/uploadStore.js'
 import { useAuthStore } from '@/stores/authStore.js'
-import { requestDocumentSuggestions } from '@/api/documents.js'
+import { streamDocumentSuggestions } from '@/api/documents.js'
 import { CONFIDENTIALITY_LEVELS } from '../../utils/documentCatalog'
 import Button from '../common/Button.vue'
 import FormField from '../common/FormField.vue'
 import TagMultiSelect from '../common/TagMultiSelect.vue'
+import AiSuggestionStatus from './AiSuggestionStatus.vue'
 
 const emit = defineEmits(['back', 'next'])
 const store = useDocumentFormStore()
@@ -19,7 +20,11 @@ const code = computed(() => store.codePreview ?? '')
 const areaOptions = computed(() =>
   store.areas.map((area) => ({ value: area.acronym, label: area.name })),
 )
-const canProceed = computed(() => store.isValid && !store.catalogsLoading)
+const suggestionsStatus = ref('idle')
+const aiClassifying = computed(() => suggestionsStatus.value === 'loading')
+const aiWorking = computed(() => ['loading', 'generating'].includes(suggestionsStatus.value))
+const aiStatusVisible = computed(() => aiWorking.value || suggestionsStatus.value === 'success')
+const canProceed = computed(() => store.isValid && !store.catalogsLoading && !aiWorking.value)
 const isSecret = computed(() => store.form.confidentiality === 'SECRET')
 const isConfidential = computed(() => store.form.confidentiality === 'CONFIDENTIAL')
 const groupOptions = computed(() =>
@@ -108,7 +113,56 @@ function isFormEmpty() {
   return !projectId && !disciplineId && !documentType && !title && !description
 }
 
-const suggestionsStatus = ref('idle')
+const STREAMED_TEXT_FIELDS = ['title', 'description']
+const suggestionsRequest = new AbortController()
+const streamedText = {}
+
+function showStreamedText(field, value) {
+  streamedText[field] = value
+  store.applySuggestions({ [field]: value })
+}
+
+function dropUnfinishedText(field) {
+  if (!streamedText[field]) return
+  store.form[field] = ''
+  store.clearSuggestion(field)
+  streamedText[field] = ''
+}
+
+function finishStreamedText(suggestion) {
+  for (const field of STREAMED_TEXT_FIELDS) {
+    if (suggestion?.[field]) showStreamedText(field, suggestion[field])
+    else dropUnfinishedText(field)
+  }
+}
+
+function failSuggestions() {
+  STREAMED_TEXT_FIELDS.forEach(dropUnfinishedText)
+  suggestionsStatus.value = 'error'
+}
+
+function fillManually() {
+  suggestionsRequest.abort()
+  STREAMED_TEXT_FIELDS.forEach(dropUnfinishedText)
+  suggestionsStatus.value = 'idle'
+}
+
+function handleSuggestionEvent(event) {
+  if (!aiWorking.value) return
+  if (event?.type === 'classification') {
+    setSuggestions({ ...event.suggestion, title: null, description: null })
+    suggestionsStatus.value = 'generating'
+  } else if (event?.type === 'text' && STREAMED_TEXT_FIELDS.includes(event.field)) {
+    showStreamedText(event.field, event.value)
+  } else if (event?.type === 'done') {
+    finishStreamedText(event.suggestion)
+    suggestionsStatus.value = 'success'
+  } else if (event?.type === 'error') {
+    failSuggestions()
+  }
+}
+
+onBeforeUnmount(() => suggestionsRequest.abort())
 
 onMounted(async () => {
   if (files.value.length === 0) {
@@ -123,14 +177,17 @@ onMounted(async () => {
     return current.size > biggest.size ? current : biggest
   }, files.value[0])
   suggestionsStatus.value = 'loading'
-  requestDocumentSuggestions(file.id)
-    .then((response) => {
-      setSuggestions(response)
-      suggestionsStatus.value = 'success'
+  streamDocumentSuggestions(file.id, {
+    onEvent: handleSuggestionEvent,
+    signal: suggestionsRequest.signal,
+  })
+    .then(() => {
+      if (suggestionsStatus.value !== 'success') failSuggestions()
     })
     .catch((error) => {
+      if (error?.name === 'AbortError') return
       console.error('Erro ao buscar sugestões de documentos:', error)
-      suggestionsStatus.value = 'error'
+      failSuggestions()
     })
 })
 
@@ -183,13 +240,7 @@ function back(event) {
   <form class="card metadata" novalidate @submit.prevent="next">
     <h2 class="metadata__title">Informações do Documento</h2>
 
-    <p v-if="suggestionsStatus === 'loading'" class="metadata__warning" role="alert">
-      Carregando sugestões da API...
-    </p>
-
-    <p v-else-if="suggestionsStatus === 'success'" class="metadata__success" role="alert">
-      Sugestões carregadas com sucesso! Você pode alterar os campos conforme necessário.
-    </p>
+    <AiSuggestionStatus v-if="aiStatusVisible" :status="suggestionsStatus" @skip="fillManually" />
 
     <p v-if="store.catalogsError" class="metadata__alert" role="alert">
       {{ store.catalogsError }}
@@ -206,12 +257,13 @@ function back(event) {
         icon="search"
         :error="fieldError('projectId')"
         :suggested="store.isFieldSuggested('projectId')"
+        :busy="aiClassifying"
         @focusout="touch('projectId')"
       >
         <select
           id="project"
           :value="store.form.projectId"
-          :disabled="store.catalogsLoading"
+          :disabled="store.catalogsLoading || aiClassifying"
           @change="store.selectProject($event.target.value)"
         >
           <option value="">{{ store.catalogsLoading ? 'Carregando…' : 'Buscar projeto…' }}</option>
@@ -228,9 +280,14 @@ function back(event) {
         icon="document"
         :error="fieldError('disciplineId')"
         :suggested="store.isFieldSuggested('disciplineId')"
+        :busy="aiClassifying"
         @focusout="touch('disciplineId')"
       >
-        <select id="discipline" v-model="disciplineId" :disabled="store.catalogsLoading">
+        <select
+          id="discipline"
+          v-model="disciplineId"
+          :disabled="store.catalogsLoading || aiClassifying"
+        >
           <option value="">{{ disciplinePlaceholder }}</option>
           <option
             v-for="discipline in store.disciplines"
@@ -249,9 +306,10 @@ function back(event) {
         icon="document"
         :error="fieldError('documentType')"
         :suggested="store.isFieldSuggested('documentType')"
+        :busy="aiClassifying"
         @focusout="touch('documentType')"
       >
-        <select id="document-type" v-model="documentType">
+        <select id="document-type" v-model="documentType" :disabled="aiClassifying">
           <option value="">Selecione o tipo</option>
           <option v-for="type in store.documentTypes" :key="type.id" :value="type.id">
             {{ type.code }} - {{ type.name }}
@@ -280,13 +338,17 @@ function back(event) {
         class="metadata__full"
         :error="fieldError('title')"
         :suggested="store.isFieldSuggested('title')"
+        :busy="aiWorking"
         @focusout="touch('title')"
       >
         <input
           id="title"
           v-model="title"
           type="text"
-          placeholder="Digite o título do documento…"
+          :placeholder="
+            aiWorking ? 'A IA está escrevendo o título…' : 'Digite o título do documento…'
+          "
+          :disabled="aiWorking"
           maxlength="255"
         />
       </FormField>
@@ -296,12 +358,18 @@ function back(event) {
         html-for="description"
         class="metadata__full"
         :suggested="store.isFieldSuggested('description')"
+        :busy="aiWorking"
       >
         <textarea
           id="description"
           v-model="description"
           rows="3"
-          placeholder="Descreva brevemente o conteúdo do documento…"
+          :placeholder="
+            aiWorking
+              ? 'A IA está escrevendo a descrição…'
+              : 'Descreva brevemente o conteúdo do documento…'
+          "
+          :disabled="aiWorking"
           maxlength="500"
         />
       </FormField>
@@ -376,6 +444,7 @@ function back(event) {
         required
         :error="fieldError('areas')"
         :suggested="store.isFieldSuggested('areas')"
+        :busy="aiClassifying"
         @focusout="touch('areas')"
       >
         <TagMultiSelect
@@ -383,6 +452,7 @@ function back(event) {
           v-model="areas"
           :options="areaOptions"
           placeholder="Adicionar área…"
+          :disabled="aiClassifying"
         />
       </FormField>
     </div>
@@ -409,30 +479,6 @@ function back(event) {
   border-radius: var(--radius-sm);
   background: var(--color-danger-bg);
   color: var(--color-danger);
-  font-size: 0.85rem;
-}
-
-.metadata__warning {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius-sm);
-  background: var(--color-warning-bg);
-  color: var(--color-warning);
-  font-size: 0.85rem;
-}
-
-.metadata__success {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius-sm);
-  background: var(--color-success-bg);
-  color: var(--color-success);
   font-size: 0.85rem;
 }
 

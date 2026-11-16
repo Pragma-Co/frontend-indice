@@ -14,7 +14,7 @@ vi.mock('../../src/api/accessGroups', () => ({ listAccessGroups: vi.fn() }))
 vi.mock('../../src/api/documents', async (importOriginal) => ({
   ...(await importOriginal()),
   listDocumentTypes: vi.fn(),
-  requestDocumentSuggestions: vi.fn(),
+  streamDocumentSuggestions: vi.fn(),
 }))
 
 import { listProjects } from '../../src/api/projects'
@@ -22,7 +22,7 @@ import { listDisciplines } from '../../src/api/disciplines'
 import { listAreas } from '../../src/api/areas'
 import { listUsers } from '../../src/api/users'
 import { listAccessGroups } from '../../src/api/accessGroups'
-import { listDocumentTypes, requestDocumentSuggestions } from '../../src/api/documents'
+import { listDocumentTypes, streamDocumentSuggestions } from '../../src/api/documents'
 
 const PROJECTS = [{ id: 1, code: 'AK-2100', name: 'Aeroestrutura de Fuselagem Central' }]
 const AREAS = [
@@ -47,8 +47,40 @@ function withUploadedFile(uploadStore) {
   uploadStore.uploadedDocuments = [{ id: 'file-1', name: 'planta.pdf', size: 1024 }]
 }
 
+function streamAnswering(suggestion, textEvents = []) {
+  streamDocumentSuggestions.mockImplementation(async (_documentId, { onEvent }) => {
+    onEvent({
+      type: 'classification',
+      suggestion: { ...suggestion, title: null, description: null },
+    })
+    textEvents.forEach(onEvent)
+    onEvent({ type: 'done', suggestion })
+  })
+}
+
+function streamHeldOpen() {
+  const stream = {}
+  streamDocumentSuggestions.mockImplementation(
+    (_documentId, { onEvent, signal }) =>
+      new Promise((resolve, reject) => {
+        Object.assign(stream, { emit: onEvent, signal, finish: resolve, fail: reject })
+      }),
+  )
+  return stream
+}
+
+const AI_FILLED_FIELDS = ['project', 'discipline', 'document-type', 'areas', 'title', 'description']
+
 function nextButton(wrapper) {
   return wrapper.findAll('button').find((b) => b.text() === 'Próximo Passo')
+}
+
+function skipButton(wrapper) {
+  return wrapper.findAll('button').find((b) => b.text() === 'Preencher manualmente')
+}
+
+function busyFieldOf(wrapper, id) {
+  return wrapper.find(`#${id}`).element.closest('.field--busy')
 }
 
 async function fillRequiredFields(wrapper) {
@@ -84,7 +116,7 @@ describe('MetadataStep', () => {
       { id: 8, name: 'Qualidade — público', scope: 'AREA', area: 'QUA', secrecy_level: 'PUBLIC' },
     ])
     listDocumentTypes.mockResolvedValue(DOCUMENT_TYPES)
-    requestDocumentSuggestions.mockResolvedValue(null)
+    streamDocumentSuggestions.mockResolvedValue(undefined)
     await store.loadCatalogs()
   })
 
@@ -342,7 +374,7 @@ describe('MetadataStep', () => {
       const wrapper = mount(MetadataStep)
 
       expect(wrapper.emitted('back')).toHaveLength(1)
-      expect(requestDocumentSuggestions).not.toHaveBeenCalled()
+      expect(streamDocumentSuggestions).not.toHaveBeenCalled()
     })
 
     it('should not request suggestions when the form is already filled', async () => {
@@ -351,7 +383,7 @@ describe('MetadataStep', () => {
       mount(MetadataStep)
       await flushPromises()
 
-      expect(requestDocumentSuggestions).not.toHaveBeenCalled()
+      expect(streamDocumentSuggestions).not.toHaveBeenCalled()
     })
 
     it('should request suggestions for the largest uploaded file when the form is empty', async () => {
@@ -359,7 +391,7 @@ describe('MetadataStep', () => {
         { id: 'file-1', name: 'a.pdf', size: 100 },
         { id: 'file-2', name: 'b.pdf', size: 500 },
       ]
-      requestDocumentSuggestions.mockResolvedValue({
+      streamAnswering({
         project: { id: 1 },
         discipline: { id: 1 },
         document_type: { id: 'DWG' },
@@ -370,13 +402,13 @@ describe('MetadataStep', () => {
       const wrapper = mount(MetadataStep)
       await flushPromises()
 
-      expect(requestDocumentSuggestions).toHaveBeenCalledWith('file-2')
+      expect(streamDocumentSuggestions).toHaveBeenCalledWith('file-2', expect.anything())
       expect(store.form.title).toBe('Título sugerido')
-      expect(wrapper.text()).toContain('Sugestões carregadas com sucesso!')
+      expect(wrapper.text()).toContain('Sugestões prontas')
     })
 
     it('should flag only the fields the AI actually suggested and map the area by name', async () => {
-      requestDocumentSuggestions.mockResolvedValue({
+      streamAnswering({
         project: { id: 1, name: 'Aeroestrutura de Fuselagem Central' },
         discipline: { id: null, name: 'Estruturas' },
         document_type: { id: 'DWG', name: 'Desenho Técnico' },
@@ -412,7 +444,7 @@ describe('MetadataStep', () => {
         store.projects = PROJECTS
         store.disciplines = DISCIPLINES
       })
-      requestDocumentSuggestions.mockResolvedValue({
+      streamAnswering({
         project: { id: 1 },
         discipline: { id: 1 },
         title: 'Título sugerido',
@@ -421,20 +453,20 @@ describe('MetadataStep', () => {
       mount(MetadataStep)
       await flushPromises()
 
-      expect(requestDocumentSuggestions).not.toHaveBeenCalled()
+      expect(streamDocumentSuggestions).not.toHaveBeenCalled()
       expect(store.form.title).toBe('')
 
       releaseCatalogs()
       await flushPromises()
 
-      expect(requestDocumentSuggestions).toHaveBeenCalledWith('file-1')
+      expect(streamDocumentSuggestions).toHaveBeenCalledWith('file-1', expect.anything())
       expect(store.form.title).toBe('Título sugerido')
       expect(store.form.projectId).toBe(1)
       expect(store.form.disciplineId).toBe(1)
     })
 
     it('should ignore a suggested project that is not in the catalog', async () => {
-      requestDocumentSuggestions.mockResolvedValue({
+      streamAnswering({
         project: { id: 999 },
         discipline: { id: 1 },
         title: 'Título sugerido',
@@ -448,7 +480,7 @@ describe('MetadataStep', () => {
     })
 
     it('should ignore a suggested area that is not in the catalog', async () => {
-      requestDocumentSuggestions.mockResolvedValue({
+      streamAnswering({
         project: { id: 1, name: 'Aeroestrutura' },
         discipline: { id: 1, name: 'Estruturas' },
         document_type: { id: 'DWG', name: 'Desenho Técnico' },
@@ -465,7 +497,7 @@ describe('MetadataStep', () => {
     })
 
     it('should keep the form untouched and show no indicator when the AI returns nothing usable', async () => {
-      requestDocumentSuggestions.mockResolvedValue({
+      streamAnswering({
         project: { id: null, name: '' },
         discipline: { id: null, name: '' },
         document_type: { id: null, name: '' },
@@ -500,7 +532,7 @@ describe('MetadataStep', () => {
 
     it('should show a loading message while suggestions are being fetched', async () => {
       let resolveRequest
-      requestDocumentSuggestions.mockReturnValue(
+      streamDocumentSuggestions.mockReturnValue(
         new Promise((resolve) => {
           resolveRequest = resolve
         }),
@@ -509,23 +541,240 @@ describe('MetadataStep', () => {
       const wrapper = mount(MetadataStep)
       await wrapper.vm.$nextTick()
 
-      expect(wrapper.text()).toContain('Carregando sugestões da API...')
+      expect(wrapper.text()).toContain('Analisando o documento…')
 
       resolveRequest(null)
       await flushPromises()
 
-      expect(wrapper.text()).not.toContain('Carregando sugestões da API...')
+      expect(wrapper.text()).not.toContain('Analisando o documento…')
     })
 
     it('should not show the loading or success message when the request fails', async () => {
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-      requestDocumentSuggestions.mockRejectedValue(new Error('boom'))
+      streamDocumentSuggestions.mockRejectedValue(new Error('boom'))
 
       const wrapper = mount(MetadataStep)
       await flushPromises()
 
-      expect(wrapper.text()).not.toContain('Carregando sugestões da API...')
-      expect(wrapper.text()).not.toContain('Sugestões carregadas com sucesso!')
+      expect(wrapper.text()).not.toContain('Analisando o documento…')
+      expect(wrapper.text()).not.toContain('Sugestões prontas')
+      errorSpy.mockRestore()
+    })
+
+    it('should fill the classified fields before the title and description are ready', async () => {
+      const stream = streamHeldOpen()
+      const wrapper = mount(MetadataStep)
+      await flushPromises()
+
+      stream.emit({
+        type: 'classification',
+        suggestion: {
+          discipline: { id: 1 },
+          document_type: { id: 'DWG' },
+          area: { id: 2, name: 'Qualidade e Inspeção' },
+          title: null,
+          description: null,
+        },
+      })
+      await flushPromises()
+
+      expect(store.form.disciplineId).toBe(1)
+      expect(store.form.documentType).toBe('DWG')
+      expect(store.form.areas).toEqual(['QUA'])
+      expect(store.form.title).toBe('')
+      expect(wrapper.text()).toContain('Escrevendo título e descrição…')
+    })
+
+    it('should grow the title and the description as the text arrives', async () => {
+      const stream = streamHeldOpen()
+      const wrapper = mount(MetadataStep)
+      await flushPromises()
+
+      stream.emit({ type: 'text', field: 'title', value: 'Memorial de' })
+      await flushPromises()
+      const firstTitle = wrapper.find('#title').element.value
+      stream.emit({ type: 'text', field: 'title', value: 'Memorial de Cálculo' })
+      stream.emit({ type: 'text', field: 'description', value: 'Dimensiona a longarina' })
+      await flushPromises()
+
+      expect(firstTitle).toBe('Memorial de')
+      expect(wrapper.find('#title').element.value).toBe('Memorial de Cálculo')
+      expect(store.form.description).toBe('Dimensiona a longarina')
+      expect(store.isFieldSuggested('title')).toBe(true)
+    })
+
+    it('should replace the text in progress with the complete text when the stream ends', async () => {
+      streamAnswering({ title: 'Título final', description: 'Descrição final' }, [
+        { type: 'text', field: 'title', value: 'Título' },
+      ])
+
+      const wrapper = mount(MetadataStep)
+      await flushPromises()
+
+      expect(store.form.title).toBe('Título final')
+      expect(store.form.description).toBe('Descrição final')
+      expect(wrapper.text()).toContain('Sugestões prontas')
+    })
+
+    it('should lock every field the AI fills while the document is being classified', async () => {
+      streamHeldOpen()
+
+      const wrapper = mount(MetadataStep)
+      await flushPromises()
+
+      for (const id of AI_FILLED_FIELDS) {
+        expect(wrapper.find(`#${id}`).element.disabled).toBe(true)
+      }
+      expect(wrapper.find('#author').element.disabled).toBe(false)
+    })
+
+    it('should release the classified fields and keep the text locked while the AI writes', async () => {
+      const stream = streamHeldOpen()
+      const wrapper = mount(MetadataStep)
+      await flushPromises()
+
+      stream.emit({ type: 'classification', suggestion: { discipline: { id: 1 } } })
+      await flushPromises()
+
+      expect(wrapper.find('#discipline').element.disabled).toBe(false)
+      expect(wrapper.find('#title').element.disabled).toBe(true)
+      expect(wrapper.find('#description').element.disabled).toBe(true)
+      expect(busyFieldOf(wrapper, 'discipline')).toBeNull()
+      expect(busyFieldOf(wrapper, 'title')).not.toBeNull()
+      expect(busyFieldOf(wrapper, 'description')).not.toBeNull()
+    })
+
+    it('should release every field once the AI finishes', async () => {
+      streamAnswering({ title: 'Título final', description: 'Descrição final' })
+
+      const wrapper = mount(MetadataStep)
+      await flushPromises()
+
+      for (const id of AI_FILLED_FIELDS) {
+        expect(wrapper.find(`#${id}`).element.disabled).toBe(false)
+      }
+      expect(wrapper.find('.field--busy').exists()).toBe(false)
+    })
+
+    it('should release every field when the generation fails', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const stream = streamHeldOpen()
+      const wrapper = mount(MetadataStep)
+      await flushPromises()
+
+      stream.fail(new Error('boom'))
+      await flushPromises()
+
+      for (const id of AI_FILLED_FIELDS) {
+        expect(wrapper.find(`#${id}`).element.disabled).toBe(false)
+      }
+      errorSpy.mockRestore()
+    })
+
+    it('should block the next step until the AI finishes writing', async () => {
+      const stream = streamHeldOpen()
+      const wrapper = mount(MetadataStep)
+      await flushPromises()
+      await wrapper.find('#author').setValue('João Silva')
+      stream.emit({
+        type: 'classification',
+        suggestion: {
+          project: { id: 1 },
+          discipline: { id: 1 },
+          document_type: { id: 'DWG' },
+          area: { id: 2, name: 'Qualidade e Inspeção' },
+        },
+      })
+      stream.emit({ type: 'text', field: 'title', value: 'Memorial de' })
+      await flushPromises()
+      const blockedWhileWriting = nextButton(wrapper).element.disabled
+
+      stream.emit({ type: 'done', suggestion: { title: 'Memorial de Cálculo' } })
+      await flushPromises()
+
+      expect(store.isValid).toBe(true)
+      expect(blockedWhileWriting).toBe(true)
+      expect(nextButton(wrapper).element.disabled).toBe(false)
+    })
+
+    it('should hand the fields back when the user chooses to fill them manually', async () => {
+      const stream = streamHeldOpen()
+      const wrapper = mount(MetadataStep)
+      await flushPromises()
+      stream.emit({ type: 'text', field: 'title', value: 'Memorial de' })
+      await flushPromises()
+
+      await skipButton(wrapper).trigger('click')
+      stream.emit({ type: 'text', field: 'title', value: 'Memorial de Cálculo' })
+      await flushPromises()
+
+      expect(stream.signal.aborted).toBe(true)
+      expect(store.form.title).toBe('')
+      expect(wrapper.find('#title').element.disabled).toBe(false)
+      expect(wrapper.find('[role="status"]').exists()).toBe(false)
+    })
+
+    it('should clear a half-written title when the generation gives up', async () => {
+      const stream = streamHeldOpen()
+      mount(MetadataStep)
+      await flushPromises()
+      stream.emit({ type: 'text', field: 'title', value: 'Memorial de' })
+
+      stream.emit({ type: 'done', suggestion: { title: null, description: null } })
+      await flushPromises()
+
+      expect(store.form.title).toBe('')
+      expect(store.isFieldSuggested('title')).toBe(false)
+    })
+
+    it('should clear a half-written title when the connection drops before the end', async () => {
+      const stream = streamHeldOpen()
+      const wrapper = mount(MetadataStep)
+      await flushPromises()
+      stream.emit({ type: 'text', field: 'title', value: 'Memorial de' })
+
+      stream.finish()
+      await flushPromises()
+
+      expect(store.form.title).toBe('')
+      expect(wrapper.text()).not.toContain('Sugestões prontas')
+      expect(wrapper.text()).not.toContain('Escrevendo título e descrição…')
+    })
+
+    it('should clear a half-written title when the server reports an error', async () => {
+      const stream = streamHeldOpen()
+      const wrapper = mount(MetadataStep)
+      await flushPromises()
+      stream.emit({ type: 'text', field: 'title', value: 'Memorial de' })
+
+      stream.emit({ type: 'error', error: 'RuntimeError' })
+      await flushPromises()
+
+      expect(store.form.title).toBe('')
+      expect(wrapper.text()).not.toContain('Sugestões prontas')
+    })
+
+    it('should cancel the request when the step is left', async () => {
+      const stream = streamHeldOpen()
+      const wrapper = mount(MetadataStep)
+      await flushPromises()
+
+      wrapper.unmount()
+
+      expect(stream.signal.aborted).toBe(true)
+    })
+
+    it('should stay quiet when the request is cancelled', async () => {
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const stream = streamHeldOpen()
+      const wrapper = mount(MetadataStep)
+      await flushPromises()
+
+      stream.fail(Object.assign(new Error('aborted'), { name: 'AbortError' }))
+      await flushPromises()
+
+      expect(errorSpy).not.toHaveBeenCalled()
+      expect(wrapper.text()).toContain('Analisando o documento…')
       errorSpy.mockRestore()
     })
   })

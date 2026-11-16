@@ -5,6 +5,7 @@ const CSRF_COOKIE_NAME = 'csrftoken'
 const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS']
 const UNAUTHORIZED_STATUS = 401
 const PATHS_WITHOUT_SESSION_EXPIRY = ['/auth/login']
+const NDJSON_CONTENT_TYPE = 'application/x-ndjson'
 
 let unauthorizedHandler = null
 
@@ -101,7 +102,15 @@ async function parseBody(response) {
   }
 }
 
-export async function request(path, { method = 'GET', body, headers = {}, signal } = {}) {
+function parseLine(line) {
+  try {
+    return JSON.parse(line)
+  } catch {
+    return null
+  }
+}
+
+async function send(path, { method = 'GET', body, headers = {}, signal } = {}) {
   const init = { method, signal, headers: { Accept: 'application/json', ...headers } }
 
   if (body !== undefined) {
@@ -120,12 +129,39 @@ export async function request(path, { method = 'GET', body, headers = {}, signal
     throw new ApiError('Não foi possível conectar ao servidor.', { status: 0 })
   }
 
-  const data = await parseBody(response)
   if (!response.ok) {
+    const details = await parseBody(response)
     reportUnauthorized(path, response.status)
-    throw new ApiError(messageFor(response.status), { status: response.status, details: data })
+    throw new ApiError(messageFor(response.status), { status: response.status, details })
   }
-  return data
+  return response
+}
+
+export async function request(path, options) {
+  const response = await send(path, options)
+  return parseBody(response)
+}
+
+export async function streamJsonLines(path, { onLine, headers = {}, ...options } = {}) {
+  const response = await send(path, {
+    method: 'POST',
+    ...options,
+    headers: { Accept: NDJSON_CONTENT_TYPE, ...headers },
+  })
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let pending = ''
+  for (;;) {
+    const { value, done } = await reader.read()
+    pending += done ? decoder.decode() : decoder.decode(value, { stream: true })
+    const lines = pending.split('\n')
+    pending = done ? '' : lines.pop()
+    for (const line of lines) {
+      const parsed = line.trim() ? parseLine(line) : null
+      if (parsed !== null) onLine?.(parsed)
+    }
+    if (done) return
+  }
 }
 
 export const api = {
