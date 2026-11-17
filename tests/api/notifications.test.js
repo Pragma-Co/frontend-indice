@@ -36,6 +36,8 @@ describe('notifications API', () => {
       'DOCUMENT_UPDATED',
       'ACCESS_APPROVED',
       'ACCESS_REJECTED',
+      'REVISION_APPROVED',
+      'REVISION_REJECTED',
     ])
   })
 

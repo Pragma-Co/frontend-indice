@@ -159,7 +159,7 @@ describe('LoginView', () => {
     },
   )
 
-  it('should show the wrong credentials message and clear the password', async () => {
+  it('should show the wrong credentials message and keep the typed values', async () => {
     view.auth.signIn.mockRejectedValue(apiError(401))
 
     await fillAndSubmit(view, {})
@@ -167,7 +167,7 @@ describe('LoginView', () => {
 
     expect(view.alert().text()).toBe('E-mail ou senha incorretos.')
     expect(view.alert().attributes('role')).toBe('alert')
-    expect(view.password().element.value).toBe('')
+    expect(view.password().element.value).toBe('senha-segura')
     expect(view.email().element.value).toBe('thiago.serpa@akaer.local')
     expect(view.errors()).toEqual([])
     expect(push).not.toHaveBeenCalled()
