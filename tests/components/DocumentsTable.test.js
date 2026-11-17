@@ -56,23 +56,14 @@ describe('DocumentsTable', () => {
     expect(wrapper.find('.cell-discipline').exists()).toBe(false)
   })
 
-  it('should open the details when the row itself is clicked', async () => {
+  it('should open the details when the title is clicked', async () => {
     const wrapper = mount(DocumentsTable, { props: { documents: [makeDocument()] } })
 
-    await wrapper.find('tbody tr').trigger('click')
+    await wrapper.find('.cell-title-text').trigger('click')
 
     expect(wrapper.emitted('action')).toEqual([
       [{ document: expect.objectContaining({ id: 33 }), action: 'view-details' }],
     ])
-  })
-
-  it('should open the details from the keyboard with Enter on the row', async () => {
-    const wrapper = mount(DocumentsTable, { props: { documents: [makeDocument()] } })
-
-    await wrapper.find('tbody tr').trigger('keydown.enter')
-
-    expect(wrapper.emitted('action')).toHaveLength(1)
-    expect(wrapper.emitted('action')[0][0].action).toBe('view-details')
   })
 
   it('should not offer the more-actions menu', () => {

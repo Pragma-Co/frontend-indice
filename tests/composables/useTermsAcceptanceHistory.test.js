@@ -393,7 +393,8 @@ describe('useTermsAcceptanceHistory', () => {
     ])
     expect(useNotificationStore().items.at(-1)).toMatchObject({
       type: 'success',
-      message: 'Aceite revogado. O registro continua no histórico.',
+      message:
+        'Aceite revogado. Você foi deslogado pois o aceite é obrigatório para o uso. O registro continua no histórico.',
     })
   })
 
