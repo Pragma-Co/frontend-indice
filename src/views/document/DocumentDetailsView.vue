@@ -45,6 +45,7 @@ const requestError = ref('')
 
 const docxContainer = ref(null)
 const docxLoading = ref(false)
+const docxError = ref('')
 
 const currentFileIndex = ref(0)
 const selectedRevisionId = ref(null)
@@ -206,6 +207,7 @@ async function renderDocx() {
   if (!canPreview.value || !isDocx.value || !fileUrl.value) return
 
   docxLoading.value = true
+  docxError.value = ''
   docxContainer.value.innerHTML = ''
 
   try {
@@ -224,7 +226,7 @@ async function renderDocx() {
     })
   } catch (e) {
     console.error('Erro ao renderizar DOCX:', e)
-    error.value = 'Não foi possível renderizar o arquivo .docx.'
+    docxError.value = 'Não foi possível renderizar o arquivo .docx.'
   } finally {
     docxLoading.value = false
   }
@@ -234,6 +236,7 @@ watch(
   [currentFile, canPreview],
   async () => {
     if (docxContainer.value) docxContainer.value.innerHTML = ''
+    docxError.value = ''
 
     if (canPreview.value && isDocx.value) {
       await nextTick()
@@ -337,9 +340,14 @@ onMounted(loadDocument)
                   :alt="currentFile.original_name || document.title"
                 />
 
-                <div v-else-if="isDocx" class="preview-docx-wrapper">
+                <div
+                  v-else-if="isDocx"
+                  class="preview-docx-wrapper"
+                  :class="{ 'is-error': docxError }"
+                >
                   <p v-if="docxLoading" class="preview-docx-loading">Carregando documento...</p>
-                  <div ref="docxContainer" class="preview-docx" />
+                  <p v-if="docxError" class="preview-docx-error" role="alert">{{ docxError }}</p>
+                  <div v-show="!docxError" ref="docxContainer" class="preview-docx" />
                 </div>
 
                 <div v-else class="preview-placeholder">
@@ -637,6 +645,17 @@ onMounted(loadDocument)
   background: var(--color-surface-muted);
   border-radius: var(--radius-sm);
   position: relative;
+}
+
+.preview-docx-wrapper.is-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-docx-error {
+  padding: 1rem;
+  color: var(--color-text-muted);
 }
 
 .preview-docx {

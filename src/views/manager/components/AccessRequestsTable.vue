@@ -70,31 +70,32 @@ const emit = defineEmits(['evaluate'])
 
 <style scoped>
 .col-code {
-  width: 15%;
+  width: 208px;
 }
 
 .col-title {
-  width: 22%;
+  width: auto;
+  min-width: 180px;
 }
 
 .col-discipline {
-  width: 10%;
+  width: 130px;
 }
 
 .col-requester {
-  width: 12%;
+  width: 170px;
 }
 
 .col-date {
-  width: 13%;
+  width: 154px;
 }
 
 .col-status {
-  width: 9%;
+  width: 129px;
 }
 
 .col-actions {
-  width: 19%;
+  width: 146px;
 }
 
 .cell-date {

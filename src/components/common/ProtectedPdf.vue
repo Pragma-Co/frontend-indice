@@ -75,10 +75,10 @@ watch(
 </script>
 
 <template>
-  <div class="protected-pdf">
+  <div class="protected-pdf" :class="{ 'is-error': error }">
     <p v-if="loading" class="protected-pdf-status" role="status">Carregando documento...</p>
     <p v-if="error" class="protected-pdf-status" role="alert">{{ error }}</p>
-    <div ref="pages" class="protected-pdf-pages" />
+    <div v-show="!error" ref="pages" class="protected-pdf-pages" />
   </div>
 </template>
 
@@ -89,6 +89,12 @@ watch(
   min-height: 0;
   overflow: auto;
   background: var(--color-surface-muted);
+}
+
+.protected-pdf.is-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .protected-pdf-status {
