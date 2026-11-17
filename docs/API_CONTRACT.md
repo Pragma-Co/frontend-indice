@@ -102,6 +102,34 @@ back to the last valid page. `status` is the status of the latest revision and b
 
 The list is always fetched fresh from the API by query string; no client-side cache is kept.
 
+## Search history
+
+Every successful `GET /documents/search` records the `q` term for the signed in user; the
+frontend never writes the history itself. Terms that differ only in letter case or whitespace
+are the same entry, and repeating one moves it to the front keeping the latest spelling.
+
+| Endpoint | Request | Responses |
+| --- | --- | --- |
+| `GET /users/me/search-history` | none | `200` `{ "results": ["MIL-C-5541", "Relatório de cargas"] }`, up to 10 unique terms, most recent first; `{ "results": [] }` when empty |
+| `DELETE /users/me/search-history` | none | `204`, clears the whole history of the signed in user, even if it was already empty |
+| `DELETE /users/me/search-history?term=<term>` | `term` URL-encoded | `204`, removes only that term (case and whitespace ignored), even if it was not in the history; `400` `{ "errors": { "term": { "code": "required", "message" } } }` for a blank term |
+
+Both `DELETE` requests send the `X-CSRFToken` header like any other change, and only ever touch
+the history of the signed in user.
+
+How the frontend uses them (`src/api/searchHistory.js`, `src/composables/useRecentSearches.js`,
+`src/components/common/RecentSearchesPopover.vue`):
+
+| Moment | Frontend |
+| --- | --- |
+| Focus, click or typing in the search bar (home and results page) | opens the "Buscas recentes" popover and fetches `GET /users/me/search-history` again, so the latest searches appear. Nothing is fetched before the first focus |
+| Load failure or empty history | the popover stays hidden; the search bar keeps working |
+| Typing after the popover opens | narrows the list to the terms containing the typed text, without a new request. The term already in the input when it opens does not filter, so the results page shows the whole history |
+| Click on a term, or `Enter` on the term highlighted with `↑`/`↓` | fills the input and runs the search again right away; on the home it keeps the selected date, area and type filters |
+| "X" on a term | removes it from the list at once and calls `DELETE ...?term=<term>`; on failure the term comes back |
+| "Limpar histórico" | empties the list at once, hides the popover and calls `DELETE /users/me/search-history`; on failure the history comes back |
+| `Esc` or leaving the input | closes the popover |
+
 
 ## Upload (step 1)
 
