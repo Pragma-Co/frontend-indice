@@ -31,3 +31,23 @@ export const REVISION_DECISIONS = {
 export function submitRevisionDecision(revisionId, { decision, justification = '' }) {
   return api.post(`/manager/revisions/${revisionId}/decision`, { decision, justification })
 }
+
+export function fetchAreaCollaborators() {
+  return api.get('/manager/users')
+}
+
+export function fetchAccessGroups() {
+  return api.get('/manager/access-groups')
+}
+
+export function fetchAccessGroupMembers(groupId) {
+  return api.get(`/manager/access-groups/${groupId}/users`)
+}
+
+export function addAccessGroupMember(groupId, userId) {
+  return api.post(`/manager/access-groups/${groupId}/users`, { user_id: userId })
+}
+
+export function removeAccessGroupMember(groupId, userId) {
+  return api.delete(`/manager/access-groups/${groupId}/users/${userId}`)
+}
