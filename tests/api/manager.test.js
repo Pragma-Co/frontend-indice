@@ -1,8 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
-  submitAccessRequestDecision,
+  addAccessGroupMember,
+  fetchAccessGroupMembers,
+  fetchAccessGroups,
+  fetchAreaCollaborators,
   fetchPendingAccessRequests,
   fetchPendingRevisions,
+  removeAccessGroupMember,
+  submitAccessRequestDecision,
   submitRevisionDecision,
 } from '../../src/api/manager'
 
@@ -110,5 +115,50 @@ describe('manager api', () => {
       status: 409,
       details: { error: 'RevisionAlreadyDecided' },
     })
+  })
+
+  it('should list the active collaborators of the area', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(200, { results: [] }))
+
+    await fetchAreaCollaborators()
+
+    expect(globalThis.fetch.mock.calls[0][0]).toBe('/api/manager/users')
+  })
+
+  it('should list the access groups of the area', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(200, { results: [] }))
+
+    await fetchAccessGroups()
+
+    expect(globalThis.fetch.mock.calls[0][0]).toBe('/api/manager/access-groups')
+  })
+
+  it('should list the members of an access group', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(200, { results: [] }))
+
+    await fetchAccessGroupMembers(4)
+
+    expect(globalThis.fetch.mock.calls[0][0]).toBe('/api/manager/access-groups/4/users')
+  })
+
+  it('should add a user to an access group', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(201, { user_id: 9 }))
+
+    await addAccessGroupMember(4, 9)
+
+    const [url, init] = globalThis.fetch.mock.calls[0]
+    expect(url).toBe('/api/manager/access-groups/4/users')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual({ user_id: 9 })
+  })
+
+  it('should remove a user from an access group', async () => {
+    globalThis.fetch.mockResolvedValue({ ok: true, status: 204, text: async () => '' })
+
+    await removeAccessGroupMember(4, 9)
+
+    const [url, init] = globalThis.fetch.mock.calls[0]
+    expect(url).toBe('/api/manager/access-groups/4/users/9')
+    expect(init.method).toBe('DELETE')
   })
 })
