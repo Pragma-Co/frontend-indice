@@ -19,6 +19,8 @@ const TYPE_META = {
   [NOTIFICATION_TYPES.DOCUMENT_UPDATED]: { icon: FileText, variant: 'info' },
   [NOTIFICATION_TYPES.ACCESS_APPROVED]: { icon: ShieldCheck, variant: 'success' },
   [NOTIFICATION_TYPES.ACCESS_REJECTED]: { icon: ShieldX, variant: 'danger' },
+  [NOTIFICATION_TYPES.REVISION_APPROVED]: { icon: ShieldCheck, variant: 'success' },
+  [NOTIFICATION_TYPES.REVISION_REJECTED]: { icon: ShieldX, variant: 'danger' },
 }
 
 const router = useRouter()
