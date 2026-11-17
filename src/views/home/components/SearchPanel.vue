@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, useId } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowRight, Building2, Calendar, ChevronDown, FileText, Search, Upload } from '@lucide/vue'
 import { buildDocumentSearchQuery } from '@/utils/searchParams'
@@ -7,6 +7,8 @@ import { useSearchStore } from '@/stores/searchStore.js'
 import { useAuthStore } from '@/stores/authStore.js'
 import Button from '@/components/common/Button.vue'
 import DatePicker from '@/components/common/DatePicker.vue'
+import RecentSearchesPopover from '@/components/common/RecentSearchesPopover.vue'
+import { useRecentSearches } from '@/composables/useRecentSearches.js'
 
 const props = defineProps({
   filters: { type: Object, required: true },
@@ -21,6 +23,13 @@ const authStore = useAuthStore()
 const form = reactive({ query: '', date: '', dateFrom: '', dateTo: '', area: '', type: '' })
 const dateMenuOpen = ref(false)
 const filterMenuOpen = ref('')
+const recentSearchesId = `recent-searches-${useId()}`
+const recentSearches = useRecentSearches({ onSelect: searchRecentTerm })
+const activeRecentSearchId = computed(() =>
+  recentSearches.isVisible.value && recentSearches.activeIndex.value >= 0
+    ? `${recentSearchesId}-option-${recentSearches.activeIndex.value}`
+    : undefined,
+)
 
 function formatDateForDisplay(value) {
   if (!value) return ''
@@ -85,7 +94,13 @@ function resetFilters() {
   searchStore.forget()
 }
 
+function searchRecentTerm(term) {
+  form.query = term
+  search()
+}
+
 function search() {
+  recentSearches.close()
   const query = buildDocumentSearchQuery(form)
   searchStore.setCurrentTerm(form.query)
   searchStore.remember(query)
@@ -97,15 +112,38 @@ onMounted(restoreFilters)
 
 <template>
   <form class="search-panel card" @submit.prevent="search">
-    <label class="search-field">
-      <span class="sr-only">Pesquisar documentos</span>
-      <Search :size="18" :stroke-width="2" aria-hidden="true" />
-      <input
-        v-model="form.query"
-        type="search"
-        placeholder="Pesquisar por título, código, descrição ou termos-chave..."
+    <div class="search-box">
+      <label class="search-field">
+        <span class="sr-only">Pesquisar documentos</span>
+        <Search :size="18" :stroke-width="2" aria-hidden="true" />
+        <input
+          v-model="form.query"
+          type="search"
+          role="combobox"
+          autocomplete="off"
+          aria-autocomplete="list"
+          :aria-expanded="recentSearches.isVisible.value"
+          :aria-controls="recentSearchesId"
+          :aria-activedescendant="activeRecentSearchId"
+          placeholder="Pesquisar por título, código, descrição ou termos-chave..."
+          @focus="recentSearches.open"
+          @click="recentSearches.open"
+          @input="recentSearches.filterBy($event.target.value)"
+          @blur="recentSearches.close"
+          @keydown="recentSearches.handleKeydown"
+        />
+      </label>
+      <RecentSearchesPopover
+        v-if="recentSearches.isVisible.value"
+        :id="recentSearchesId"
+        :terms="recentSearches.visibleTerms.value"
+        :active-index="recentSearches.activeIndex.value"
+        @select="recentSearches.select"
+        @remove="recentSearches.remove"
+        @clear="recentSearches.clear"
+        @activate="recentSearches.setActive"
       />
-    </label>
+    </div>
     <Button>Pesquisar</Button>
     <RouterLink v-if="!authStore.isManager" class="upload-button" :to="{ name: 'document-upload' }">
       <Upload :size="17" :stroke-width="2" aria-hidden="true" />
@@ -239,7 +277,13 @@ onMounted(restoreFilters)
   grid-template-columns: 1fr auto auto;
   gap: 1rem;
 }
+.search-box {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
 .search-field {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 0.65rem;
@@ -248,6 +292,10 @@ onMounted(restoreFilters)
   border-radius: var(--radius-sm);
   padding: 0 0.8rem;
   color: var(--color-text-muted);
+}
+.search-field:focus-within {
+  border-color: var(--color-primary);
+  outline: 2px solid var(--color-primary-bg);
 }
 .search-field input {
   width: 100%;
