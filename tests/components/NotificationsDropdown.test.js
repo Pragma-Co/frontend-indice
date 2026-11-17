@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { createRouter, createMemoryHistory } from 'vue-router'
+import { createPinia, setActivePinia } from 'pinia'
 import NotificationsDropdown from '../../src/components/layout/NotificationsDropdown.vue'
+import { useLegalConsentStore } from '../../src/stores/legalConsentStore'
 import * as notificationsAPI from '../../src/api/notifications'
 
 const mounted = []
@@ -67,6 +69,8 @@ function mountNotificationsDropdown() {
 
 describe('NotificationsDropdown', () => {
   beforeEach(() => {
+    setActivePinia(createPinia())
+    useLegalConsentStore().checked = true
     vi.useFakeTimers()
     vi.spyOn(notificationsAPI, 'fetchNotifications').mockResolvedValue(
       structuredClone(mockNotifications),
@@ -237,6 +241,29 @@ describe('NotificationsDropdown', () => {
 
     expect(wrapper.find('.notifications-empty').exists()).toBe(true)
     expect(wrapper.find('.notifications-empty').text()).toBe('Nenhuma notificação.')
+  })
+
+  it('should not load notifications until the legal terms are accepted', async () => {
+    const consent = useLegalConsentStore()
+    consent.checked = true
+    consent.pending = [{ current_version: { id: 1 } }]
+
+    mountNotificationsDropdown()
+    await flushPromises()
+    expect(notificationsAPI.fetchNotifications).not.toHaveBeenCalled()
+
+    consent.pending = []
+    await flushPromises()
+    expect(notificationsAPI.fetchNotifications).toHaveBeenCalledTimes(1)
+  })
+
+  it('should not load notifications before the pending check finishes', async () => {
+    useLegalConsentStore().checked = false
+
+    mountNotificationsDropdown()
+    await flushPromises()
+
+    expect(notificationsAPI.fetchNotifications).not.toHaveBeenCalled()
   })
 
   it('should poll notifications every minute', async () => {

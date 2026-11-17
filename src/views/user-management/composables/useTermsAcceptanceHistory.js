@@ -11,7 +11,8 @@ export const TERM_STATES = {
 }
 
 const LOAD_ERROR_MESSAGE = 'Não foi possível carregar o histórico de termos.'
-const REVOKE_SUCCESS_MESSAGE = 'Aceite revogado. O registro continua no histórico.'
+const REVOKE_SUCCESS_MESSAGE =
+  'Aceite revogado. Você foi deslogado pois o aceite é obrigatório para o uso. O registro continua no histórico.'
 const REVOKE_ERROR_MESSAGE = 'Não foi possível revogar o aceite. Tente novamente.'
 const ALREADY_REVOKED_MESSAGE = 'Este aceite já havia sido revogado.'
 const ACCEPT_SUCCESS_MESSAGE = 'Termo aceito.'

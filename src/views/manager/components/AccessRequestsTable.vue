@@ -95,7 +95,7 @@ const emit = defineEmits(['evaluate'])
 }
 
 .col-actions {
-  width: 144px;
+  width: 146px;
 }
 
 .cell-date {

@@ -1,9 +1,12 @@
 import { defineStore } from 'pinia'
 import { acceptLegalTerms, fetchPendingLegalTerms } from '../api/users'
 
+let inflight = null
+
 export const useLegalConsentStore = defineStore('legalConsent', {
   state: () => ({
     pending: [],
+    checked: false,
     accepting: false,
     error: '',
   }),
@@ -12,13 +15,20 @@ export const useLegalConsentStore = defineStore('legalConsent', {
     isBlocking: (state) => state.pending.length > 0,
   },
   actions: {
-    async refresh() {
-      try {
-        const response = await fetchPendingLegalTerms()
-        this.pending = response?.results ?? []
-      } catch (failure) {
-        if (failure?.status === 401) this.pending = []
-      }
+    refresh() {
+      if (inflight) return inflight
+      inflight = (async () => {
+        try {
+          const response = await fetchPendingLegalTerms()
+          this.pending = response?.results ?? []
+          this.checked = true
+        } catch (failure) {
+          if (failure?.status === 401) this.pending = []
+        } finally {
+          inflight = null
+        }
+      })()
+      return inflight
     },
     async accept() {
       const document = this.current
@@ -47,6 +57,7 @@ export const useLegalConsentStore = defineStore('legalConsent', {
     },
     reset() {
       this.pending = []
+      this.checked = false
       this.accepting = false
       this.error = ''
     },
