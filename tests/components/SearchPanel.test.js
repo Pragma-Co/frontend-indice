@@ -3,6 +3,15 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import SearchPanel from '@/views/home/components/SearchPanel.vue'
 import { useSearchStore } from '@/stores/searchStore.js'
+import * as searchHistoryApi from '@/api/searchHistory.js'
+
+vi.mock('@/api/searchHistory.js', () => ({
+  fetchSearchHistory: vi.fn(),
+  clearSearchHistory: vi.fn(),
+  removeSearchHistoryTerm: vi.fn(),
+}))
+
+const HISTORY = ['Normas de estruturas metálicas', 'MIL-C-5541', 'Relatório de cargas']
 
 const route = { query: {} }
 vi.mock('vue-router', () => ({
@@ -96,5 +105,87 @@ describe('SearchPanel', () => {
     expect(wrapper.find('input[type="search"]').element.value).toBe('')
     expect(searchStore.lastSearch).toEqual({})
     expect(wrapper.emitted('search')).toBeUndefined()
+  })
+
+  describe('recent searches', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+      searchHistoryApi.fetchSearchHistory.mockResolvedValue(HISTORY)
+      searchHistoryApi.clearSearchHistory.mockResolvedValue(null)
+      searchHistoryApi.removeSearchHistoryTerm.mockResolvedValue(null)
+    })
+
+    async function focusSearch(wrapper) {
+      await wrapper.find('input[type="search"]').trigger('focus')
+      await flushPromises()
+    }
+
+    it('should not load the history before the input is focused', async () => {
+      const wrapper = await mountPanel()
+
+      expect(searchHistoryApi.fetchSearchHistory).not.toHaveBeenCalled()
+      expect(wrapper.find('.recent-searches').exists()).toBe(false)
+    })
+
+    it('should show the recent searches when the input is focused', async () => {
+      const wrapper = await mountPanel()
+
+      await focusSearch(wrapper)
+
+      const input = wrapper.find('input[type="search"]')
+      expect(wrapper.find('.recent-searches').exists()).toBe(true)
+      expect(wrapper.findAll('.recent-search-text').map((item) => item.text())).toEqual(HISTORY)
+      expect(input.attributes('aria-expanded')).toBe('true')
+      expect(input.attributes('aria-controls')).toBe(
+        wrapper.find('[role="listbox"]').attributes('id'),
+      )
+    })
+
+    it('should fill the input and search again when a term is clicked', async () => {
+      const wrapper = await mountPanel()
+      await focusSearch(wrapper)
+
+      await wrapper.findAll('.recent-search-term')[1].trigger('click')
+
+      expect(wrapper.find('input[type="search"]').element.value).toBe('MIL-C-5541')
+      expect(wrapper.emitted('search')).toEqual([[{ q: 'MIL-C-5541' }]])
+      expect(searchStore.currentTerm).toBe('MIL-C-5541')
+      expect(wrapper.find('.recent-searches').exists()).toBe(false)
+    })
+
+    it('should search the highlighted term with the keyboard', async () => {
+      const wrapper = await mountPanel()
+      await focusSearch(wrapper)
+      const input = wrapper.find('input[type="search"]')
+
+      await input.trigger('keydown', { key: 'ArrowDown' })
+      await input.trigger('keydown', { key: 'ArrowDown' })
+
+      expect(input.attributes('aria-activedescendant')).toMatch(/-option-1$/)
+      await input.trigger('keydown', { key: 'Enter' })
+
+      expect(wrapper.emitted('search')).toEqual([[{ q: 'MIL-C-5541' }]])
+    })
+
+    it('should clear the history and hide the popover', async () => {
+      const wrapper = await mountPanel()
+      await focusSearch(wrapper)
+
+      await wrapper.find('.recent-searches-clear').trigger('click')
+      await flushPromises()
+
+      expect(searchHistoryApi.clearSearchHistory).toHaveBeenCalledTimes(1)
+      expect(wrapper.find('.recent-searches').exists()).toBe(false)
+    })
+
+    it('should close the popover when the input loses focus', async () => {
+      const wrapper = await mountPanel()
+      await focusSearch(wrapper)
+
+      await wrapper.find('input[type="search"]').trigger('blur')
+
+      expect(wrapper.find('.recent-searches').exists()).toBe(false)
+      expect(wrapper.find('input[type="search"]').attributes('aria-expanded')).toBe('false')
+    })
   })
 })
