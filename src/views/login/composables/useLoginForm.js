@@ -52,12 +52,6 @@ export function useLoginForm() {
     serverError.value = ''
   }
 
-  function resetPassword() {
-    form.password = ''
-    touched.password = false
-    submitAttempted.value = false
-  }
-
   async function submit() {
     if (submitting.value) return
     submitAttempted.value = true
@@ -71,7 +65,6 @@ export function useLoginForm() {
       await auth.signIn({ email: form.email.trim(), password: form.password })
     } catch (error) {
       serverError.value = signInErrorMessage(error?.status)
-      if (error?.status === 401) resetPassword()
       return
     } finally {
       submitting.value = false

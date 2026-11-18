@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Bell, FileText, ShieldCheck, ShieldX } from '@lucide/vue'
 import Dropdown from '@/components/common/Dropdown.vue'
@@ -9,6 +9,7 @@ import {
   markAllNotificationsAsRead,
   markNotificationAsRead,
 } from '@/api/notifications'
+import { useLegalConsentStore } from '@/stores/legalConsentStore'
 
 const POLL_INTERVAL_MS = 60 * 1000
 const PAGE_SIZE = 5
@@ -18,9 +19,12 @@ const TYPE_META = {
   [NOTIFICATION_TYPES.DOCUMENT_UPDATED]: { icon: FileText, variant: 'info' },
   [NOTIFICATION_TYPES.ACCESS_APPROVED]: { icon: ShieldCheck, variant: 'success' },
   [NOTIFICATION_TYPES.ACCESS_REJECTED]: { icon: ShieldX, variant: 'danger' },
+  [NOTIFICATION_TYPES.REVISION_APPROVED]: { icon: ShieldCheck, variant: 'success' },
+  [NOTIFICATION_TYPES.REVISION_REJECTED]: { icon: ShieldX, variant: 'danger' },
 }
 
 const router = useRouter()
+const consent = useLegalConsentStore()
 const notifications = ref([])
 const visibleCount = ref(PAGE_SIZE)
 const list = ref(null)
@@ -95,12 +99,23 @@ async function openNotification(item) {
   }
 }
 
-onMounted(() => {
-  load()
-  timer = setInterval(load, POLL_INTERVAL_MS)
-})
+function stopPolling() {
+  clearInterval(timer)
+  timer = null
+}
 
-onBeforeUnmount(() => clearInterval(timer))
+watch(
+  () => consent.checked && !consent.isBlocking,
+  (allowed) => {
+    stopPolling()
+    if (!allowed) return
+    load()
+    timer = setInterval(load, POLL_INTERVAL_MS)
+  },
+  { immediate: true },
+)
+
+onBeforeUnmount(stopPolling)
 </script>
 
 <template>

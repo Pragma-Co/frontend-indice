@@ -75,31 +75,32 @@ const emit = defineEmits(['evaluate'])
 
 <style scoped>
 .col-code {
-  width: 15%;
+  width: 208px;
 }
 
 .col-title {
-  width: 26%;
+  width: auto;
+  min-width: 200px;
 }
 
 .col-discipline {
-  width: 11%;
+  width: 130px;
 }
 
 .col-transition {
-  width: 13%;
+  width: 148px;
 }
 
 .col-author {
-  width: 14%;
+  width: 170px;
 }
 
 .col-status {
-  width: 9%;
+  width: 127px;
 }
 
 .col-actions {
-  width: 12%;
+  width: 157px;
 }
 
 .revision-row {

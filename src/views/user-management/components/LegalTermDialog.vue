@@ -13,9 +13,38 @@ const props = defineProps({
   accepted: { type: Boolean, default: true },
   acceptedAt: { type: String, default: null },
   revokedAt: { type: String, default: null },
+  blocking: { type: Boolean, default: false },
+  busy: { type: Boolean, default: false },
+  actionError: { type: String, default: '' },
 })
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(['close', 'accept', 'leave'])
+
+function requestClose() {
+  if (!props.blocking) emit('close')
+}
+
+function trapFocus(event) {
+  if (!props.blocking || event.key !== 'Tab' || !dialog.value) return
+  const focusable = [...dialog.value.querySelectorAll('button:not([disabled]), [tabindex="0"]')]
+  if (!focusable.length) {
+    event.preventDefault()
+    dialog.value.focus()
+    return
+  }
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  if (!dialog.value.contains(document.activeElement)) {
+    event.preventDefault()
+    first.focus()
+  } else if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
 
 const dialog = ref(null)
 const version = ref(null)
@@ -68,7 +97,7 @@ onBeforeUnmount(() => {
 
 <template>
   <Teleport to="body">
-    <div class="term-overlay" @click.self="emit('close')">
+    <div class="term-overlay" @click.self="requestClose">
       <div
         ref="dialog"
         class="term-dialog"
@@ -76,7 +105,8 @@ onBeforeUnmount(() => {
         aria-modal="true"
         aria-labelledby="legal-term-title"
         tabindex="-1"
-        @keydown.esc.stop="emit('close')"
+        @keydown.esc.stop="requestClose"
+        @keydown="trapFocus"
       >
         <header class="term-dialog-header">
           <div>
@@ -84,7 +114,13 @@ onBeforeUnmount(() => {
             <p v-if="versionLabel" class="term-dialog-version">Versão {{ versionLabel }}</p>
             <p v-if="timeline" class="term-dialog-timeline">{{ timeline }}</p>
           </div>
-          <button type="button" class="term-close" aria-label="Fechar" @click="emit('close')">
+          <button
+            v-if="!blocking"
+            type="button"
+            class="term-close"
+            aria-label="Fechar"
+            @click="emit('close')"
+          >
             <X :size="18" aria-hidden="true" />
           </button>
         </header>
@@ -119,7 +155,14 @@ onBeforeUnmount(() => {
         </div>
 
         <footer class="term-dialog-footer">
-          <Button variant="outline" @click="emit('close')">Fechar</Button>
+          <template v-if="blocking">
+            <p v-if="actionError" class="term-action-error" role="alert">{{ actionError }}</p>
+            <Button variant="outline" :disabled="busy" @click="emit('leave')">Sair</Button>
+            <Button :disabled="busy || loading || !!error" @click="emit('accept')">
+              {{ busy ? 'Registrando...' : 'Li e aceito' }}
+            </Button>
+          </template>
+          <Button v-else variant="outline" @click="emit('close')">Fechar</Button>
         </footer>
       </div>
     </div>
@@ -284,10 +327,18 @@ onBeforeUnmount(() => {
 
 .term-dialog-footer {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 0.75rem;
   padding: 1rem 1.5rem;
   border-top: 1px solid var(--color-border);
   background: var(--color-surface-muted);
+}
+
+.term-action-error {
+  margin-right: auto;
+  color: var(--color-warning);
+  font-size: 0.82rem;
 }
 
 @media (max-width: 640px) {

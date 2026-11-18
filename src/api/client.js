@@ -8,6 +8,20 @@ const PATHS_WITHOUT_SESSION_EXPIRY = ['/auth/login']
 const NDJSON_CONTENT_TYPE = 'application/x-ndjson'
 
 let unauthorizedHandler = null
+let legalRequiredHandler = null
+
+export function setLegalRequiredHandler(handler) {
+  legalRequiredHandler = typeof handler === 'function' ? handler : null
+}
+
+function reportLegalRequired(status, details) {
+  if (status !== 403 || details?.error !== 'LegalAcceptanceRequired') return
+  try {
+    legalRequiredHandler?.()
+  } catch {
+    return
+  }
+}
 
 export function setUnauthorizedHandler(handler) {
   unauthorizedHandler = typeof handler === 'function' ? handler : null
@@ -132,6 +146,7 @@ async function send(path, { method = 'GET', body, headers = {}, signal } = {}) {
   if (!response.ok) {
     const details = await parseBody(response)
     reportUnauthorized(path, response.status)
+    reportLegalRequired(response.status, details)
     throw new ApiError(messageFor(response.status), { status: response.status, details })
   }
   return response

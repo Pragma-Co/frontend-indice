@@ -36,7 +36,13 @@ function remove(value) {
 
 <template>
   <div class="tags">
-    <select :id="id" class="tags__select" :disabled="disabled || !available.length" @change="add">
+    <select
+      :id="id"
+      class="tags__select"
+      :class="disabled ? 'is-disabled' : ''"
+      :disabled="disabled || !available.length"
+      @change="add"
+    >
       <option value="">
         {{ available.length ? placeholder : 'Todas as opções selecionadas' }}
       </option>
@@ -61,7 +67,6 @@ function remove(value) {
 </template>
 
 <style scoped>
-/* The selector stays put at the top; selected chips flow below it, side by side. */
 .tags {
   display: flex;
   flex-direction: column;
@@ -96,5 +101,10 @@ function remove(value) {
   line-height: 1;
   font-size: 0.9rem;
   color: var(--color-text-muted);
+}
+
+.tags__select.is-disabled {
+  background: var(--color-surface-muted);
+  cursor: not-allowed;
 }
 </style>
