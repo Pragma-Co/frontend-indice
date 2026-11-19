@@ -14,6 +14,23 @@ export function fetchPendingAccessRequests(options) {
   return api.get(`/manager/pending-access-requests?${pageQuery(options)}`)
 }
 
+export function fetchDecisionHistory({
+  page = 1,
+  pageSize,
+  requestType,
+  decision,
+  dateFrom,
+  dateTo,
+} = {}) {
+  const params = new URLSearchParams({ page: String(page) })
+  if (pageSize) params.set('page_size', String(pageSize))
+  if (requestType) params.set('request_type', requestType)
+  if (decision) params.set('decision', decision)
+  if (dateFrom) params.set('date_from', dateFrom)
+  if (dateTo) params.set('date_to', dateTo)
+  return api.get(`/manager/decision-history?${params}`)
+}
+
 export const ACCESS_REQUEST_DECISIONS = {
   APPROVED: 'APPROVED',
   REJECTED: 'REJECTED',

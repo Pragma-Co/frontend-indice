@@ -391,8 +391,8 @@ onMounted(loadDocument)
           <aside class="document-card">
             <header class="document-card-header">
               <StatusBadge
-                v-if="statusBadgeFor(document.access_status)"
-                :status="statusBadgeFor(document.access_status)"
+                v-if="statusBadgeFor(currentRevision?.status)"
+                :status="statusBadgeFor(currentRevision?.status)"
               />
               <span>Ref: {{ document.code }}</span>
             </header>

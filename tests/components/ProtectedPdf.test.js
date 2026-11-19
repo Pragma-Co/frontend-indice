@@ -9,6 +9,24 @@ const mocks = vi.hoisted(() => ({
 vi.mock('pdfjs-dist', () => ({
   getDocument: mocks.getDocument,
   GlobalWorkerOptions: mocks.workerOptions,
+  TextLayer: class {
+    constructor({ textContentSource, container }) {
+      this.container = container
+      this.textContentItemsStr = textContentSource.items
+        .filter((item) => typeof item.str === 'string')
+        .map((item) => item.str)
+      this.textDivs = []
+    }
+
+    async render() {
+      this.textDivs = this.textContentItemsStr.map((text) => {
+        const textDiv = document.createElement('span')
+        textDiv.textContent = text
+        this.container.appendChild(textDiv)
+        return textDiv
+      })
+    }
+  },
 }))
 vi.mock('pdfjs-dist/build/pdf.worker.min.mjs?url', () => ({ default: '/worker.mjs' }))
 
@@ -20,7 +38,21 @@ describe('ProtectedPdf', () => {
 
   beforeEach(() => {
     page = {
-      getViewport: vi.fn(({ scale }) => ({ width: 600 * scale, height: 800 * scale })),
+      getViewport: vi.fn(({ scale }) => ({
+        width: 600 * scale,
+        height: 800 * scale,
+        transform: [scale, 0, 0, -scale, 0, 800 * scale],
+      })),
+      getTextContent: vi.fn().mockResolvedValue({
+        items: [
+          {
+            str: 'Termo para buscar',
+            transform: [1, 0, 0, 10, 20, 30],
+            width: 100,
+            height: 10,
+          },
+        ],
+      }),
       render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
       cleanup: vi.fn(),
     }
@@ -65,6 +97,36 @@ describe('ProtectedPdf', () => {
 
     expect(wrapper.find('[role="alert"]').text()).toContain('Não foi possível carregar')
     expect(log).toHaveBeenCalled()
+    wrapper.unmount()
+  })
+
+  it('searches PDF text, highlights matches, and navigates between results', async () => {
+    const wrapper = mount(ProtectedPdf, {
+      props: { url: '/api/files/1/view' },
+      attachTo: document.body,
+    })
+    await flushPromises()
+
+    await wrapper.find('input[type="search"]').setValue('termo')
+    expect(wrapper.find('.protected-pdf-page').element.style.position).toBe('relative')
+    expect(wrapper.find('canvas').element.style.width).toBe('100%')
+    expect(wrapper.find('.protected-pdf-search-status').text()).toBe('1 de 2')
+    expect(wrapper.findAll('.protected-pdf-search-highlight')).toHaveLength(2)
+    expect(wrapper.find('.protected-pdf-search-highlight.is-active').exists()).toBe(true)
+
+    await wrapper.find('[aria-label="Próximo resultado"]').trigger('click')
+    expect(wrapper.find('.protected-pdf-search-status').text()).toBe('2 de 2')
+    expect(wrapper.findAll('.protected-pdf-search-highlight.is-active')).toHaveLength(1)
+
+    const shortcut = new KeyboardEvent('keydown', {
+      key: 'f',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    })
+    window.dispatchEvent(shortcut)
+    expect(shortcut.defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(wrapper.find('input[type="search"]').element)
     wrapper.unmount()
   })
 
