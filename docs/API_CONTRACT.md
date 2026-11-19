@@ -138,7 +138,6 @@ back to the last valid page. `status` is the status of the latest revision and b
 | `PENDING` | Em revisão |
 | `APPROVED` | Vigente |
 | `REJECTED` | Rejeitado |
-| `OBSOLETE` | Obsoleto |
 
 The list is always fetched fresh from the API by query string; no client-side cache is kept.
 

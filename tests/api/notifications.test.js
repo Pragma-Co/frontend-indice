@@ -41,17 +41,17 @@ describe('notifications API', () => {
     ])
   })
 
-  it('should fetch the latest notifications and return the results', async () => {
+  it('should fetch the 10 most recent unread notifications with the unread total', async () => {
     globalThis.fetch.mockResolvedValue(
-      jsonResponse(200, { count: 1, unread_count: 1, results: [notification] }),
+      jsonResponse(200, { count: 30, unread_count: 30, results: [notification] }),
     )
 
     const result = await fetchNotifications()
 
     const [url, init] = globalThis.fetch.mock.calls[0]
-    expect(url).toBe('/api/notifications?page_size=100')
+    expect(url).toBe('/api/notifications?unread=true&page_size=10')
     expect(init.method).toBe('GET')
-    expect(result).toEqual([notification])
+    expect(result).toEqual({ notifications: [notification], unreadCount: 30 })
   })
 
   it('should return an empty list when the backend sends no results', async () => {
@@ -59,7 +59,15 @@ describe('notifications API', () => {
 
     const result = await fetchNotifications()
 
-    expect(result).toEqual([])
+    expect(result).toEqual({ notifications: [], unreadCount: 0 })
+  })
+
+  it('should count the returned notifications when the backend sends no unread total', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(200, { results: [notification] }))
+
+    const result = await fetchNotifications()
+
+    expect(result.unreadCount).toBe(1)
   })
 
   it('should mark one notification as read by its id with the CSRF token', async () => {

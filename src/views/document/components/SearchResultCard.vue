@@ -120,19 +120,34 @@ function startNewRevision() {
       </ul>
 
       <div class="result-footer-end">
-        <span class="result-date">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            aria-hidden="true"
-          >
-            <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
-            <path d="M3.5 9.5h17M8 3v4M16 3v4" stroke-linecap="round" />
-          </svg>
-          Atualizado em {{ formatDateAtTime(document.updatedAt) }} por {{ document.updatedBy }}
-        </span>
+        <div class="result-dates">
+          <span class="result-date">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              aria-hidden="true"
+            >
+              <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
+              <path d="M3.5 9.5h17M8 3v4M16 3v4" stroke-linecap="round" />
+            </svg>
+            Criado em {{ formatDateAtTime(document.createdAt) }} por {{ document.createdBy }}
+          </span>
+          <span class="result-date">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              aria-hidden="true"
+            >
+              <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
+              <path d="M3.5 9.5h17M8 3v4M16 3v4" stroke-linecap="round" />
+            </svg>
+            Atualizado em {{ formatDateAtTime(document.updatedAt) }} por {{ document.updatedBy }}
+          </span>
+        </div>
         <button
           type="button"
           class="result-action"
@@ -319,6 +334,12 @@ function startNewRevision() {
   align-items: center;
   gap: 0.85rem;
   margin-left: auto;
+}
+
+.result-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
 }
 
 .result-date {
