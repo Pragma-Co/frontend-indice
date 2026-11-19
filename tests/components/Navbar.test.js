@@ -114,6 +114,22 @@ describe('Navbar', () => {
     expect(dropdown.exists()).toBe(true)
   })
 
+  it('should not show the notifications bell to a manager', async () => {
+    const { wrapper } = await mountNavbar('/home', PROFILES.MANAGER)
+
+    expect(wrapper.findComponent({ name: 'NotificationsDropdown' }).exists()).toBe(false)
+    expect(wrapper.find('.notifications-trigger').exists()).toBe(false)
+  })
+
+  it('should hide the notifications bell when a collaborator becomes a manager', async () => {
+    const { wrapper } = await mountNavbar()
+
+    useAuthStore().setSession(ACCOUNTS_BY_PROFILE[PROFILES.MANAGER])
+    await flushPromises()
+
+    expect(wrapper.find('.notifications-trigger').exists()).toBe(false)
+  })
+
   it('should show the initials and the name of the current user', async () => {
     const { wrapper } = await mountNavbar()
     expect(wrapper.find('.navbar-avatar').text()).toBe('BC')
