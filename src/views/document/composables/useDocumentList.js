@@ -20,6 +20,8 @@ export function normalizeDocument(document) {
     type: document.type?.name ?? document.type?.code ?? 'Não informado',
     revision: document.revision?.label ?? '-',
     status: document.status ?? null,
+    createdAt: document.created_at,
+    createdBy: document.created_by?.name ?? 'sistema',
     updatedAt: document.updated_at,
     updatedBy: document.updated_by?.name ?? document.created_by?.name ?? 'sistema',
     tags: [...new Set([...(document.tags ?? []), ...(document.thematic_tags ?? [])])],

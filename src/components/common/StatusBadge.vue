@@ -3,8 +3,7 @@ defineProps({
   status: {
     type: String,
     required: true,
-    validator: (value) =>
-      ['vigente', 'em_revisao', 'rascunho', 'rejeitado', 'obsoleto'].includes(value),
+    validator: (value) => ['vigente', 'em_revisao', 'rascunho', 'rejeitado'].includes(value),
   },
 })
 
@@ -13,7 +12,6 @@ const STATUS_LABELS = {
   em_revisao: 'Em revisão',
   rascunho: 'Rascunho',
   rejeitado: 'Rejeitado',
-  obsoleto: 'Obsoleto',
 }
 </script>
 
@@ -81,15 +79,5 @@ const STATUS_LABELS = {
 
 .status-rejeitado .status-dot {
   background: var(--color-danger);
-}
-
-.status-obsoleto {
-  background: var(--color-background);
-  color: var(--color-text-muted);
-  border-color: var(--color-border);
-}
-
-.status-obsoleto .status-dot {
-  background: var(--color-text-muted);
 }
 </style>
