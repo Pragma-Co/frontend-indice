@@ -235,7 +235,7 @@ describe('normalizeDocument', () => {
   })
 
   it('should keep the backend status and use null when it is missing', () => {
-    expect(normalizeDocument(makeDocument(1, { status: 'OBSOLETE' })).status).toBe('OBSOLETE')
+    expect(normalizeDocument(makeDocument(1, { status: 'REJECTED' })).status).toBe('REJECTED')
     expect(normalizeDocument(makeDocument(1, { status: null })).status).toBeNull()
     expect(normalizeDocument({ id: 1 }).status).toBeNull()
   })
