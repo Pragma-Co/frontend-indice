@@ -124,4 +124,105 @@ describe('LegalTermDialog', () => {
 
     expect(wrapper.find('.term-dialog-timeline').exists()).toBe(false)
   })
+
+  describe('when blocking access until the term is accepted', () => {
+    function acceptButton(wrapper) {
+      return wrapper
+        .findAll('.term-dialog-footer button')
+        .find((button) => button.text() === 'Li e aceito')
+    }
+
+    function clauseCheckbox(wrapper, title) {
+      return wrapper
+        .findAll('.term-clause')
+        .find((clause) => clause.text().includes(title))
+        .find('.term-clause-agree input')
+    }
+
+    it('should offer one consent checkbox per clause, all unchecked', async () => {
+      const wrapper = await mountDialog({ blocking: true })
+
+      const checkboxes = wrapper.findAll('.term-clause-agree input')
+
+      expect(checkboxes).toHaveLength(2)
+      expect(checkboxes.every((checkbox) => !checkbox.element.checked)).toBe(true)
+      expect(wrapper.findAll('.term-clause-requirement').map((tag) => tag.text())).toEqual([
+        '(obrigatória para continuar)',
+        '(opcional, você pode continuar sem marcar)',
+      ])
+    })
+
+    it('should not offer checkboxes when the term is only being read', async () => {
+      const wrapper = await mountDialog()
+
+      expect(wrapper.find('.term-clause-agree').exists()).toBe(false)
+      expect(wrapper.find('.term-agree-all').exists()).toBe(false)
+    })
+
+    it('should keep the acceptance disabled until every required clause is agreed', async () => {
+      const wrapper = await mountDialog({ blocking: true })
+      const disabledBefore = acceptButton(wrapper).attributes('disabled')
+      const hintBefore = wrapper.find('.term-required-hint').text()
+
+      await clauseCheckbox(wrapper, 'Objeto').setValue(true)
+
+      expect(disabledBefore).toBeDefined()
+      expect(hintBefore).toBe('Marque as cláusulas obrigatórias para continuar (0/1)')
+      expect(acceptButton(wrapper).attributes('disabled')).toBeUndefined()
+      expect(wrapper.find('.term-required-hint').exists()).toBe(false)
+    })
+
+    it('should accept while declining an optional clause', async () => {
+      const wrapper = await mountDialog({ blocking: true })
+
+      await clauseCheckbox(wrapper, 'Objeto').setValue(true)
+      await acceptButton(wrapper).trigger('click')
+
+      expect(wrapper.emitted('accept')).toEqual([
+        [
+          [
+            { clause_id: 1, accepted: true },
+            { clause_id: 2, accepted: false },
+          ],
+        ],
+      ])
+    })
+
+    it('should agree with and clear every clause at once', async () => {
+      const wrapper = await mountDialog({ blocking: true })
+      const agreeAll = wrapper.find('.term-agree-all input')
+
+      await agreeAll.setValue(true)
+      const allChecked = wrapper
+        .findAll('.term-clause-agree input')
+        .map((input) => input.element.checked)
+      await agreeAll.setValue(false)
+
+      expect(allChecked).toEqual([true, true])
+      expect(
+        wrapper.findAll('.term-clause-agree input').map((input) => input.element.checked),
+      ).toEqual([false, false])
+      expect(acceptButton(wrapper).attributes('disabled')).toBeDefined()
+    })
+
+    it('should send every clause accepted when all of them are agreed', async () => {
+      const wrapper = await mountDialog({ blocking: true })
+
+      await wrapper.find('.term-agree-all input').setValue(true)
+      await acceptButton(wrapper).trigger('click')
+
+      expect(wrapper.emitted('accept')[0][0]).toEqual([
+        { clause_id: 1, accepted: true },
+        { clause_id: 2, accepted: true },
+      ])
+    })
+
+    it('should lock the checkboxes while the acceptance is being recorded', async () => {
+      const wrapper = await mountDialog({ blocking: true, busy: true })
+
+      const inputs = wrapper.findAll('.term-dialog-body input')
+
+      expect(inputs.every((input) => input.attributes('disabled') !== undefined)).toBe(true)
+    })
+  })
 })
