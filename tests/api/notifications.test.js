@@ -41,7 +41,7 @@ describe('notifications API', () => {
     ])
   })
 
-  it('should fetch the latest notifications and return the results', async () => {
+  it('should fetch only the 10 most recent notifications and return the results', async () => {
     globalThis.fetch.mockResolvedValue(
       jsonResponse(200, { count: 1, unread_count: 1, results: [notification] }),
     )
@@ -49,7 +49,7 @@ describe('notifications API', () => {
     const result = await fetchNotifications()
 
     const [url, init] = globalThis.fetch.mock.calls[0]
-    expect(url).toBe('/api/notifications?page_size=100')
+    expect(url).toBe('/api/notifications?page_size=10')
     expect(init.method).toBe('GET')
     expect(result).toEqual([notification])
   })

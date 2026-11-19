@@ -8,7 +8,7 @@ export const NOTIFICATION_TYPES = {
   REVISION_REJECTED: 'REVISION_REJECTED',
 }
 
-const PAGE_SIZE = 100
+const PAGE_SIZE = 10
 
 export async function fetchNotifications() {
   const data = await api.get(`/notifications?page_size=${PAGE_SIZE}`)
