@@ -101,13 +101,42 @@ describe('PendingRevisionsTable', () => {
     expect(wrapper.emitted('evaluate')).toEqual([[REVISIONS[1]]])
   })
 
-  it('should ask to evaluate the revision when its row is clicked', async () => {
+  it('should ask to evaluate the revision when its title is clicked', async () => {
     const wrapper = mount(PendingRevisionsTable, { props: { revisions: REVISIONS } })
 
-    await wrapper.findAll('tbody tr')[0].trigger('click')
+    await wrapper.findAll('.cell-title-text')[0].trigger('click')
     vi.runAllTimers()
 
     expect(wrapper.emitted('evaluate')).toEqual([[REVISIONS[0]]])
+  })
+
+  it('should not open the evaluation when another cell of the row is clicked', async () => {
+    const wrapper = mount(PendingRevisionsTable, { props: { revisions: REVISIONS } })
+    const row = wrapper.findAll('tbody tr')[0]
+
+    await row.trigger('click')
+    await row.find('.cell-code').trigger('click')
+    vi.runAllTimers()
+
+    expect(wrapper.emitted('evaluate')).toBeUndefined()
+  })
+
+  it('should show the title as the clickable part of the row', () => {
+    const wrapper = mount(PendingRevisionsTable, { props: { revisions: REVISIONS } })
+    const row = wrapper.findAll('tbody tr')[0]
+    const title = row.find('.cell-title-text')
+
+    expect(title.attributes('role')).toBe('button')
+    expect(title.attributes('tabindex')).toBe('0')
+    expect(row.attributes('tabindex')).toBeUndefined()
+  })
+
+  it('should ask to evaluate the revision on Enter over the focused title', async () => {
+    const wrapper = mount(PendingRevisionsTable, { props: { revisions: REVISIONS } })
+
+    await wrapper.findAll('.cell-title-text')[1].trigger('keydown', { key: 'Enter' })
+
+    expect(wrapper.emitted('evaluate')).toEqual([[REVISIONS[1]]])
   })
 
   it('should not open the evaluation when the title is double clicked to be selected', async () => {
@@ -115,46 +144,16 @@ describe('PendingRevisionsTable', () => {
       props: { revisions: REVISIONS },
       attachTo: document.body,
     })
-    const row = wrapper.findAll('tbody tr')[0]
+    const title = wrapper.find('.cell-title-text')
 
-    clickTimes(row.element, 1)
+    clickTimes(title.element, 1)
     vi.advanceTimersByTime(100)
-    clickTimes(row.element, 2)
-    selectTextOf(row.find('.cell-title').element)
+    clickTimes(title.element, 2)
+    selectTextOf(title.element)
     vi.runAllTimers()
 
     expect(wrapper.emitted('evaluate')).toBeUndefined()
     wrapper.unmount()
-  })
-
-  it('should not open the evaluation after the table is closed', async () => {
-    const wrapper = mount(PendingRevisionsTable, { props: { revisions: REVISIONS } })
-
-    await wrapper.findAll('tbody tr')[0].trigger('click')
-    wrapper.unmount()
-    vi.runAllTimers()
-
-    expect(wrapper.emitted('evaluate')).toBeUndefined()
-  })
-
-  it('should ask to evaluate the focused row on Enter', async () => {
-    const wrapper = mount(PendingRevisionsTable, { props: { revisions: REVISIONS } })
-    const row = wrapper.findAll('tbody tr')[1]
-
-    await row.trigger('keydown', { key: 'Enter' })
-
-    expect(row.attributes('tabindex')).toBe('0')
-    expect(wrapper.emitted('evaluate')).toEqual([[REVISIONS[1]]])
-  })
-
-  it('should ask only once when the button inside the row is used', async () => {
-    const wrapper = mount(PendingRevisionsTable, { props: { revisions: REVISIONS } })
-    const button = wrapper.findAll('tbody button')[0]
-
-    await button.trigger('click')
-    await button.trigger('keydown', { key: 'Enter' })
-
-    expect(wrapper.emitted('evaluate')).toHaveLength(1)
   })
 
   it('should let the title be selected to copy without opening the evaluation', async () => {
@@ -162,30 +161,40 @@ describe('PendingRevisionsTable', () => {
       props: { revisions: REVISIONS },
       attachTo: document.body,
     })
-    const row = wrapper.findAll('tbody tr')[0]
+    const title = wrapper.find('.cell-title-text')
 
-    selectTextOf(row.find('.cell-title').element)
-    await row.trigger('click')
+    selectTextOf(title.element)
+    await title.trigger('click')
     vi.runAllTimers()
 
-    expect(window.getSelection().toString()).toBe(REVISIONS[0].title)
+    expect(window.getSelection().toString().trim()).toBe(REVISIONS[0].title)
     expect(wrapper.emitted('evaluate')).toBeUndefined()
     wrapper.unmount()
   })
 
-  it('should open the evaluation when the selected text is outside the row', async () => {
+  it('should open the evaluation when the selected text is in another row', async () => {
     const wrapper = mount(PendingRevisionsTable, {
       props: { revisions: REVISIONS },
       attachTo: document.body,
     })
-    const rows = wrapper.findAll('tbody tr')
+    const titles = wrapper.findAll('.cell-title-text')
 
-    selectTextOf(rows[1].find('.cell-title').element)
-    await rows[0].trigger('click')
+    selectTextOf(titles[1].element)
+    await titles[0].trigger('click')
     vi.runAllTimers()
 
     expect(wrapper.emitted('evaluate')).toEqual([[REVISIONS[0]]])
     wrapper.unmount()
+  })
+
+  it('should not open the evaluation after the table is closed', async () => {
+    const wrapper = mount(PendingRevisionsTable, { props: { revisions: REVISIONS } })
+
+    await wrapper.find('.cell-title-text').trigger('click')
+    wrapper.unmount()
+    vi.runAllTimers()
+
+    expect(wrapper.emitted('evaluate')).toBeUndefined()
   })
 
   it('should still evaluate with the button while a title is selected', async () => {
@@ -195,7 +204,7 @@ describe('PendingRevisionsTable', () => {
     })
     const row = wrapper.findAll('tbody tr')[0]
 
-    selectTextOf(row.find('.cell-title').element)
+    selectTextOf(row.find('.cell-title-text').element)
     await row.find('button').trigger('click')
 
     expect(wrapper.emitted('evaluate')).toEqual([[REVISIONS[0]]])

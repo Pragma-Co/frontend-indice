@@ -19,25 +19,25 @@ function hasTextSelectedIn(element) {
 
 const DOUBLE_CLICK_WINDOW_MS = 250
 
-let pendingRowClick = null
+let pendingTitleClick = null
 
-function cancelPendingRowClick() {
-  clearTimeout(pendingRowClick)
-  pendingRowClick = null
+function cancelPendingTitleClick() {
+  clearTimeout(pendingTitleClick)
+  pendingTitleClick = null
 }
 
-function onRowClick(event, revision) {
-  cancelPendingRowClick()
+function onTitleClick(event, revision) {
+  cancelPendingTitleClick()
   if (event.detail > 1) return
-  const row = event.currentTarget
-  pendingRowClick = setTimeout(() => {
-    pendingRowClick = null
-    if (hasTextSelectedIn(row)) return
+  const title = event.currentTarget
+  pendingTitleClick = setTimeout(() => {
+    pendingTitleClick = null
+    if (hasTextSelectedIn(title)) return
     emit('evaluate', revision)
   }, DOUBLE_CLICK_WINDOW_MS)
 }
 
-onBeforeUnmount(cancelPendingRowClick)
+onBeforeUnmount(cancelPendingTitleClick)
 </script>
 
 <template>
@@ -64,16 +64,19 @@ onBeforeUnmount(cancelPendingRowClick)
         </tr>
       </thead>
       <tbody>
-        <tr
-          v-for="revision in revisions"
-          :key="revision.id"
-          class="revision-row"
-          tabindex="0"
-          @click="onRowClick($event, revision)"
-          @keydown.enter="emit('evaluate', revision)"
-        >
+        <tr v-for="revision in revisions" :key="revision.id" class="revision-row">
           <td class="cell-code">{{ revision.code }}</td>
-          <td class="cell-title">{{ revision.title }}</td>
+          <td class="cell-title">
+            <span
+              class="cell-title-text"
+              role="button"
+              tabindex="0"
+              @click="onTitleClick($event, revision)"
+              @keydown.enter="emit('evaluate', revision)"
+            >
+              {{ revision.title }}
+            </span>
+          </td>
           <td>
             <OverflowPill :text="revision.discipline" />
           </td>
@@ -89,7 +92,7 @@ onBeforeUnmount(cancelPendingRowClick)
           <td>
             <PendingStatusBadge />
           </td>
-          <td class="cell-actions" @click.stop @keydown.enter.stop>
+          <td class="cell-actions">
             <Button class="evaluate-button" @click="emit('evaluate', revision)">
               Avaliar Revisão
             </Button>
@@ -132,17 +135,22 @@ onBeforeUnmount(cancelPendingRowClick)
   width: 157px;
 }
 
-.revision-row {
-  cursor: pointer;
-}
-
 .revision-row:hover {
   background: var(--color-surface-muted);
 }
 
-.revision-row:focus-visible {
+.cell-title-text {
+  cursor: pointer;
+}
+
+.cell-title-text:hover {
+  text-decoration: underline;
+}
+
+.cell-title-text:focus-visible {
+  border-radius: 2px;
   outline: 2px solid var(--color-primary);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 
 .pill-transition {
