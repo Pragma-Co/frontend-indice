@@ -30,16 +30,16 @@ export const useLegalConsentStore = defineStore('legalConsent', {
       })()
       return inflight
     },
-    async accept() {
+    async accept(consents) {
       const document = this.current
       const version = document?.current_version
-      if (this.accepting || !version) return false
+      if (this.accepting || !version || !consents?.length) return false
       this.accepting = true
       this.error = ''
       try {
         await acceptLegalTerms({
           versionId: version.id,
-          consents: version.clauses.map((clause) => ({ clause_id: clause.id, accepted: true })),
+          consents,
         })
         await this.refresh()
         return true

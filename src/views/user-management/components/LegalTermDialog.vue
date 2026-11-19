@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { X } from '@lucide/vue'
 import Button from '@/components/common/Button.vue'
 import { fetchLegalVersion } from '@/api/legal.js'
@@ -26,7 +26,11 @@ function requestClose() {
 
 function trapFocus(event) {
   if (!props.blocking || event.key !== 'Tab' || !dialog.value) return
-  const focusable = [...dialog.value.querySelectorAll('button:not([disabled]), [tabindex="0"]')]
+  const focusable = [
+    ...dialog.value.querySelectorAll(
+      'button:not([disabled]), input:not([disabled]), [tabindex="0"]',
+    ),
+  ]
   if (!focusable.length) {
     event.preventDefault()
     dialog.value.focus()
@@ -56,6 +60,32 @@ const clauses = computed(() =>
   [...(version.value?.clauses ?? [])].sort((first, second) => first.position - second.position),
 )
 
+const agreements = reactive({})
+
+const requiredClauses = computed(() => clauses.value.filter((clause) => clause.is_required))
+const agreedRequiredCount = computed(
+  () => requiredClauses.value.filter((clause) => agreements[clause.id]).length,
+)
+const allRequiredAgreed = computed(() => agreedRequiredCount.value === requiredClauses.value.length)
+const allAgreed = computed(
+  () => clauses.value.length > 0 && clauses.value.every((clause) => agreements[clause.id]),
+)
+
+function toggleAll(event) {
+  for (const clause of clauses.value) agreements[clause.id] = event.target.checked
+}
+
+function accept() {
+  if (!allRequiredAgreed.value) return
+  emit(
+    'accept',
+    clauses.value.map((clause) => ({
+      clause_id: clause.id,
+      accepted: Boolean(agreements[clause.id]),
+    })),
+  )
+}
+
 const timeline = computed(() =>
   [
     props.acceptedAt &&
@@ -77,6 +107,7 @@ async function load() {
   error.value = ''
   try {
     version.value = await fetchLegalVersion(props.versionId)
+    for (const clause of version.value?.clauses ?? []) agreements[clause.id] = false
   } catch {
     error.value = 'Não foi possível carregar o texto do termo.'
   } finally {
@@ -133,11 +164,20 @@ onBeforeUnmount(() => {
           </div>
           <template v-else>
             <p v-if="version.summary" class="term-summary">{{ version.summary }}</p>
+            <label v-if="blocking && clauses.length" class="term-agree-all">
+              <input type="checkbox" :checked="allAgreed" :disabled="busy" @change="toggleAll" />
+              Concordo com todas as cláusulas
+            </label>
             <ol class="term-clauses">
-              <li v-for="clause in clauses" :key="clause.id" class="term-clause">
+              <li
+                v-for="clause in clauses"
+                :key="clause.id"
+                class="term-clause"
+                :class="clause.is_required ? 'required' : 'optional'"
+              >
                 <div class="term-clause-header">
                   <h3>{{ clause.title }}</h3>
-                  <span class="term-tag">{{
+                  <span class="term-tag" :class="clause.is_required ? 'required' : 'optional'">{{
                     clause.is_required ? 'Obrigatória' : 'Opcional'
                   }}</span>
                   <span
@@ -149,6 +189,22 @@ onBeforeUnmount(() => {
                   </span>
                 </div>
                 <p class="term-clause-body">{{ clause.body }}</p>
+                <label v-if="blocking" class="term-clause-agree">
+                  <input
+                    v-model="agreements[clause.id]"
+                    type="checkbox"
+                    :disabled="busy"
+                    :aria-describedby="`clause-requirement-${clause.id}`"
+                  />
+                  Concordo com esta cláusula
+                  <span :id="`clause-requirement-${clause.id}`" class="term-clause-requirement">
+                    {{
+                      clause.is_required
+                        ? '(obrigatória para continuar)'
+                        : '(opcional, você pode continuar sem marcar)'
+                    }}
+                  </span>
+                </label>
               </li>
             </ol>
           </template>
@@ -157,8 +213,17 @@ onBeforeUnmount(() => {
         <footer class="term-dialog-footer">
           <template v-if="blocking">
             <p v-if="actionError" class="term-action-error" role="alert">{{ actionError }}</p>
+            <p
+              v-else-if="!loading && !error && !allRequiredAgreed"
+              class="term-required-hint"
+              role="status"
+            >
+              Marque as cláusulas obrigatórias para continuar ({{ agreedRequiredCount }}/{{
+                requiredClauses.length
+              }})
+            </p>
             <Button variant="outline" :disabled="busy" @click="emit('leave')">Sair</Button>
-            <Button :disabled="busy || loading || !!error" @click="emit('accept')">
+            <Button :disabled="busy || loading || !!error || !allRequiredAgreed" @click="accept">
               {{ busy ? 'Registrando...' : 'Li e aceito' }}
             </Button>
           </template>
@@ -276,13 +341,17 @@ onBeforeUnmount(() => {
 }
 
 .term-clause {
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--color-border);
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-primary);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
 }
 
-.term-clause:last-child {
-  padding-bottom: 0;
-  border-bottom: none;
+.term-clause.optional {
+  border-style: dashed;
+  border-left: 4px dashed var(--color-text-muted);
+  background: var(--color-surface-muted);
 }
 
 .term-clause-header {
@@ -305,6 +374,19 @@ onBeforeUnmount(() => {
   color: var(--color-text-muted);
   font-size: 0.7rem;
   font-weight: 600;
+}
+
+.term-tag.required {
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
+  color: var(--color-primary);
+}
+
+.term-tag.optional {
+  border-style: dashed;
+  border-color: var(--color-text-muted);
+  background: var(--color-surface);
+  color: var(--color-text-muted);
 }
 
 .term-tag.accepted {
@@ -333,6 +415,53 @@ onBeforeUnmount(() => {
   padding: 1rem 1.5rem;
   border-top: 1px solid var(--color-border);
   background: var(--color-surface-muted);
+}
+
+.term-agree-all,
+.term-clause-agree {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.term-agree-all {
+  margin-bottom: 1rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-muted);
+  font-weight: 600;
+}
+
+.term-clause-agree {
+  margin-top: 0.6rem;
+  font-weight: 500;
+}
+
+.term-agree-all input,
+.term-clause-agree input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--color-primary);
+}
+
+.term-clause-requirement {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  font-weight: 400;
+}
+
+.term-clause.required .term-clause-requirement {
+  color: var(--color-primary);
+  font-weight: 600;
+}
+
+.term-required-hint {
+  margin-right: auto;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
 }
 
 .term-action-error {
