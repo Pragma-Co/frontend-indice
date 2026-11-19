@@ -75,7 +75,7 @@ async function leave() {
     :version-label="String(current.current_version.version)"
     :busy="consent.accepting"
     :action-error="consent.error"
-    @accept="consent.accept()"
+    @accept="consent.accept($event)"
     @leave="leave"
   />
 </template>

@@ -32,8 +32,8 @@ const mockNotifications = [
     title: 'Acesso recusado',
     document: { id: 3, code: 'AK-0003', title: 'Documento 3' },
     created_at: new Date(Date.now() - 125 * 60000).toISOString(),
-    read_at: new Date().toISOString(),
-    is_new: false,
+    read_at: null,
+    is_new: true,
     type: 'ACCESS_REJECTED',
   },
 ]
@@ -46,6 +46,10 @@ function manyNotifications(total) {
       id: i + 1,
       document: { id: i + 1, code: `AK-${String(i + 1).padStart(4, '0')}`, title: `Doc ${i + 1}` },
     }))
+}
+
+function unreadPage(notifications, unreadCount = notifications.length) {
+  return { notifications: structuredClone(notifications), unreadCount }
 }
 
 function mountNotificationsDropdown() {
@@ -73,7 +77,7 @@ describe('NotificationsDropdown', () => {
     useLegalConsentStore().checked = true
     vi.useFakeTimers()
     vi.spyOn(notificationsAPI, 'fetchNotifications').mockResolvedValue(
-      structuredClone(mockNotifications),
+      unreadPage(mockNotifications),
     )
     vi.spyOn(notificationsAPI, 'markAllNotificationsAsRead').mockResolvedValue(null)
     vi.spyOn(notificationsAPI, 'markNotificationAsRead').mockResolvedValue(null)
@@ -98,14 +102,36 @@ describe('NotificationsDropdown', () => {
 
     const badge = wrapper.find('.notifications-count')
     expect(badge.exists()).toBe(true)
-    expect(badge.text()).toBe('2')
+    expect(badge.text()).toBe('3')
+  })
+
+  it('should show the total of unread notifications even beyond the 10 listed', async () => {
+    vi.mocked(notificationsAPI.fetchNotifications).mockResolvedValue(
+      unreadPage(manyNotifications(10), 30),
+    )
+
+    const wrapper = mountNotificationsDropdown()
+    await flushPromises()
+
+    expect(wrapper.find('.notifications-count').text()).toBe('30')
+    expect(wrapper.find('.notifications-trigger').attributes('aria-label')).toBe(
+      'Notificações, 30 não lidas',
+    )
+  })
+
+  it('should cap the badge at 99+', async () => {
+    vi.mocked(notificationsAPI.fetchNotifications).mockResolvedValue(
+      unreadPage(manyNotifications(10), 120),
+    )
+
+    const wrapper = mountNotificationsDropdown()
+    await flushPromises()
+
+    expect(wrapper.find('.notifications-count').text()).toBe('99+')
   })
 
   it('should not show badge when no unread notifications', async () => {
-    vi.mocked(notificationsAPI.fetchNotifications).mockResolvedValue([
-      { ...mockNotifications[0], is_new: false },
-      { ...mockNotifications[1], is_new: false },
-    ])
+    vi.mocked(notificationsAPI.fetchNotifications).mockResolvedValue(unreadPage([]))
 
     const wrapper = mountNotificationsDropdown()
     await flushPromises()
@@ -125,7 +151,9 @@ describe('NotificationsDropdown', () => {
   })
 
   it('should display 5 notifications initially', async () => {
-    vi.mocked(notificationsAPI.fetchNotifications).mockResolvedValue(manyNotifications(12))
+    vi.mocked(notificationsAPI.fetchNotifications).mockResolvedValue(
+      unreadPage(manyNotifications(10)),
+    )
 
     const wrapper = mountNotificationsDropdown()
     await flushPromises()
@@ -137,7 +165,9 @@ describe('NotificationsDropdown', () => {
   })
 
   it('should load more items on scroll', async () => {
-    vi.mocked(notificationsAPI.fetchNotifications).mockResolvedValue(manyNotifications(12))
+    vi.mocked(notificationsAPI.fetchNotifications).mockResolvedValue(
+      unreadPage(manyNotifications(10)),
+    )
 
     const wrapper = mountNotificationsDropdown()
     await flushPromises()
@@ -171,9 +201,7 @@ describe('NotificationsDropdown', () => {
   })
 
   it('should disable mark all button when no unread', async () => {
-    vi.mocked(notificationsAPI.fetchNotifications).mockResolvedValue(
-      mockNotifications.map((item) => ({ ...item, is_new: false })),
-    )
+    vi.mocked(notificationsAPI.fetchNotifications).mockResolvedValue(unreadPage([]))
 
     const wrapper = mountNotificationsDropdown()
     await flushPromises()
@@ -219,20 +247,89 @@ describe('NotificationsDropdown', () => {
     expect(badges[2].classes()).toContain('badge-danger')
   })
 
-  it('should highlight unread notifications with blue dot', async () => {
+  it('should highlight the unread notifications with blue dot', async () => {
     const wrapper = mountNotificationsDropdown()
     await flushPromises()
 
     await wrapper.find('.notifications-trigger').trigger('click')
 
     const items = wrapper.findAll('.notification-item')
-    expect(items[0].classes()).toContain('new')
-    expect(items[1].classes()).toContain('new')
-    expect(items[2].classes()).not.toContain('new')
+    expect(items.every((item) => item.classes('new'))).toBe(true)
+    expect(wrapper.findAll('.notification-dot')).toHaveLength(3)
+  })
+
+  it('should remove an opened notification and bring the next unread one', async () => {
+    const next = { ...mockNotifications[0], id: 14, title: 'Próxima não lida' }
+    vi.mocked(notificationsAPI.fetchNotifications)
+      .mockResolvedValueOnce(unreadPage(mockNotifications, 4))
+      .mockResolvedValueOnce(unreadPage([mockNotifications[1], mockNotifications[2], next], 3))
+    const wrapper = mountNotificationsDropdown()
+    await flushPromises()
+
+    await wrapper.find('.notifications-trigger').trigger('click')
+    await wrapper.find('.notification-item').trigger('click')
+    await flushPromises()
+    await wrapper.find('.notifications-trigger').trigger('click')
+
+    const titles = wrapper.findAll('.notification-text').map((title) => title.text())
+    expect(titles).toEqual(['Acesso aprovado', 'Acesso recusado', 'Próxima não lida'])
+    expect(wrapper.find('.notifications-count').text()).toBe('3')
+  })
+
+  it('should take an opened notification out of the list right away', async () => {
+    vi.mocked(notificationsAPI.markNotificationAsRead).mockReturnValue(new Promise(() => {}))
+    const wrapper = mountNotificationsDropdown()
+    await flushPromises()
+
+    await wrapper.find('.notifications-trigger').trigger('click')
+    await wrapper.find('.notification-item').trigger('click')
+    await wrapper.find('.notifications-trigger').trigger('click')
+
+    expect(wrapper.findAll('.notification-item')).toHaveLength(2)
+    expect(wrapper.find('.notifications-count').text()).toBe('2')
+  })
+
+  it('should bring an opened notification back when marking it as read fails', async () => {
+    vi.mocked(notificationsAPI.markNotificationAsRead).mockRejectedValue(new Error('offline'))
+    const wrapper = mountNotificationsDropdown()
+    await flushPromises()
+
+    await wrapper.find('.notifications-trigger').trigger('click')
+    await wrapper.find('.notification-item').trigger('click')
+    await flushPromises()
+    await wrapper.find('.notifications-trigger').trigger('click')
+
+    expect(wrapper.findAll('.notification-item')).toHaveLength(3)
+    expect(wrapper.find('.notifications-count').text()).toBe('3')
+  })
+
+  it('should empty the list and the badge when every notification is marked as read', async () => {
+    const wrapper = mountNotificationsDropdown()
+    await flushPromises()
+
+    await wrapper.find('.notifications-trigger').trigger('click')
+    await wrapper.find('.notifications-mark-all').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.find('.notifications-count').exists()).toBe(false)
+    expect(wrapper.find('.notifications-empty').text()).toBe('Nenhuma notificação nova.')
+  })
+
+  it('should restore the list and the badge when marking all as read fails', async () => {
+    vi.mocked(notificationsAPI.markAllNotificationsAsRead).mockRejectedValue(new Error('offline'))
+    const wrapper = mountNotificationsDropdown()
+    await flushPromises()
+
+    await wrapper.find('.notifications-trigger').trigger('click')
+    await wrapper.find('.notifications-mark-all').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.findAll('.notification-item')).toHaveLength(3)
+    expect(wrapper.find('.notifications-count').text()).toBe('3')
   })
 
   it('should show empty state when no notifications', async () => {
-    vi.mocked(notificationsAPI.fetchNotifications).mockResolvedValue([])
+    vi.mocked(notificationsAPI.fetchNotifications).mockResolvedValue(unreadPage([]))
 
     const wrapper = mountNotificationsDropdown()
     await flushPromises()
@@ -240,7 +337,7 @@ describe('NotificationsDropdown', () => {
     await wrapper.find('.notifications-trigger').trigger('click')
 
     expect(wrapper.find('.notifications-empty').exists()).toBe(true)
-    expect(wrapper.find('.notifications-empty').text()).toBe('Nenhuma notificação.')
+    expect(wrapper.find('.notifications-empty').text()).toBe('Nenhuma notificação nova.')
   })
 
   it('should not load notifications until the legal terms are accepted', async () => {
@@ -292,7 +389,9 @@ describe('NotificationsDropdown', () => {
   })
 
   it('should reset visible count when reopening', async () => {
-    vi.mocked(notificationsAPI.fetchNotifications).mockResolvedValue(manyNotifications(12))
+    vi.mocked(notificationsAPI.fetchNotifications).mockResolvedValue(
+      unreadPage(manyNotifications(10)),
+    )
 
     const wrapper = mountNotificationsDropdown()
     await flushPromises()
