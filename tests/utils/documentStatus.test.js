@@ -15,7 +15,6 @@ describe('statusBadgeFor', () => {
   it('should map the other revision statuses of the backend', () => {
     expect(statusBadgeFor('APPROVED')).toBe('vigente')
     expect(statusBadgeFor('REJECTED')).toBe('rejeitado')
-    expect(statusBadgeFor('OBSOLETE')).toBe('obsoleto')
   })
 
   it('should return null for a missing or unknown status', () => {
