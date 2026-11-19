@@ -64,6 +64,25 @@ How the frontend uses them (`useCollaboratorsPanel`):
 | Saving a collaborator's groups | sends one `POST` or `DELETE` per changed group and updates the row as each call succeeds. `AccessGroupMemberExists` and `AccessGroupMemberNotFound` count as already applied; other failures keep the dialog open listing the groups that failed |
 | Choosing the groups | a collaborator can belong to any number of the area groups, one per secrecy level or more; only inactive groups the collaborator is not in yet are locked |
 
+## Decision history (manager, `/revisions`, "Histórico" tab)
+
+Requires an active `AUDITOR` or `ADMIN`: an `AUDITOR` receives the decisions taken by users of the own
+area (the team), an `ADMIN` receives every decision. Read only.
+
+| Endpoint | Request | Responses |
+| --- | --- | --- |
+| `GET /manager/decision-history` | query `page`, `page_size`, `request_type` (`REVISION` \| `ACCESS`), `decision` (`APPROVED` \| `REJECTED`), `date_from`, `date_to` (`YYYY-MM-DD`, both days included) | `200` `{ "count", "total_pages", "current_page", "page_size", "results": [decision] }`, newest first. Decision: `{ "id", "timestamp", "request_type", "decision", "document": { "id", "code", "title" }, "revision" (e.g. "REV01", null for access), "requester": { "id", "name" } (revision author or access requester), "user": { "id", "name" }, "reason" (justification or opinion, null if none) }`; `400` `{ "errors": { field: { "code", "message" } } }`; `401`; `403` |
+
+How the frontend uses it (`useReviewPanel`, `DecisionHistoryTable`, `DecisionHistoryFilters`):
+
+| Moment | Frontend |
+| --- | --- |
+| Opening the panel | loads the first page of the history together with the pending lists |
+| Changing a filter or clearing them | reloads from page 1 with the active filters. A period whose end is before its start shows a warning and is not sent |
+| A decision made in the panel, the refresh button, or the minute-by-minute refresh while the tab is open | reloads the current page |
+| Wording | revision: "Aprovada" / "Reprovada"; access request: "Deferido" / "Indeferido" |
+| No record, no match for the filters, loading, failure | "Nenhuma decisão registrada", "Nenhuma decisão encontrada", a skeleton, and the error message with "Tentar novamente" |
+
 ## Documents list
 
 `GET /documents` is paginated by the server. Every parameter is optional and they combine with AND:

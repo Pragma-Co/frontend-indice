@@ -33,7 +33,10 @@ const globalStubs = {
   RouterLink: RouterLinkStub,
   Breadcrumbs: { template: '<nav />' },
   Button: { template: '<button><slot /></button>' },
-  StatusBadge: { template: '<span />' },
+  StatusBadge: {
+    props: ['status'],
+    template: '<span class="test-status-badge">{{ status }}</span>',
+  },
   ProtectedPdf: { props: ['url'], template: '<div class="test-pdf">{{ url }}</div>' },
   ProtectedImage: { props: ['url'], template: '<div class="test-image">{{ url }}</div>' },
 }
@@ -137,6 +140,21 @@ describe('DocumentDetailsView', () => {
     expect(wrapper.text()).toContain('teste 2 docs')
     expect(wrapper.text()).toContain('AK-3400-EST-NOR-0001')
     expect(wrapper.text()).toContain('Norma Interna')
+  })
+
+  it('should show the revision status instead of the access status', async () => {
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante', email: 'visitante@example.com' }
+    fetchDocumentDetail.mockResolvedValue(
+      makeDocument({
+        access_status: 'APPROVED',
+        revision: { ...makeDocument().revision, status: 'PENDING' },
+      }),
+    )
+
+    const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
+    await flushPromises()
+
+    expect(wrapper.find('.document-card-header .test-status-badge').text()).toBe('em_revisao')
   })
 
   it('should show "not found" when the API returns a 404', async () => {

@@ -17,12 +17,14 @@ vi.mock('vue-router', () => ({
 vi.mock('@/api/manager.js', () => ({
   ACCESS_REQUEST_DECISIONS: { APPROVED: 'APPROVED', REJECTED: 'REJECTED' },
   REVISION_DECISIONS: { APPROVED: 'APPROVED', REJECTED: 'REJECTED' },
+  fetchDecisionHistory: vi.fn(),
   fetchPendingRevisions: vi.fn(),
   fetchPendingAccessRequests: vi.fn(),
   submitAccessRequestDecision: vi.fn(),
 }))
 
 import {
+  fetchDecisionHistory,
   fetchPendingAccessRequests,
   fetchPendingRevisions,
   submitAccessRequestDecision,
@@ -31,6 +33,7 @@ import { useNotificationStore } from '@/stores/notificationStore.js'
 import {
   PANEL_TABS,
   normalizeAccessRequest,
+  normalizeDecision,
   normalizePendingRevision,
   useReviewPanel,
 } from '@/views/manager/composables/useReviewPanel.js'
@@ -70,6 +73,21 @@ function makeAccessRequest(overrides = {}) {
       title: 'Memorial de dimensionamento',
       discipline: { code: 'HID', name: 'Hidráulica' },
     },
+    ...overrides,
+  }
+}
+
+function makeDecision(overrides = {}) {
+  return {
+    id: 501,
+    timestamp: '2026-09-26T14:32:00+00:00',
+    request_type: 'REVISION',
+    decision: 'APPROVED',
+    document: { id: 23, code: 'AK-2100-PES-MEM-0005', title: 'Memorial de pesos' },
+    revision: 'REV01',
+    requester: { id: 6, name: 'Caio Bertoni' },
+    reason: 'Conforme a norma aplicável.',
+    user: { id: 4, name: 'Marina Duarte' },
     ...overrides,
   }
 }
@@ -182,6 +200,45 @@ describe('normalizeAccessRequest', () => {
   })
 })
 
+describe('normalizeDecision', () => {
+  it('should expose the document, revision, decision, responsible and moment', () => {
+    expect(normalizeDecision(makeDecision())).toEqual({
+      id: 501,
+      code: 'AK-2100-PES-MEM-0005',
+      title: 'Memorial de pesos',
+      revision: 'REV01',
+      requestType: 'REVISION',
+      decision: 'APPROVED',
+      requesterName: 'Caio Bertoni',
+      reason: 'Conforme a norma aplicável.',
+      userName: 'Marina Duarte',
+      decidedAt: '2026-09-26T14:32:00+00:00',
+    })
+  })
+
+  it('should keep working for an access decision and a deleted document or user', () => {
+    const decision = normalizeDecision(
+      makeDecision({
+        request_type: 'ACCESS',
+        revision: null,
+        requester: null,
+        reason: null,
+        user: null,
+        document: { id: null, code: 'AK-2100-PES-MEM-0005', title: null },
+      }),
+    )
+
+    expect(decision).toMatchObject({
+      title: '',
+      revision: null,
+      requestType: 'ACCESS',
+      requesterName: '-',
+      reason: '',
+      userName: '-',
+    })
+  })
+})
+
 describe('useReviewPanel', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -191,6 +248,7 @@ describe('useReviewPanel', () => {
     fetchPendingAccessRequests.mockResolvedValue(
       page([makeAccessRequest(), makeAccessRequest({ id: 8 })]),
     )
+    fetchDecisionHistory.mockResolvedValue(page([makeDecision()]))
     submitAccessRequestDecision.mockResolvedValue({ id: 7, status: 'APPROVED' })
   })
 
@@ -458,5 +516,117 @@ describe('useReviewPanel', () => {
       message: 'Esta revisão já foi avaliada por outro gestor.',
     })
     expect(fetchPendingRevisions).toHaveBeenCalledTimes(2)
+  })
+
+  describe('history', () => {
+    it('should load the first page of the history on mount', async () => {
+      const panel = await mountPanel()
+
+      expect(fetchDecisionHistory).toHaveBeenCalledWith({
+        page: 1,
+        pageSize: 20,
+        requestType: '',
+        decision: '',
+        dateFrom: '',
+        dateTo: '',
+      })
+      expect(panel.history.items.map((item) => item.id)).toEqual([501])
+    })
+
+    it('should report a failure and a permission error with their own messages', async () => {
+      fetchDecisionHistory.mockRejectedValueOnce(new Error('boom'))
+      const failed = await mountPanel()
+      fetchDecisionHistory.mockRejectedValueOnce({ status: 403 })
+      const forbidden = await mountPanel()
+
+      expect(failed.history.error).toBe('Não foi possível carregar o histórico de decisões.')
+      expect(forbidden.history.error).toBe(
+        'Você não tem permissão para acessar o painel de gestão.',
+      )
+    })
+
+    it('should reload from the first page when a filter changes', async () => {
+      const panel = await mountPanel()
+      fetchDecisionHistory.mockClear()
+
+      panel.history.setFilter('decision', 'REJECTED')
+      panel.history.setFilter('requestType', 'ACCESS')
+      await flushPromises()
+
+      expect(fetchDecisionHistory).toHaveBeenLastCalledWith({
+        page: 1,
+        pageSize: 20,
+        requestType: 'ACCESS',
+        decision: 'REJECTED',
+        dateFrom: '',
+        dateTo: '',
+      })
+      expect(panel.history.hasFilters).toBe(true)
+    })
+
+    it('should ignore a filter that does not change', async () => {
+      const panel = await mountPanel()
+      fetchDecisionHistory.mockClear()
+
+      panel.history.setFilter('decision', '')
+
+      expect(fetchDecisionHistory).not.toHaveBeenCalled()
+    })
+
+    it('should keep the page while paging and send the active filters with it', async () => {
+      fetchDecisionHistory.mockResolvedValue(page([makeDecision()], { total_pages: 3 }))
+      const panel = await mountPanel()
+      panel.history.setFilter('dateFrom', '2026-09-01')
+      await flushPromises()
+
+      panel.history.goToPage(2)
+      await flushPromises()
+
+      expect(fetchDecisionHistory).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 2, dateFrom: '2026-09-01' }),
+      )
+    })
+
+    it('should not query while the period ends before it starts', async () => {
+      const panel = await mountPanel()
+      panel.history.setFilter('dateFrom', '2026-09-10')
+      await flushPromises()
+      fetchDecisionHistory.mockClear()
+
+      panel.history.setFilter('dateTo', '2026-09-01')
+      await flushPromises()
+
+      expect(panel.history.periodInvalid).toBe(true)
+      expect(fetchDecisionHistory).not.toHaveBeenCalled()
+    })
+
+    it('should clear every filter and reload', async () => {
+      const panel = await mountPanel()
+      panel.history.setFilter('decision', 'APPROVED')
+      await flushPromises()
+      fetchDecisionHistory.mockClear()
+
+      panel.history.clearFilters()
+      await flushPromises()
+
+      expect(panel.history.hasFilters).toBe(false)
+      expect(fetchDecisionHistory).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 1, decision: '' }),
+      )
+    })
+
+    it('should refresh the history after a decision and from the history tab', async () => {
+      const panel = await mountPanel()
+      fetchDecisionHistory.mockClear()
+
+      await panel.handleRevisionDecided({
+        revision: { toRevision: 'REV02', code: 'AK-3100-EST-ESP-0001' },
+        decision: 'APPROVED',
+      })
+      route.query = { tab: 'history' }
+      await panel.refreshActiveList()
+
+      expect(fetchDecisionHistory).toHaveBeenCalledTimes(2)
+    })
   })
 })

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   addAccessGroupMember,
+  fetchDecisionHistory,
   fetchAccessGroupMembers,
   fetchAccessGroups,
   fetchAreaCollaborators,
@@ -40,6 +41,31 @@ describe('manager api', () => {
 
     expect(globalThis.fetch.mock.calls[0][0]).toBe(
       '/api/manager/pending-revisions?page=3&page_size=20',
+    )
+  })
+
+  it('should request the first page of the decision history by default', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(200, { count: 0, results: [] }))
+
+    await fetchDecisionHistory()
+
+    expect(globalThis.fetch.mock.calls[0][0]).toBe('/api/manager/decision-history?page=1')
+  })
+
+  it('should send only the filters that were chosen for the decision history', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(200, { count: 0, results: [] }))
+
+    await fetchDecisionHistory({
+      page: 2,
+      pageSize: 10,
+      requestType: 'ACCESS',
+      decision: '',
+      dateFrom: '2026-09-01',
+      dateTo: '2026-09-30',
+    })
+
+    expect(globalThis.fetch.mock.calls[0][0]).toBe(
+      '/api/manager/decision-history?page=2&page_size=10&request_type=ACCESS&date_from=2026-09-01&date_to=2026-09-30',
     )
   })
 
