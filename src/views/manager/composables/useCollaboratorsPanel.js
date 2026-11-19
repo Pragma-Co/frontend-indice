@@ -6,6 +6,7 @@ import {
   fetchAreaCollaborators,
   removeAccessGroupMember,
 } from '@/api/manager.js'
+import { useAuthStore } from '@/stores/authStore.js'
 import { useNotificationStore } from '@/stores/notificationStore.js'
 import { getInitials } from '@/utils/formatters.js'
 
@@ -32,17 +33,34 @@ export function normalizeAccessGroup(group) {
   }
 }
 
-function toCollaborator({ id, name, email }) {
-  return { id, name, email, initials: getInitials(name), groupIds: [] }
+export const LOCK_REASONS = {
+  REMOVED: 'removed',
+  OTHER_AREA: 'other-area',
 }
 
-export function mergeCollaborators(areaUsers, groups, memberLists) {
-  const byId = new Map(areaUsers.map((user) => [user.id, toCollaborator(user)]))
+function toCollaborator({ id, name, email }, lockReason = null) {
+  return { id, name, email, initials: getInitials(name), groupIds: [], lockReason }
+}
+
+function lockReasonOf(member) {
+  return member.is_active === false ? LOCK_REASONS.REMOVED : LOCK_REASONS.OTHER_AREA
+}
+
+export function mergeCollaborators(areaUsers, groups, memberLists, currentUserId = null) {
+  const byId = new Map(
+    areaUsers
+      .filter((user) => user.id !== currentUserId)
+      .map((user) => [user.id, toCollaborator(user)]),
+  )
   groups.forEach((group, index) => {
     for (const member of memberLists[index]) {
+      if (member.user_id === currentUserId) continue
       const person =
         byId.get(member.user_id) ??
-        toCollaborator({ id: member.user_id, name: member.name, email: member.email })
+        toCollaborator(
+          { id: member.user_id, name: member.name, email: member.email },
+          lockReasonOf(member),
+        )
       person.groupIds.push(group.id)
       byId.set(person.id, person)
     }
@@ -58,6 +76,7 @@ function membershipErrorFor(failedGroups, savedSomething) {
 
 export function useCollaboratorsPanel() {
   const notifications = useNotificationStore()
+  const auth = useAuthStore()
 
   const groups = ref([])
   const collaborators = ref([])
@@ -108,7 +127,12 @@ export function useCollaboratorsPanel() {
       groups.value = loadedGroups
       const memberLists = memberResponses.map((members) => members?.results ?? [])
       const areaUsers = usersResponse?.results ?? []
-      collaborators.value = mergeCollaborators(areaUsers, groups.value, memberLists)
+      collaborators.value = mergeCollaborators(
+        areaUsers,
+        groups.value,
+        memberLists,
+        auth.currentUser?.id ?? null,
+      )
     } catch (failure) {
       if (request !== latestLoad) return
       const forbidden = failure?.status === 401 || failure?.status === 403
@@ -119,6 +143,8 @@ export function useCollaboratorsPanel() {
   }
 
   function openMembershipDialog(collaboratorId) {
+    const person = collaborators.value.find((item) => item.id === collaboratorId)
+    if (!person || person.lockReason) return
     membershipError.value = ''
     editingCollaboratorId.value = collaboratorId
   }
@@ -161,7 +187,7 @@ export function useCollaboratorsPanel() {
 
   async function saveMemberships(selectedGroupIds) {
     const person = editingCollaborator.value
-    if (!person || savingMemberships.value) return
+    if (!person || person.lockReason || savingMemberships.value) return
     const added = groups.value.filter(
       (group) => selectedGroupIds.includes(group.id) && !person.groupIds.includes(group.id),
     )

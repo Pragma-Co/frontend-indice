@@ -1,11 +1,23 @@
 <script setup>
-import { Pencil } from '@lucide/vue'
+import { Lock, Pencil } from '@lucide/vue'
+import { LOCK_REASONS } from '@/views/manager/composables/useCollaboratorsPanel.js'
 
 defineProps({
   collaborators: { type: Array, required: true },
 })
 
 const emit = defineEmits(['edit'])
+
+const LOCK_LABELS = {
+  [LOCK_REASONS.REMOVED]: 'Removido',
+  [LOCK_REASONS.OTHER_AREA]: 'Outra área',
+}
+
+const LOCK_HINTS = {
+  [LOCK_REASONS.REMOVED]: 'Usuário removido do sistema: os grupos não podem ser alterados.',
+  [LOCK_REASONS.OTHER_AREA]:
+    'Colaborador de outra área: só é possível alterar os colaboradores da sua área.',
+}
 </script>
 
 <template>
@@ -24,12 +36,25 @@ const emit = defineEmits(['edit'])
         </tr>
       </thead>
       <tbody>
-        <tr v-for="collaborator in collaborators" :key="collaborator.id">
+        <tr
+          v-for="collaborator in collaborators"
+          :key="collaborator.id"
+          :class="{ locked: collaborator.lockReason }"
+        >
           <td>
             <div class="person">
               <span class="person-avatar" aria-hidden="true">{{ collaborator.initials }}</span>
               <div class="person-text">
-                <span class="cell-primary">{{ collaborator.name }}</span>
+                <span class="cell-primary">
+                  {{ collaborator.name }}
+                  <span
+                    v-if="collaborator.lockReason"
+                    class="lock-tag"
+                    :class="collaborator.lockReason"
+                  >
+                    {{ LOCK_LABELS[collaborator.lockReason] }}
+                  </span>
+                </span>
                 <span class="cell-secondary">{{ collaborator.email }}</span>
               </div>
             </div>
@@ -48,7 +73,17 @@ const emit = defineEmits(['edit'])
             <span v-else class="no-groups">Nenhum grupo</span>
           </td>
           <td>
+            <span
+              v-if="collaborator.lockReason"
+              class="edit-button is-locked"
+              role="img"
+              :aria-label="LOCK_HINTS[collaborator.lockReason]"
+              :title="LOCK_HINTS[collaborator.lockReason]"
+            >
+              <Lock :size="15" aria-hidden="true" />
+            </span>
             <button
+              v-else
               type="button"
               class="edit-button"
               :aria-label="`Gerenciar grupos de ${collaborator.name}`"
@@ -155,6 +190,41 @@ const emit = defineEmits(['edit'])
 .edit-button:focus-visible {
   outline: 2px solid var(--color-primary);
   outline-offset: 1px;
+}
+
+.edit-button.is-locked,
+.edit-button.is-locked:hover {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  cursor: not-allowed;
+}
+
+.locked .person-avatar {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+}
+
+.locked .cell-primary,
+.locked .cell-secondary {
+  color: var(--color-text-muted);
+}
+
+.lock-tag {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.45rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.lock-tag.removed {
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
 }
 
 @media (max-width: 640px) {
