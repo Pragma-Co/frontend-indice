@@ -1,4 +1,5 @@
 <script setup>
+import { onBeforeUnmount } from 'vue'
 import Button from '@/components/common/Button.vue'
 import OverflowPill from '@/views/manager/components/OverflowPill.vue'
 import PendingStatusBadge from '@/views/manager/components/PendingStatusBadge.vue'
@@ -9,6 +10,34 @@ defineProps({
 })
 
 const emit = defineEmits(['evaluate'])
+
+function hasTextSelectedIn(element) {
+  const selection = window.getSelection()
+  if (!selection || selection.isCollapsed) return false
+  return element.contains(selection.anchorNode) || element.contains(selection.focusNode)
+}
+
+const DOUBLE_CLICK_WINDOW_MS = 250
+
+let pendingRowClick = null
+
+function cancelPendingRowClick() {
+  clearTimeout(pendingRowClick)
+  pendingRowClick = null
+}
+
+function onRowClick(event, revision) {
+  cancelPendingRowClick()
+  if (event.detail > 1) return
+  const row = event.currentTarget
+  pendingRowClick = setTimeout(() => {
+    pendingRowClick = null
+    if (hasTextSelectedIn(row)) return
+    emit('evaluate', revision)
+  }, DOUBLE_CLICK_WINDOW_MS)
+}
+
+onBeforeUnmount(cancelPendingRowClick)
 </script>
 
 <template>
@@ -40,7 +69,7 @@ const emit = defineEmits(['evaluate'])
           :key="revision.id"
           class="revision-row"
           tabindex="0"
-          @click="emit('evaluate', revision)"
+          @click="onRowClick($event, revision)"
           @keydown.enter="emit('evaluate', revision)"
         >
           <td class="cell-code">{{ revision.code }}</td>

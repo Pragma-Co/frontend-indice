@@ -46,6 +46,10 @@
   line-height: 1.4;
 }
 
+.revision-row .cell-title {
+  cursor: text;
+}
+
 .cell-primary {
   display: block;
   font-weight: 600;
