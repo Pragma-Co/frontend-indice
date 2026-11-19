@@ -2,10 +2,10 @@
 import { formatUpdatedAt } from '@/utils/formatters.js'
 import {
   REVISION_BLOCK_MESSAGES,
-  REVISION_BLOCK_REASONS,
-  canCreateRevision,
+  listedRevisionBlockReason,
   statusBadgeFor,
 } from '@/utils/documentStatus.js'
+import { useAuthStore } from '@/stores/authStore.js'
 import Badge from '@/components/common/Badge.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import { Star } from '@lucide/vue'
@@ -23,14 +23,19 @@ defineProps({
 
 const emit = defineEmits(['action'])
 
-const NEW_REVISION_BLOCKED_MESSAGE = REVISION_BLOCK_MESSAGES[REVISION_BLOCK_REASONS.IN_PROGRESS]
+const auth = useAuthStore()
+
+function revisionBlockMessage(document) {
+  const reason = listedRevisionBlockReason(document, auth.currentUser?.areaAcronym)
+  return reason ? REVISION_BLOCK_MESSAGES[reason] : ''
+}
 
 function openDetails(document) {
   emit('action', { document, action: 'view-details' })
 }
 
 function startNewRevision(document) {
-  if (!canCreateRevision(document.status)) return
+  if (revisionBlockMessage(document)) return
   emit('action', { document, action: 'new-revision' })
 }
 </script>
@@ -97,24 +102,24 @@ function startNewRevision(document) {
                 <button
                   type="button"
                   class="action-button"
-                  :class="{ 'action-button-disabled': !canCreateRevision(document.status) }"
-                  :aria-disabled="!canCreateRevision(document.status) || undefined"
+                  :class="{ 'action-button-disabled': revisionBlockMessage(document) }"
+                  :aria-disabled="Boolean(revisionBlockMessage(document)) || undefined"
                   :aria-describedby="
-                    canCreateRevision(document.status)
-                      ? undefined
-                      : `new-revision-tooltip-${document.id}`
+                    revisionBlockMessage(document)
+                      ? `new-revision-tooltip-${document.id}`
+                      : undefined
                   "
                   @click="startNewRevision(document)"
                 >
                   Nova Revisão
                 </button>
                 <span
-                  v-if="!canCreateRevision(document.status)"
+                  v-if="revisionBlockMessage(document)"
                   :id="`new-revision-tooltip-${document.id}`"
                   class="action-tooltip"
                   role="tooltip"
                 >
-                  {{ NEW_REVISION_BLOCKED_MESSAGE }}
+                  {{ revisionBlockMessage(document) }}
                 </span>
               </span>
               <button

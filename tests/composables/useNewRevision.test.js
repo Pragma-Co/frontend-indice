@@ -3,6 +3,7 @@ import { defineComponent, h, ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 
 const route = { params: { documentId: '23' } }
+const currentAuth = { currentUser: { id: 12, name: 'Beatriz Canuto', areaAcronym: 'EST' } }
 const router = { push: vi.fn() }
 const notifications = { success: vi.fn(), error: vi.fn() }
 const queue = ref([])
@@ -17,7 +18,7 @@ vi.mock('@/api/documents.js', () => ({
   createDocumentRevision: vi.fn(),
 }))
 vi.mock('@/stores/authStore.js', () => ({
-  useAuthStore: () => ({ currentUser: { id: 12, name: 'Beatriz Canuto' } }),
+  useAuthStore: () => currentAuth,
 }))
 vi.mock('@/stores/notificationStore.js', () => ({
   useNotificationStore: () => notifications,
@@ -45,6 +46,7 @@ function makeDocument(overrides = {}) {
     revision: { id: 5, version: 1, status: 'APPROVED' },
     access_status: 'APPROVED',
     responsible: { id: 12, name: 'Beatriz Canuto' },
+    areas: [{ acronym: 'EST', name: 'Engenharia Estrutural' }],
     ...overrides,
   }
 }
@@ -161,6 +163,23 @@ describe('useNewRevision', () => {
     queue.value = [makeFile(), makeFile({ id: 2, status: 'uploading', documentId: null })]
 
     expect(revision.canSubmit.value).toBe(false)
+  })
+
+  it('should block a user outside the areas of the document', async () => {
+    fetchDocumentDetail.mockResolvedValue(
+      makeDocument({ areas: [{ acronym: 'QUA', name: 'Qualidade e Inspeção' }] }),
+    )
+    const revision = await mountRevision()
+    queue.value = [makeFile()]
+    revision.justification.value = VALID_JUSTIFICATION
+
+    await revision.submit()
+
+    expect(revision.revisionBlocked.value).toBe(true)
+    expect(revision.revisionBlockedMessage.value).toBe(
+      'Somente colaboradores das áreas deste documento podem criar uma revisão.',
+    )
+    expect(createDocumentRevision).not.toHaveBeenCalled()
   })
 
   it('should block a document that already has a revision under review', async () => {

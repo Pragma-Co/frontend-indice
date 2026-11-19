@@ -75,11 +75,13 @@ const currentUserId = computed(() => authStore.currentUser?.id ?? null)
 const hasAccess = computed(() => hasDocumentAccess(document.value, currentUserId.value))
 
 const newRevisionBlockReason = computed(() =>
-  revisionBlockReason(document.value, currentUserId.value),
+  revisionBlockReason(document.value, currentUserId.value, authStore.currentUser?.areaAcronym),
 )
 
-const newRevisionInProgress = computed(
-  () => newRevisionBlockReason.value === REVISION_BLOCK_REASONS.IN_PROGRESS,
+const newRevisionHint = computed(() =>
+  newRevisionBlockReason.value === REVISION_BLOCK_REASONS.NO_ACCESS
+    ? ''
+    : (REVISION_BLOCK_MESSAGES[newRevisionBlockReason.value] ?? ''),
 )
 
 const newRevisionRoute = computed(() => ({
@@ -455,8 +457,8 @@ onMounted(loadDocument)
                 <span v-else class="revision-action-link is-disabled" aria-disabled="true">
                   Nova Revisão
                 </span>
-                <p v-if="newRevisionInProgress" class="revision-action-hint">
-                  {{ REVISION_BLOCK_MESSAGES[REVISION_BLOCK_REASONS.IN_PROGRESS] }}
+                <p v-if="newRevisionHint" class="revision-action-hint">
+                  {{ newRevisionHint }}
                 </p>
               </div>
               <p v-if="!document.versions?.length" class="tag-block-empty">

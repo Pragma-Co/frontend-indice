@@ -42,7 +42,11 @@ export function useNewRevision() {
   const nextRevisionLabel = computed(() => revisionLabel(currentVersion.value + 1))
   const blockReason = computed(() =>
     parentDocument.value
-      ? revisionBlockReason(parentDocument.value, authStore.currentUser?.id)
+      ? revisionBlockReason(
+          parentDocument.value,
+          authStore.currentUser?.id,
+          authStore.currentUser?.areaAcronym,
+        )
       : null,
   )
   const revisionBlocked = computed(() => blockReason.value !== null)

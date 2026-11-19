@@ -6,15 +6,14 @@ import HighlightedText from '@/components/common/HighlightedText.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import {
   REVISION_BLOCK_MESSAGES,
-  REVISION_BLOCK_REASONS,
-  canCreateRevision,
+  listedRevisionBlockReason,
   statusBadgeFor,
 } from '@/utils/documentStatus.js'
+import { useAuthStore } from '@/stores/authStore.js'
 import { formatDateAtTime } from '@/utils/formatters.js'
 import { highlightSegments, resultSnippet } from '@/utils/searchHighlight.js'
 
 const MAX_VISIBLE_TAGS = 6
-const NEW_REVISION_BLOCKED_MESSAGE = REVISION_BLOCK_MESSAGES[REVISION_BLOCK_REASONS.IN_PROGRESS]
 
 const props = defineProps({
   document: { type: Object, required: true },
@@ -48,7 +47,11 @@ const sortedTags = computed(() => {
 const visibleTags = computed(() => sortedTags.value.slice(0, MAX_VISIBLE_TAGS))
 const hiddenTagsCount = computed(() => sortedTags.value.length - visibleTags.value.length)
 
-const revisionAllowed = computed(() => canCreateRevision(props.document.status))
+const auth = useAuthStore()
+const revisionBlockReason = computed(() =>
+  listedRevisionBlockReason(props.document, auth.currentUser?.areaAcronym),
+)
+const revisionAllowed = computed(() => !revisionBlockReason.value)
 const statusBadge = computed(() => statusBadgeFor(props.document.status))
 
 function openDetails() {
@@ -153,7 +156,7 @@ function startNewRevision() {
           class="result-action"
           :class="{ 'result-action-disabled': !revisionAllowed }"
           :aria-disabled="!revisionAllowed || undefined"
-          :title="revisionAllowed ? undefined : NEW_REVISION_BLOCKED_MESSAGE"
+          :title="revisionAllowed ? undefined : REVISION_BLOCK_MESSAGES[revisionBlockReason]"
           @click="startNewRevision"
         >
           Nova Revisão

@@ -33,6 +33,7 @@ export function toCurrentUser(account) {
     email: account.email ?? '',
     role: PROFILE_LABELS[profile],
     area: account.area?.name ?? '',
+    areaAcronym: account.area?.acronym ?? '',
   }
 }
 
