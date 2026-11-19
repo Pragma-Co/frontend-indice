@@ -65,7 +65,7 @@ function isActive(to) {
     </nav>
 
     <div class="navbar-user">
-      <NotificationsDropdown />
+      <NotificationsDropdown v-if="!auth.isManager" />
       <RouterLink
         to="/profile"
         :class="['navbar-profile', { active: isActive('/profile') }]"
