@@ -26,17 +26,19 @@ const TYPE_META = {
 const router = useRouter()
 const consent = useLegalConsentStore()
 const notifications = ref([])
+const unreadCount = ref(0)
 const visibleCount = ref(PAGE_SIZE)
 const list = ref(null)
 const dropdown = ref(null)
 let timer = null
 
-const unreadCount = computed(() => notifications.value.filter((item) => item.is_new).length)
 const visible = computed(() => notifications.value.slice(0, visibleCount.value))
 
 async function load() {
   try {
-    notifications.value = await fetchNotifications()
+    const page = await fetchNotifications()
+    notifications.value = page.notifications
+    unreadCount.value = page.unreadCount
   } catch {
     return
   }
@@ -77,26 +79,24 @@ async function onOpen() {
 }
 
 async function markAllAsRead() {
-  const previous = notifications.value
-  notifications.value = previous.map((item) => ({ ...item, is_new: false }))
+  const previous = { notifications: notifications.value, unreadCount: unreadCount.value }
+  notifications.value = []
+  unreadCount.value = 0
   try {
     await markAllNotificationsAsRead()
   } catch {
-    notifications.value = previous
+    notifications.value = previous.notifications
+    unreadCount.value = previous.unreadCount
   }
 }
 
 async function openNotification(item) {
   dropdown.value?.close()
-  const wasNew = item.is_new
-  item.is_new = false
+  notifications.value = notifications.value.filter((notification) => notification.id !== item.id)
+  unreadCount.value = Math.max(0, unreadCount.value - 1)
   router.push(`/documents/${item.document.id}`)
-  if (!wasNew) return
-  try {
-    await markNotificationAsRead(item.id)
-  } catch {
-    item.is_new = true
-  }
+  await markNotificationAsRead(item.id).catch(() => null)
+  await load()
 }
 
 function stopPolling() {
@@ -168,7 +168,7 @@ onBeforeUnmount(stopPolling)
         </button>
       </li>
     </ul>
-    <p v-else class="notifications-empty">Nenhuma notificação.</p>
+    <p v-else class="notifications-empty">Nenhuma notificação nova.</p>
   </Dropdown>
 </template>
 

@@ -11,8 +11,12 @@ export const NOTIFICATION_TYPES = {
 const PAGE_SIZE = 10
 
 export async function fetchNotifications() {
-  const data = await api.get(`/notifications?page_size=${PAGE_SIZE}`)
-  return data?.results ?? []
+  const data = await api.get(`/notifications?unread=true&page_size=${PAGE_SIZE}`)
+  const notifications = data?.results ?? []
+  return {
+    notifications,
+    unreadCount: Number.isInteger(data?.unread_count) ? data.unread_count : notifications.length,
+  }
 }
 
 export function markAllNotificationsAsRead() {
