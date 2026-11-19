@@ -260,6 +260,35 @@ describe('useNewRevision', () => {
     expect(revision.submitting.value).toBe(false)
   })
 
+  it.each([
+    [403, 'AccessDenied', 'Você não tem permissão para criar uma revisão deste documento.'],
+    [
+      403,
+      'RevisionOutsideArea',
+      'Somente colaboradores das áreas deste documento podem criar uma revisão.',
+    ],
+    [
+      409,
+      'RevisionInProgress',
+      'Este documento já possui uma revisão em andamento. Aguarde a conclusão para criar outra.',
+    ],
+  ])(
+    'should explain a submission refused by the backend with %s %s',
+    async (status, code, message) => {
+      createDocumentRevision.mockRejectedValue(
+        Object.assign(new Error('refused'), { status, details: { error: code } }),
+      )
+      const revision = await mountRevision()
+      queue.value = [makeFile()]
+      revision.justification.value = VALID_JUSTIFICATION
+
+      await revision.submit()
+
+      expect(notifications.error).toHaveBeenCalledWith(message)
+      expect(router.push).not.toHaveBeenCalled()
+    },
+  )
+
   it('should return to the documents list on cancel', async () => {
     const revision = await mountRevision()
 
