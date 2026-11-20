@@ -165,9 +165,22 @@ describe('useNewRevision', () => {
     expect(revision.canSubmit.value).toBe(false)
   })
 
-  it('should block a user outside the areas of the document', async () => {
+  it('should let the responsible open a revision outside the areas of the document', async () => {
     fetchDocumentDetail.mockResolvedValue(
       makeDocument({ areas: [{ acronym: 'QUA', name: 'Qualidade e Inspeção' }] }),
+    )
+
+    const revision = await mountRevision()
+
+    expect(revision.revisionBlocked.value).toBe(false)
+  })
+
+  it('should block a user outside the areas of the document', async () => {
+    fetchDocumentDetail.mockResolvedValue(
+      makeDocument({
+        areas: [{ acronym: 'QUA', name: 'Qualidade e Inspeção' }],
+        responsible: { id: 3, name: 'Caio Bertoni' },
+      }),
     )
     const revision = await mountRevision()
     queue.value = [makeFile()]

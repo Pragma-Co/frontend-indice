@@ -49,7 +49,7 @@ const hiddenTagsCount = computed(() => sortedTags.value.length - visibleTags.val
 
 const auth = useAuthStore()
 const revisionBlockReason = computed(() =>
-  listedRevisionBlockReason(props.document, auth.currentUser?.areaAcronym),
+  listedRevisionBlockReason(props.document, auth.currentUser?.id, auth.currentUser?.areaAcronym),
 )
 const revisionAllowed = computed(() => !revisionBlockReason.value)
 const statusBadge = computed(() => statusBadgeFor(props.document.status))

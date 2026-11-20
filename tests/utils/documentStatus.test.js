@@ -69,41 +69,51 @@ describe('revisionBlockReason', () => {
   }
 
   it('should allow a new revision to a collaborator of one of the areas', () => {
-    expect(revisionBlockReason(approved, 'MFG')).toBeNull()
+    expect(revisionBlockReason(approved, 99, 'MFG')).toBeNull()
   })
 
   it('should not require an access grant from a collaborator of the area', () => {
-    expect(revisionBlockReason({ ...approved, access_status: 'PENDING' }, 'EST')).toBeNull()
+    expect(revisionBlockReason({ ...approved, access_status: 'PENDING' }, 99, 'EST')).toBeNull()
   })
 
   it('should block a user who belongs to none of the areas of the document', () => {
-    expect(revisionBlockReason(approved, 'CER')).toBe(REVISION_BLOCK_REASONS.OUTSIDE_AREA)
+    expect(revisionBlockReason(approved, 99, 'CER')).toBe(REVISION_BLOCK_REASONS.OUTSIDE_AREA)
   })
 
   it('should block a user without an area', () => {
-    expect(revisionBlockReason(approved, '')).toBe(REVISION_BLOCK_REASONS.OUTSIDE_AREA)
+    expect(revisionBlockReason(approved, 99, '')).toBe(REVISION_BLOCK_REASONS.OUTSIDE_AREA)
   })
 
   it('should block everyone when the document has no area', () => {
-    expect(revisionBlockReason({ ...approved, areas: [] }, 'EST')).toBe(
+    expect(revisionBlockReason({ ...approved, areas: [] }, 99, 'EST')).toBe(
       REVISION_BLOCK_REASONS.OUTSIDE_AREA,
     )
   })
 
   it('should block while no document is loaded', () => {
-    expect(revisionBlockReason(null, 'EST')).toBe(REVISION_BLOCK_REASONS.OUTSIDE_AREA)
+    expect(revisionBlockReason(null, 99, 'EST')).toBe(REVISION_BLOCK_REASONS.OUTSIDE_AREA)
   })
 
   it('should report the area before the revision under review', () => {
     const document = { ...approved, revision: { status: 'PENDING' } }
 
-    expect(revisionBlockReason(document, 'CER')).toBe(REVISION_BLOCK_REASONS.OUTSIDE_AREA)
+    expect(revisionBlockReason(document, 99, 'CER')).toBe(REVISION_BLOCK_REASONS.OUTSIDE_AREA)
   })
 
   it('should block while another revision is under review', () => {
     const document = { ...approved, revision: { status: 'PENDING' } }
 
-    expect(revisionBlockReason(document, 'EST')).toBe(REVISION_BLOCK_REASONS.IN_PROGRESS)
+    expect(revisionBlockReason(document, 99, 'EST')).toBe(REVISION_BLOCK_REASONS.IN_PROGRESS)
+  })
+
+  it('should let the responsible open a revision outside the areas of the document', () => {
+    expect(revisionBlockReason(approved, 12, 'CER')).toBeNull()
+  })
+
+  it('should still block the responsible while another revision is under review', () => {
+    const document = { ...approved, revision: { status: 'PENDING' } }
+
+    expect(revisionBlockReason(document, 12, 'CER')).toBe(REVISION_BLOCK_REASONS.IN_PROGRESS)
   })
 })
 
@@ -111,15 +121,19 @@ describe('listedRevisionBlockReason', () => {
   const listed = { status: 'APPROVED', areas: [{ acronym: 'EST', name: 'Engenharia Estrutural' }] }
 
   it('should allow a listed document of the user area that is not under review', () => {
-    expect(listedRevisionBlockReason(listed, 'EST')).toBeNull()
+    expect(listedRevisionBlockReason(listed, 99, 'EST')).toBeNull()
   })
 
   it('should block a listed document of another area', () => {
-    expect(listedRevisionBlockReason(listed, 'QUA')).toBe(REVISION_BLOCK_REASONS.OUTSIDE_AREA)
+    expect(listedRevisionBlockReason(listed, 99, 'QUA')).toBe(REVISION_BLOCK_REASONS.OUTSIDE_AREA)
+  })
+
+  it('should let the responsible open a revision of a listed document of another area', () => {
+    expect(listedRevisionBlockReason({ ...listed, responsible: { id: 99 } }, 99, 'QUA')).toBeNull()
   })
 
   it('should block a listed document under review', () => {
-    expect(listedRevisionBlockReason({ ...listed, status: 'PENDING' }, 'EST')).toBe(
+    expect(listedRevisionBlockReason({ ...listed, status: 'PENDING' }, 99, 'EST')).toBe(
       REVISION_BLOCK_REASONS.IN_PROGRESS,
     )
   })

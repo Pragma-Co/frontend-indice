@@ -35,15 +35,20 @@ export function belongsToDocumentArea(document, areaAcronym) {
   return (document?.areas ?? []).some((area) => area.acronym === areaAcronym)
 }
 
-export function listedRevisionBlockReason(document, areaAcronym) {
-  if (!belongsToDocumentArea(document, areaAcronym)) return REVISION_BLOCK_REASONS.OUTSIDE_AREA
+function canOpenRevisionFor(document, userId, areaAcronym) {
+  const isResponsible = userId != null && document?.responsible?.id === userId
+  return isResponsible || belongsToDocumentArea(document, areaAcronym)
+}
+
+export function listedRevisionBlockReason(document, userId, areaAcronym) {
+  if (!canOpenRevisionFor(document, userId, areaAcronym)) return REVISION_BLOCK_REASONS.OUTSIDE_AREA
   if (!canCreateRevision(document?.status)) return REVISION_BLOCK_REASONS.IN_PROGRESS
   return null
 }
 
-export function revisionBlockReason(document, areaAcronym) {
+export function revisionBlockReason(document, userId, areaAcronym) {
   if (!document) return REVISION_BLOCK_REASONS.OUTSIDE_AREA
-  if (!belongsToDocumentArea(document, areaAcronym)) return REVISION_BLOCK_REASONS.OUTSIDE_AREA
+  if (!canOpenRevisionFor(document, userId, areaAcronym)) return REVISION_BLOCK_REASONS.OUTSIDE_AREA
   if (!canCreateRevision(document.revision?.status)) return REVISION_BLOCK_REASONS.IN_PROGRESS
   return null
 }

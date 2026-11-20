@@ -26,7 +26,11 @@ const emit = defineEmits(['action'])
 const auth = useAuthStore()
 
 function revisionBlockMessage(document) {
-  const reason = listedRevisionBlockReason(document, auth.currentUser?.areaAcronym)
+  const reason = listedRevisionBlockReason(
+    document,
+    auth.currentUser?.id,
+    auth.currentUser?.areaAcronym,
+  )
   return reason ? REVISION_BLOCK_MESSAGES[reason] : ''
 }
 
