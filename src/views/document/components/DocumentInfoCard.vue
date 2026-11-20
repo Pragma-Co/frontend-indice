@@ -1,10 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import {
-  REVISION_BLOCK_MESSAGES,
-  REVISION_BLOCK_REASONS,
-  statusBadgeFor,
-} from '@/utils/documentStatus.js'
+import { REVISION_BLOCK_MESSAGES, statusBadgeFor } from '@/utils/documentStatus.js'
 import { formatDate } from '@/utils/formatters.js'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 
@@ -18,9 +14,7 @@ const props = defineProps({
 
 defineEmits(['select-revision'])
 
-const newRevisionInProgress = computed(
-  () => props.newRevisionBlockReason === REVISION_BLOCK_REASONS.IN_PROGRESS,
-)
+const newRevisionHint = computed(() => REVISION_BLOCK_MESSAGES[props.newRevisionBlockReason] ?? '')
 
 const auditorComment = computed(() => props.currentRevision?.auditor_comment?.trim() || '')
 
@@ -109,8 +103,8 @@ const auditSectionTitle = computed(() => {
         <span v-else class="revision-action-link is-disabled" aria-disabled="true">
           Nova Revisão
         </span>
-        <p v-if="newRevisionInProgress" class="revision-action-hint">
-          {{ REVISION_BLOCK_MESSAGES[REVISION_BLOCK_REASONS.IN_PROGRESS] }}
+        <p v-if="newRevisionHint" class="revision-action-hint">
+          {{ newRevisionHint }}
         </p>
       </div>
       <p v-if="!document.versions?.length" class="tag-block-empty">Nenhuma versão registrada.</p>

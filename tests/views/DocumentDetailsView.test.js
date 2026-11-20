@@ -496,6 +496,7 @@ describe('DocumentDetailsView', () => {
       id: RESPONSIBLE_ID,
       name: 'Beatriz Canuto',
       email: 'beatriz@example.com',
+      areaAcronym: 'MFG',
     }
     const current = makeDocument().revision
     fetchDocumentDetail.mockResolvedValue(
@@ -549,6 +550,7 @@ describe('DocumentDetailsView', () => {
       id: RESPONSIBLE_ID,
       name: 'Beatriz Canuto',
       email: 'beatriz@example.com',
+      areaAcronym: 'MFG',
     }
     fetchDocumentDetail.mockResolvedValue(makeDocument())
     const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
@@ -560,6 +562,47 @@ describe('DocumentDetailsView', () => {
     expect(blocked.attributes('aria-disabled')).toBe('true')
     expect(blocked.text()).toBe('Nova Revisão')
     expect(wrapper.find('.revision-action-hint').text()).toContain('revisão em andamento')
+  })
+
+  it('should block a new revision for a user outside the areas of the document', async () => {
+    authStore.currentUser = {
+      id: OTHER_USER_ID,
+      name: 'Visitante',
+      email: 'visitante@example.com',
+      areaAcronym: 'CER',
+    }
+    const current = makeDocument().revision
+    fetchDocumentDetail.mockResolvedValue(
+      makeDocument({ access_status: 'APPROVED', revision: { ...current, status: 'APPROVED' } }),
+    )
+    const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
+    mountedViews.push(wrapper)
+    await flushPromises()
+
+    expect(wrapper.findComponent(RouterLinkStub).exists()).toBe(false)
+    expect(wrapper.find('.revision-action-link').attributes('aria-disabled')).toBe('true')
+    expect(wrapper.find('.revision-action-hint').text()).toBe(
+      'Somente colaboradores das áreas deste documento podem criar uma revisão.',
+    )
+  })
+
+  it('should let the responsible open a revision outside the areas of the document', async () => {
+    authStore.currentUser = {
+      id: RESPONSIBLE_ID,
+      name: 'Beatriz Canuto',
+      email: 'beatriz@example.com',
+      areaAcronym: 'CER',
+    }
+    const current = makeDocument().revision
+    fetchDocumentDetail.mockResolvedValue(
+      makeDocument({ revision: { ...current, status: 'APPROVED' } }),
+    )
+    const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
+    mountedViews.push(wrapper)
+    await flushPromises()
+
+    expect(wrapper.findComponent(RouterLinkStub).text()).toBe('Nova Revisão')
+    expect(wrapper.find('.revision-action-hint').exists()).toBe(false)
   })
 
   it('should disable the navigation buttons when there is only one file', async () => {

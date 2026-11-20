@@ -13,13 +13,13 @@ export function canCreateRevision(revisionStatus) {
 }
 
 export const REVISION_BLOCK_REASONS = {
-  NO_ACCESS: 'no-access',
+  OUTSIDE_AREA: 'outside-area',
   IN_PROGRESS: 'in-progress',
 }
 
 export const REVISION_BLOCK_MESSAGES = {
-  [REVISION_BLOCK_REASONS.NO_ACCESS]:
-    'Você não tem permissão para criar uma revisão deste documento.',
+  [REVISION_BLOCK_REASONS.OUTSIDE_AREA]:
+    'Somente colaboradores das áreas deste documento podem criar uma revisão.',
   [REVISION_BLOCK_REASONS.IN_PROGRESS]:
     'Este documento já possui uma revisão em andamento. Aguarde a conclusão para criar outra.',
 }
@@ -30,8 +30,25 @@ export function hasDocumentAccess(document, userId) {
   return userId != null && document.responsible?.id === userId
 }
 
-export function revisionBlockReason(document, userId) {
-  if (!hasDocumentAccess(document, userId)) return REVISION_BLOCK_REASONS.NO_ACCESS
+export function belongsToDocumentArea(document, areaAcronym) {
+  if (!areaAcronym) return false
+  return (document?.areas ?? []).some((area) => area.acronym === areaAcronym)
+}
+
+function canOpenRevisionFor(document, userId, areaAcronym) {
+  const isResponsible = userId != null && document?.responsible?.id === userId
+  return isResponsible || belongsToDocumentArea(document, areaAcronym)
+}
+
+export function listedRevisionBlockReason(document, userId, areaAcronym) {
+  if (!canOpenRevisionFor(document, userId, areaAcronym)) return REVISION_BLOCK_REASONS.OUTSIDE_AREA
+  if (!canCreateRevision(document?.status)) return REVISION_BLOCK_REASONS.IN_PROGRESS
+  return null
+}
+
+export function revisionBlockReason(document, userId, areaAcronym) {
+  if (!document) return REVISION_BLOCK_REASONS.OUTSIDE_AREA
+  if (!canOpenRevisionFor(document, userId, areaAcronym)) return REVISION_BLOCK_REASONS.OUTSIDE_AREA
   if (!canCreateRevision(document.revision?.status)) return REVISION_BLOCK_REASONS.IN_PROGRESS
   return null
 }

@@ -49,12 +49,16 @@ describe('toCurrentUser', () => {
       email: 'thiago.serpa@akaer.local',
       role: 'Gestor',
       area: 'Qualidade e Inspeção',
+      areaAcronym: 'QUA',
     })
     expect(toCurrentUser(COLLABORATOR_ACCOUNT)).toMatchObject({ role: 'Colaborador' })
   })
 
   it('should accept an account without an area', () => {
-    expect(toCurrentUser({ ...COLLABORATOR_ACCOUNT, area: null }).area).toBe('')
+    expect(toCurrentUser({ ...COLLABORATOR_ACCOUNT, area: null })).toMatchObject({
+      area: '',
+      areaAcronym: '',
+    })
   })
 })
 
