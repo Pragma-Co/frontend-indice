@@ -286,13 +286,14 @@ describe('NewRevisionView', () => {
     expect(wrapper.find('#revision-justification').exists()).toBe(false)
   })
 
-  it('should not offer the form when the user has no permission to see the document', () => {
+  it('should not offer the form when the user is outside the areas of the document', () => {
     revisionBlocked.value = true
-    revisionBlockedMessage.value = 'Você não tem permissão para criar uma revisão deste documento.'
+    revisionBlockedMessage.value =
+      'Somente colaboradores das áreas deste documento podem criar uma revisão.'
 
     const wrapper = mount(NewRevisionView)
 
-    expect(wrapper.find('[role="alert"]').text()).toContain('não tem permissão')
+    expect(wrapper.find('[role="alert"]').text()).toContain('colaboradores das áreas')
     expect(wrapper.find('#revision-justification').exists()).toBe(false)
     expect(wrapper.find('input[type="file"]').exists()).toBe(false)
     expect(findButton(wrapper, 'Voltar para a listagem')).toBeDefined()

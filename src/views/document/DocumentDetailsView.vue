@@ -68,7 +68,7 @@ const currentUserId = computed(() => authStore.currentUser?.id ?? null)
 const hasAccess = computed(() => hasDocumentAccess(document.value, currentUserId.value))
 
 const newRevisionBlockReason = computed(() =>
-  revisionBlockReason(document.value, currentUserId.value, authStore.currentUser?.areaAcronym),
+  revisionBlockReason(document.value, authStore.currentUser?.areaAcronym),
 )
 
 const newRevisionRoute = computed(() => ({

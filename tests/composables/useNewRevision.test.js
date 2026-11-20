@@ -197,20 +197,15 @@ describe('useNewRevision', () => {
     expect(createDocumentRevision).not.toHaveBeenCalled()
   })
 
-  it('should block a document the user has no permission to see', async () => {
+  it('should allow a collaborator of the area without an access grant', async () => {
     fetchDocumentDetail.mockResolvedValue(
       makeDocument({ access_status: 'PENDING', responsible: { id: 3, name: 'Caio Bertoni' } }),
     )
+
     const revision = await mountRevision()
-    queue.value = [makeFile()]
-    revision.justification.value = VALID_JUSTIFICATION
 
-    await revision.submit()
-
-    expect(revision.revisionBlocked.value).toBe(true)
-    expect(revision.revisionBlockedMessage.value).toContain('não tem permissão')
-    expect(revision.canSubmit.value).toBe(false)
-    expect(createDocumentRevision).not.toHaveBeenCalled()
+    expect(revision.revisionBlocked.value).toBe(false)
+    expect(revision.revisionBlockedMessage.value).toBe('')
   })
 
   it('should allow the responsible even without an explicit access grant', async () => {
@@ -261,7 +256,6 @@ describe('useNewRevision', () => {
   })
 
   it.each([
-    [403, 'AccessDenied', 'Você não tem permissão para criar uma revisão deste documento.'],
     [
       403,
       'RevisionOutsideArea',

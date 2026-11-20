@@ -1,10 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import {
-  REVISION_BLOCK_MESSAGES,
-  REVISION_BLOCK_REASONS,
-  statusBadgeFor,
-} from '@/utils/documentStatus.js'
+import { REVISION_BLOCK_MESSAGES, statusBadgeFor } from '@/utils/documentStatus.js'
 import { formatDate } from '@/utils/formatters.js'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 
@@ -18,11 +14,7 @@ const props = defineProps({
 
 defineEmits(['select-revision'])
 
-const newRevisionHint = computed(() =>
-  props.newRevisionBlockReason === REVISION_BLOCK_REASONS.NO_ACCESS
-    ? ''
-    : (REVISION_BLOCK_MESSAGES[props.newRevisionBlockReason] ?? ''),
-)
+const newRevisionHint = computed(() => REVISION_BLOCK_MESSAGES[props.newRevisionBlockReason] ?? '')
 
 const auditorComment = computed(() => props.currentRevision?.auditor_comment?.trim() || '')
 

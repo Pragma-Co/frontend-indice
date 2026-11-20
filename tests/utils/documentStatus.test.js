@@ -60,7 +60,6 @@ describe('hasDocumentAccess', () => {
 
 describe('revisionBlockReason', () => {
   const approved = {
-    access_status: 'APPROVED',
     responsible: { id: 12 },
     revision: { status: 'APPROVED' },
     areas: [
@@ -69,46 +68,42 @@ describe('revisionBlockReason', () => {
     ],
   }
 
-  it('should allow a new revision when the user has access and nothing is under review', () => {
-    expect(revisionBlockReason(approved, 99, 'MFG')).toBeNull()
+  it('should allow a new revision to a collaborator of one of the areas', () => {
+    expect(revisionBlockReason(approved, 'MFG')).toBeNull()
+  })
+
+  it('should not require an access grant from a collaborator of the area', () => {
+    expect(revisionBlockReason({ ...approved, access_status: 'PENDING' }, 'EST')).toBeNull()
   })
 
   it('should block a user who belongs to none of the areas of the document', () => {
-    expect(revisionBlockReason(approved, 12, 'CER')).toBe(REVISION_BLOCK_REASONS.OUTSIDE_AREA)
+    expect(revisionBlockReason(approved, 'CER')).toBe(REVISION_BLOCK_REASONS.OUTSIDE_AREA)
   })
 
   it('should block a user without an area', () => {
-    expect(revisionBlockReason(approved, 12, '')).toBe(REVISION_BLOCK_REASONS.OUTSIDE_AREA)
+    expect(revisionBlockReason(approved, '')).toBe(REVISION_BLOCK_REASONS.OUTSIDE_AREA)
   })
 
   it('should block everyone when the document has no area', () => {
-    expect(revisionBlockReason({ ...approved, areas: [] }, 12, 'EST')).toBe(
+    expect(revisionBlockReason({ ...approved, areas: [] }, 'EST')).toBe(
       REVISION_BLOCK_REASONS.OUTSIDE_AREA,
     )
+  })
+
+  it('should block while no document is loaded', () => {
+    expect(revisionBlockReason(null, 'EST')).toBe(REVISION_BLOCK_REASONS.OUTSIDE_AREA)
   })
 
   it('should report the area before the revision under review', () => {
     const document = { ...approved, revision: { status: 'PENDING' } }
 
-    expect(revisionBlockReason(document, 12, 'CER')).toBe(REVISION_BLOCK_REASONS.OUTSIDE_AREA)
-  })
-
-  it('should block a user without access to the document', () => {
-    const document = { ...approved, access_status: 'PENDING' }
-
-    expect(revisionBlockReason(document, 99)).toBe(REVISION_BLOCK_REASONS.NO_ACCESS)
+    expect(revisionBlockReason(document, 'CER')).toBe(REVISION_BLOCK_REASONS.OUTSIDE_AREA)
   })
 
   it('should block while another revision is under review', () => {
     const document = { ...approved, revision: { status: 'PENDING' } }
 
-    expect(revisionBlockReason(document, 12, 'EST')).toBe(REVISION_BLOCK_REASONS.IN_PROGRESS)
-  })
-
-  it('should report the missing access before the revision under review', () => {
-    const document = { ...approved, access_status: 'IN_REVIEW', revision: { status: 'PENDING' } }
-
-    expect(revisionBlockReason(document, 99)).toBe(REVISION_BLOCK_REASONS.NO_ACCESS)
+    expect(revisionBlockReason(document, 'EST')).toBe(REVISION_BLOCK_REASONS.IN_PROGRESS)
   })
 })
 

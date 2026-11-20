@@ -22,7 +22,6 @@ const SUBMIT_ERROR_MESSAGE = 'Não foi possível enviar a nova revisão. Tente n
 const DUPLICATE_FILE_MESSAGE =
   'Um dos arquivos já existe no sistema e não pode ser usado nesta revisão.'
 const SUBMIT_BLOCK_REASONS = {
-  AccessDenied: REVISION_BLOCK_REASONS.NO_ACCESS,
   RevisionOutsideArea: REVISION_BLOCK_REASONS.OUTSIDE_AREA,
   RevisionInProgress: REVISION_BLOCK_REASONS.IN_PROGRESS,
 }
@@ -51,11 +50,7 @@ export function useNewRevision() {
   const nextRevisionLabel = computed(() => revisionLabel(currentVersion.value + 1))
   const blockReason = computed(() =>
     parentDocument.value
-      ? revisionBlockReason(
-          parentDocument.value,
-          authStore.currentUser?.id,
-          authStore.currentUser?.areaAcronym,
-        )
+      ? revisionBlockReason(parentDocument.value, authStore.currentUser?.areaAcronym)
       : null,
   )
   const revisionBlocked = computed(() => blockReason.value !== null)
