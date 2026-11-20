@@ -28,10 +28,11 @@ describe('AccessRequestsTable', () => {
       'Solicitante',
       'Data do pedido',
       'Status',
+      'Ações',
     ])
   })
 
-  it('should show who asked for access to which document and when', () => {
+  it('should show the request and emit it when evaluation is selected', async () => {
     const wrapper = mount(AccessRequestsTable, { props: { requests: REQUESTS } })
 
     const cells = wrapper.findAll('tbody td').map((cell) => cell.text().replace(/\s+/g, ' '))
@@ -43,6 +44,11 @@ describe('AccessRequestsTable', () => {
       'Caio BertoniEST',
       '25/09/2026 • 17:46',
       'Pendente',
+      'Avaliar Acesso',
     ])
+
+    expect(wrapper.findAll('tbody button')).toHaveLength(1)
+    await wrapper.get('tbody button').trigger('click')
+    expect(wrapper.emitted('evaluate')).toEqual([[REQUESTS[0]]])
   })
 })

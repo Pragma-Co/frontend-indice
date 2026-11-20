@@ -213,13 +213,14 @@ describe('useDocumentList', () => {
     list.handleDocumentAction({ document: { id: 7 }, action: 'unknown' })
 
     expect(router.push).toHaveBeenCalledTimes(2)
-    expect(router.push).toHaveBeenCalledWith({
+    expect(router.push).toHaveBeenNthCalledWith(1, {
       name: 'document-new-revision',
       params: { documentId: 7 },
     })
-    expect(router.push).toHaveBeenCalledWith({
+    expect(router.push).toHaveBeenNthCalledWith(2, {
       name: 'document-details',
       params: { documentId: 7 },
+      query: {},
     })
   })
 })
@@ -234,7 +235,7 @@ describe('normalizeDocument', () => {
   })
 
   it('should keep the backend status and use null when it is missing', () => {
-    expect(normalizeDocument(makeDocument(1, { status: 'OBSOLETE' })).status).toBe('OBSOLETE')
+    expect(normalizeDocument(makeDocument(1, { status: 'REJECTED' })).status).toBe('REJECTED')
     expect(normalizeDocument(makeDocument(1, { status: null })).status).toBeNull()
     expect(normalizeDocument({ id: 1 }).status).toBeNull()
   })

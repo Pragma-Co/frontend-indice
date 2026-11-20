@@ -68,6 +68,32 @@ describe('notificationStore', () => {
     expect(notifications.items).toHaveLength(1)
   })
 
+  it('should not repeat a notification that is still on screen', () => {
+    const first = notifications.error('Sua sessão expirou. Entre novamente.')
+
+    const second = notifications.error('Sua sessão expirou. Entre novamente.')
+
+    expect(second).toBe(first)
+    expect(notifications.items).toHaveLength(1)
+  })
+
+  it('should show the same message again once the previous one is gone', () => {
+    notifications.success('Salvo')
+    vi.advanceTimersByTime(5000)
+
+    notifications.success('Salvo')
+
+    expect(notifications.items).toHaveLength(1)
+  })
+
+  it('should show the same message with another type', () => {
+    notifications.success('Mensagem')
+
+    notifications.error('Mensagem')
+
+    expect(notifications.items.map((item) => item.type)).toEqual(['success', 'error'])
+  })
+
   it('should remove every notification on clear', () => {
     notifications.success('Uma')
     notifications.error('Outra')

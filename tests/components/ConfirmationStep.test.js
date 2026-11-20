@@ -23,6 +23,7 @@ function fillValidForm(store) {
   store.form.author = 'João Silva'
   store.form.areas = ['EST', 'QUA']
   store.form.confidentiality = 'SECRET'
+  store.form.authorizedUsers = ['2']
 }
 
 describe('ConfirmationStep', () => {

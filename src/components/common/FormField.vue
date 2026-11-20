@@ -6,19 +6,27 @@ defineProps({
   htmlFor: { type: String, default: undefined },
   required: { type: Boolean, default: false },
   error: { type: String, default: '' },
+  errorId: { type: String, default: undefined },
   icon: {
     type: String,
     default: '',
     validator: (value) => ['', 'search', 'document'].includes(value),
   },
   suggested: { type: Boolean, default: false },
+  busy: { type: Boolean, default: false },
 })
 </script>
 
 <template>
   <div
     class="field"
-    :class="{ 'field--invalid': error, 'field--with-icon': icon, 'field--suggested': suggested }"
+    :class="{
+      'field--invalid': error,
+      'field--with-icon': icon,
+      'field--suggested': suggested,
+      'field--busy': busy,
+    }"
+    :aria-busy="busy || undefined"
   >
     <label class="field__label" :for="htmlFor">
       {{ label }}
@@ -47,7 +55,7 @@ defineProps({
       </span>
       <slot />
     </div>
-    <p v-if="error" class="field__error" role="alert">{{ error }}</p>
+    <p v-if="error" :id="errorId" class="field__error" role="alert">{{ error }}</p>
   </div>
 </template>
 
@@ -135,5 +143,47 @@ defineProps({
 .field--invalid :deep(select),
 .field--invalid :deep(textarea) {
   border-color: var(--color-danger);
+}
+
+.field.field--busy :deep(input),
+.field.field--busy :deep(select),
+.field.field--busy :deep(textarea) {
+  border-color: var(--color-info-border);
+  background: var(--color-info-bg);
+  color: var(--color-text);
+  opacity: 1;
+  cursor: progress;
+}
+
+.field--busy .field__control {
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+}
+
+.field--busy .field__control::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--color-info) 14%, transparent),
+    transparent
+  );
+  pointer-events: none;
+  animation: field-busy-shimmer 1.6s ease-in-out infinite;
+}
+
+@keyframes field-busy-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .field--busy .field__control::after {
+    animation: none;
+  }
 }
 </style>

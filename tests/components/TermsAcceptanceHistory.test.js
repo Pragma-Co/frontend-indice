@@ -2,12 +2,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 
+const authSignOut = vi.fn()
+const routerPush = vi.fn()
+
 vi.mock('@/api/users.js', () => ({
   fetchLegalAcceptances: vi.fn(),
   revokeLegalAcceptance: vi.fn(),
   acceptLegalTerms: vi.fn(),
 }))
 vi.mock('@/api/legal.js', () => ({ fetchLegalDocuments: vi.fn(), fetchLegalVersion: vi.fn() }))
+vi.mock('@/stores/authStore.js', () => ({
+  useAuthStore: () => ({ signOut: authSignOut }),
+}))
+vi.mock('vue-router', () => ({
+  useRouter: () => ({ push: (...args) => Promise.resolve(routerPush(...args)) }),
+}))
 
 import { fetchLegalDocuments, fetchLegalVersion } from '@/api/legal.js'
 import { acceptLegalTerms, fetchLegalAcceptances, revokeLegalAcceptance } from '@/api/users.js'
@@ -80,6 +89,8 @@ describe('TermsAcceptanceHistory', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
+    authSignOut.mockReset()
+    routerPush.mockReset()
     fetchLegalAcceptances.mockResolvedValue({ count: 2, results: ACCEPTANCES })
     fetchLegalDocuments.mockResolvedValue({ count: 0, results: [] })
   })
@@ -144,7 +155,7 @@ describe('TermsAcceptanceHistory', () => {
         .map((cell) => cell.text()),
     ).toEqual(['Política de Cookies', 'v1', 'Obrigatório', '—', 'Não aceito'])
     expect(lastRow.find('.status-pill').classes()).toContain('pending')
-    expect(wrapper.find('.count-pill').text()).toBe('3 termos')
+    expect(wrapper.find('.count-pill').text()).toBe('3 registros')
   })
 
   it('should count a single term in the singular', async () => {
@@ -152,7 +163,7 @@ describe('TermsAcceptanceHistory', () => {
 
     const wrapper = await mountHistory()
 
-    expect(wrapper.find('.count-pill').text()).toBe('1 termo')
+    expect(wrapper.find('.count-pill').text()).toBe('1 registro')
   })
 
   it('should show a revoked acceptance with its status and the revocation as last update', async () => {
@@ -167,7 +178,7 @@ describe('TermsAcceptanceHistory', () => {
     expect(status.text()).toBe('Revogado')
     expect(status.classes()).toContain('revoked')
     expect(wrapper.find('.cell-date').text()).toBe('01/10/2026 às 10:00')
-    expect(wrapper.find('.status-pill').element.parentElement.textContent.trim()).toBe('Revogado')
+    expect(wrapper.find('.status-pill').text()).toBe('Revogado')
   })
 
   it('should offer reading and changing the acceptance in the row menu', async () => {
@@ -210,6 +221,52 @@ describe('TermsAcceptanceHistory', () => {
     expect(dialog.find('.term-dialog-timeline').text()).toBe('Aceito em 12/03/2026 às 09:15')
   })
 
+  it('should show a declined manifestation and its clause decisions', async () => {
+    fetchLegalAcceptances.mockResolvedValue({
+      count: 1,
+      results: [
+        {
+          ...ACCEPTANCES[1],
+          id: 8,
+          accepted: false,
+          accepted_at: '2026-10-10T11:00:00',
+          consents: [{ clause_id: 1, code: 'uso', is_required: true, accepted: false }],
+        },
+      ],
+    })
+    fetchLegalDocuments.mockResolvedValue({
+      count: 1,
+      results: [
+        {
+          slug: 'termos-de-uso',
+          title: 'Termos de Uso e Política de Privacidade',
+          current_version: {
+            id: 7,
+            version: 2,
+            clauses: [{ id: 1, code: 'uso', title: 'Uso', is_required: true }],
+          },
+        },
+      ],
+    })
+    fetchLegalVersion.mockResolvedValue({
+      id: 7,
+      version: 2,
+      clauses: [{ id: 1, position: 1, title: 'Uso', body: 'Texto.', is_required: true }],
+    })
+
+    const wrapper = await mountHistory()
+    const row = rowOf(wrapper, 'Termos de Uso')
+
+    expect(row.find('.status-pill').text()).toBe('Discordado')
+    expect(row.find('.status-pill').classes()).toContain('declined')
+    await chooseAction(wrapper, 'Termos de Uso', 'Ler termo')
+    await flushPromises()
+
+    const dialog = wrapper.find('[role="dialog"]')
+    expect(dialog.find('.term-dialog-timeline').text()).toBe('Discordado em 10/10/2026 às 11:00')
+    expect(dialog.text()).toContain('Recusada')
+  })
+
   it('should revoke an acceptance in force from "Alterar aceite"', async () => {
     revokeLegalAcceptance.mockResolvedValue({
       ...ACCEPTANCES[1],
@@ -227,6 +284,24 @@ describe('TermsAcceptanceHistory', () => {
     expect(message).toContain('pode aceitar o termo de novo')
     expect(revokeLegalAcceptance).toHaveBeenCalledWith(2)
     expect(rowOf(wrapper, 'Termos de Uso').find('.status-pill').text()).toBe('Revogado')
+  })
+
+  it('should sign the user out after revoking an acceptance', async () => {
+    authSignOut.mockResolvedValue(undefined)
+    revokeLegalAcceptance.mockResolvedValue({
+      ...ACCEPTANCES[1],
+      revoked_at: '2026-10-15T10:00:00',
+    })
+    const wrapper = await mountHistory()
+
+    await chooseAction(wrapper, 'Termos de Uso', 'Alterar aceite')
+    await wrapper.find('[role="alertdialog"]').findAll('button')[1].trigger('click')
+    await flushPromises()
+
+    expect(revokeLegalAcceptance).toHaveBeenCalledWith(2)
+    expect(authSignOut).toHaveBeenCalledTimes(1)
+    expect(routerPush).toHaveBeenCalledWith({ name: 'login' })
+    expect(wrapper.find('[role="alertdialog"]').exists()).toBe(false)
   })
 
   it('should accept a term that was not accepted from "Alterar aceite"', async () => {
@@ -253,29 +328,7 @@ describe('TermsAcceptanceHistory', () => {
       consents: [{ clause_id: 30, accepted: true }],
     })
     expect(rowOf(wrapper, 'Política de Cookies').find('.status-pill').text()).toBe('Aceito')
-    expect(wrapper.find('.count-pill').text()).toBe('3 termos')
-  })
-
-  it('should show a term once even after accepting, revoking and accepting again', async () => {
-    fetchLegalAcceptances.mockResolvedValue({
-      count: 2,
-      results: [
-        {
-          ...ACCEPTANCES[1],
-          id: 20,
-          accepted_at: '2026-01-01T10:00:00',
-          revoked_at: '2026-02-01T10:00:00',
-        },
-        ACCEPTANCES[1],
-      ],
-    })
-
-    const wrapper = await mountHistory()
-
-    const rows = wrapper.findAll('tbody tr')
-    expect(rows).toHaveLength(1)
-    expect(rows[0].find('.status-pill').text()).toBe('Aceito')
-    expect(rows[0].find('.cell-date').text()).toBe('24/09/2026 às 14:32')
+    expect(wrapper.find('.count-pill').text()).toBe('3 registros')
   })
 
   it('should accept a revoked term again from "Alterar aceite"', async () => {
@@ -314,8 +367,8 @@ describe('TermsAcceptanceHistory', () => {
       versionId: 7,
       consents: [{ clause_id: 1, accepted: true }],
     })
-    expect(rows).toHaveLength(1)
-    expect(rows[0].find('.status-pill').text()).toBe('Aceito')
+    expect(rows).toHaveLength(2)
+    expect(rows.map((row) => row.find('.status-pill').text())).toEqual(['Aceito', 'Revogado'])
   })
 
   it('should do nothing when the change is cancelled', async () => {
@@ -343,7 +396,7 @@ describe('TermsAcceptanceHistory', () => {
     const wrapper = await mountHistory()
 
     expect(wrapper.text()).toContain('Nenhum termo disponível até o momento.')
-    expect(wrapper.find('.count-pill').text()).toBe('0 termos')
+    expect(wrapper.find('.count-pill').text()).toBe('0 registros')
   })
 
   it('should explain a failure and load again on retry', async () => {
@@ -362,7 +415,7 @@ describe('TermsAcceptanceHistory', () => {
     const wrapper = await mountHistory()
 
     expect(wrapper.find('.audit-note').text()).toContain(
-      'Todos os aceites e revogações continuam registrados',
+      'Todos os aceites, discordâncias e revogações continuam registrados',
     )
   })
 })

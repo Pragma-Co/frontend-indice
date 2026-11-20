@@ -1,4 +1,5 @@
 <script setup>
+import { onBeforeUnmount } from 'vue'
 import Button from '@/components/common/Button.vue'
 import OverflowPill from '@/views/manager/components/OverflowPill.vue'
 import PendingStatusBadge from '@/views/manager/components/PendingStatusBadge.vue'
@@ -9,6 +10,34 @@ defineProps({
 })
 
 const emit = defineEmits(['evaluate'])
+
+function hasTextSelectedIn(element) {
+  const selection = window.getSelection()
+  if (!selection || selection.isCollapsed) return false
+  return element.contains(selection.anchorNode) || element.contains(selection.focusNode)
+}
+
+const DOUBLE_CLICK_WINDOW_MS = 250
+
+let pendingTitleClick = null
+
+function cancelPendingTitleClick() {
+  clearTimeout(pendingTitleClick)
+  pendingTitleClick = null
+}
+
+function onTitleClick(event, revision) {
+  cancelPendingTitleClick()
+  if (event.detail > 1) return
+  const title = event.currentTarget
+  pendingTitleClick = setTimeout(() => {
+    pendingTitleClick = null
+    if (hasTextSelectedIn(title)) return
+    emit('evaluate', revision)
+  }, DOUBLE_CLICK_WINDOW_MS)
+}
+
+onBeforeUnmount(cancelPendingTitleClick)
 </script>
 
 <template>
@@ -35,16 +64,19 @@ const emit = defineEmits(['evaluate'])
         </tr>
       </thead>
       <tbody>
-        <tr
-          v-for="revision in revisions"
-          :key="revision.id"
-          class="revision-row"
-          tabindex="0"
-          @click="emit('evaluate', revision)"
-          @keydown.enter="emit('evaluate', revision)"
-        >
+        <tr v-for="revision in revisions" :key="revision.id" class="revision-row">
           <td class="cell-code">{{ revision.code }}</td>
-          <td class="cell-title">{{ revision.title }}</td>
+          <td class="cell-title">
+            <span
+              class="cell-title-text"
+              role="button"
+              tabindex="0"
+              @click="onTitleClick($event, revision)"
+              @keydown.enter="emit('evaluate', revision)"
+            >
+              {{ revision.title }}
+            </span>
+          </td>
           <td>
             <OverflowPill :text="revision.discipline" />
           </td>
@@ -60,7 +92,7 @@ const emit = defineEmits(['evaluate'])
           <td>
             <PendingStatusBadge />
           </td>
-          <td class="cell-actions" @click.stop @keydown.enter.stop>
+          <td class="cell-actions">
             <Button class="evaluate-button" @click="emit('evaluate', revision)">
               Avaliar Revisão
             </Button>
@@ -75,44 +107,50 @@ const emit = defineEmits(['evaluate'])
 
 <style scoped>
 .col-code {
-  width: 15%;
+  width: 208px;
 }
 
 .col-title {
-  width: 26%;
+  width: auto;
+  min-width: 200px;
 }
 
 .col-discipline {
-  width: 11%;
+  width: 130px;
 }
 
 .col-transition {
-  width: 13%;
+  width: 148px;
 }
 
 .col-author {
-  width: 14%;
+  width: 170px;
 }
 
 .col-status {
-  width: 9%;
+  width: 127px;
 }
 
 .col-actions {
-  width: 12%;
-}
-
-.revision-row {
-  cursor: pointer;
+  width: 157px;
 }
 
 .revision-row:hover {
   background: var(--color-surface-muted);
 }
 
-.revision-row:focus-visible {
+.cell-title-text {
+  cursor: pointer;
+}
+
+.cell-title-text:hover {
+  text-decoration: underline;
+}
+
+.cell-title-text:focus-visible {
+  border-radius: 2px;
   outline: 2px solid var(--color-primary);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 
 .pill-transition {

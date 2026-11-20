@@ -1,23 +1,24 @@
 <script setup>
 import { computed } from 'vue'
+import { Star } from '@lucide/vue'
 import Badge from '@/components/common/Badge.vue'
 import HighlightedText from '@/components/common/HighlightedText.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
 import {
   REVISION_BLOCK_MESSAGES,
-  REVISION_BLOCK_REASONS,
-  canCreateRevision,
+  listedRevisionBlockReason,
   statusBadgeFor,
 } from '@/utils/documentStatus.js'
+import { useAuthStore } from '@/stores/authStore.js'
 import { formatDateAtTime } from '@/utils/formatters.js'
 import { highlightSegments, resultSnippet } from '@/utils/searchHighlight.js'
 
 const MAX_VISIBLE_TAGS = 6
-const NEW_REVISION_BLOCKED_MESSAGE = REVISION_BLOCK_MESSAGES[REVISION_BLOCK_REASONS.IN_PROGRESS]
 
 const props = defineProps({
   document: { type: Object, required: true },
   terms: { type: Array, default: () => [] },
+  favorite: { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['action'])
@@ -46,11 +47,19 @@ const sortedTags = computed(() => {
 const visibleTags = computed(() => sortedTags.value.slice(0, MAX_VISIBLE_TAGS))
 const hiddenTagsCount = computed(() => sortedTags.value.length - visibleTags.value.length)
 
-const revisionAllowed = computed(() => canCreateRevision(props.document.status))
+const auth = useAuthStore()
+const revisionBlockReason = computed(() =>
+  listedRevisionBlockReason(props.document, auth.currentUser?.id, auth.currentUser?.areaAcronym),
+)
+const revisionAllowed = computed(() => !revisionBlockReason.value)
 const statusBadge = computed(() => statusBadgeFor(props.document.status))
 
 function openDetails() {
   emit('action', { document: props.document, action: 'view-details' })
+}
+
+function toggleFavorite() {
+  emit('action', { document: props.document, action: 'toggle-favorite' })
 }
 
 function startNewRevision() {
@@ -73,6 +82,17 @@ function startNewRevision() {
       <div class="result-badges">
         <Badge>{{ document.revision }}</Badge>
         <StatusBadge v-if="statusBadge" :status="statusBadge" />
+        <button
+          type="button"
+          class="favorite-button"
+          :class="{ 'favorite-button-active': favorite }"
+          :aria-pressed="favorite"
+          :aria-label="favorite ? 'Desfavoritar documento' : 'Favoritar documento'"
+          :title="favorite ? 'Desfavoritar' : 'Favoritar'"
+          @click="toggleFavorite"
+        >
+          <Star :size="18" :fill="favorite ? 'currentColor' : 'none'" aria-hidden="true" />
+        </button>
       </div>
     </header>
 
@@ -103,25 +123,40 @@ function startNewRevision() {
       </ul>
 
       <div class="result-footer-end">
-        <span class="result-date">
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="1.8"
-            aria-hidden="true"
-          >
-            <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
-            <path d="M3.5 9.5h17M8 3v4M16 3v4" stroke-linecap="round" />
-          </svg>
-          Atualizado em {{ formatDateAtTime(document.updatedAt) }} por {{ document.updatedBy }}
-        </span>
+        <div class="result-dates">
+          <span class="result-date">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              aria-hidden="true"
+            >
+              <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
+              <path d="M3.5 9.5h17M8 3v4M16 3v4" stroke-linecap="round" />
+            </svg>
+            Criado em {{ formatDateAtTime(document.createdAt) }} por {{ document.createdBy }}
+          </span>
+          <span class="result-date">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              aria-hidden="true"
+            >
+              <rect x="3.5" y="5" width="17" height="15.5" rx="2" />
+              <path d="M3.5 9.5h17M8 3v4M16 3v4" stroke-linecap="round" />
+            </svg>
+            Atualizado em {{ formatDateAtTime(document.updatedAt) }} por {{ document.updatedBy }}
+          </span>
+        </div>
         <button
           type="button"
           class="result-action"
           :class="{ 'result-action-disabled': !revisionAllowed }"
           :aria-disabled="!revisionAllowed || undefined"
-          :title="revisionAllowed ? undefined : NEW_REVISION_BLOCKED_MESSAGE"
+          :title="revisionAllowed ? undefined : REVISION_BLOCK_MESSAGES[revisionBlockReason]"
           @click="startNewRevision"
         >
           Nova Revisão
@@ -195,6 +230,29 @@ function startNewRevision() {
   flex-shrink: 0;
   align-items: center;
   gap: 0.4rem;
+}
+
+.favorite-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.favorite-button:hover,
+.favorite-button-active {
+  color: var(--color-warning);
+}
+
+.favorite-button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 .result-category {
@@ -279,6 +337,12 @@ function startNewRevision() {
   align-items: center;
   gap: 0.85rem;
   margin-left: auto;
+}
+
+.result-dates {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
 }
 
 .result-date {

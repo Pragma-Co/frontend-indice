@@ -2,30 +2,44 @@
 import { formatUpdatedAt } from '@/utils/formatters.js'
 import {
   REVISION_BLOCK_MESSAGES,
-  REVISION_BLOCK_REASONS,
-  canCreateRevision,
+  listedRevisionBlockReason,
   statusBadgeFor,
 } from '@/utils/documentStatus.js'
+import { useAuthStore } from '@/stores/authStore.js'
 import Badge from '@/components/common/Badge.vue'
 import StatusBadge from '@/components/common/StatusBadge.vue'
+import { Star } from '@lucide/vue'
 
 defineProps({
   documents: {
     type: Array,
     required: true,
   },
+  favoritable: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits(['action'])
 
-const NEW_REVISION_BLOCKED_MESSAGE = REVISION_BLOCK_MESSAGES[REVISION_BLOCK_REASONS.IN_PROGRESS]
+const auth = useAuthStore()
+
+function revisionBlockMessage(document) {
+  const reason = listedRevisionBlockReason(
+    document,
+    auth.currentUser?.id,
+    auth.currentUser?.areaAcronym,
+  )
+  return reason ? REVISION_BLOCK_MESSAGES[reason] : ''
+}
 
 function openDetails(document) {
   emit('action', { document, action: 'view-details' })
 }
 
 function startNewRevision(document) {
-  if (!canCreateRevision(document.status)) return
+  if (revisionBlockMessage(document)) return
   emit('action', { document, action: 'new-revision' })
 }
 </script>
@@ -46,15 +60,7 @@ function startNewRevision(document) {
         </tr>
       </thead>
       <tbody>
-        <tr
-          v-for="document in documents"
-          :key="document.id"
-          class="document-row"
-          tabindex="0"
-          @click="openDetails(document)"
-          @keydown.enter="openDetails(document)"
-        >
-          <!-- TODO: map this icon by file extension once documents carry one. -->
+        <tr v-for="document in documents" :key="document.id" class="document-row" tabindex="0">
           <td class="cell-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <path
@@ -72,7 +78,9 @@ function startNewRevision(document) {
             </svg>
           </td>
           <td class="cell-code">{{ document.code }}</td>
-          <td class="cell-title">{{ document.title }}</td>
+          <td class="cell-title">
+            <a class="cell-title-text" @click="openDetails(document)">{{ document.title }}</a>
+          </td>
           <td class="cell-type">
             <span>{{ document.type }}</span>
             <span v-if="document.discipline?.name" class="cell-discipline">
@@ -98,26 +106,37 @@ function startNewRevision(document) {
                 <button
                   type="button"
                   class="action-button"
-                  :class="{ 'action-button-disabled': !canCreateRevision(document.status) }"
-                  :aria-disabled="!canCreateRevision(document.status) || undefined"
+                  :class="{ 'action-button-disabled': revisionBlockMessage(document) }"
+                  :aria-disabled="Boolean(revisionBlockMessage(document)) || undefined"
                   :aria-describedby="
-                    canCreateRevision(document.status)
-                      ? undefined
-                      : `new-revision-tooltip-${document.id}`
+                    revisionBlockMessage(document)
+                      ? `new-revision-tooltip-${document.id}`
+                      : undefined
                   "
                   @click="startNewRevision(document)"
                 >
                   Nova Revisão
                 </button>
                 <span
-                  v-if="!canCreateRevision(document.status)"
+                  v-if="revisionBlockMessage(document)"
                   :id="`new-revision-tooltip-${document.id}`"
                   class="action-tooltip"
                   role="tooltip"
                 >
-                  {{ NEW_REVISION_BLOCKED_MESSAGE }}
+                  {{ revisionBlockMessage(document) }}
                 </span>
               </span>
+              <button
+                v-if="favoritable"
+                type="button"
+                class="favorite-button"
+                aria-pressed="true"
+                aria-label="Desfavoritar documento"
+                title="Desfavoritar"
+                @click="emit('action', { document, action: 'toggle-favorite' })"
+              >
+                <Star :size="18" fill="currentColor" aria-hidden="true" />
+              </button>
             </div>
           </td>
         </tr>
@@ -159,6 +178,24 @@ function startNewRevision(document) {
   text-align: right;
 }
 
+.favorite-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-warning);
+  cursor: pointer;
+}
+
+.favorite-button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 .cell-icon {
   width: 2rem;
   color: var(--color-primary);
@@ -174,6 +211,14 @@ function startNewRevision(document) {
 .cell-title {
   font-weight: 600;
   min-width: 11rem;
+}
+
+.cell-title-text {
+  cursor: pointer;
+}
+
+.cell-title-text:hover {
+  text-decoration: underline;
 }
 
 .cell-discipline {
@@ -265,10 +310,6 @@ function startNewRevision(document) {
 .action-wrapper:hover .action-tooltip,
 .action-wrapper:focus-within .action-tooltip {
   display: block;
-}
-
-.document-row {
-  cursor: pointer;
 }
 
 .document-row:hover {

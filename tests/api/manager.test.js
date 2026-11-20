@@ -1,7 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  addAccessGroupMember,
+  fetchDecisionHistory,
+  fetchAccessGroupMembers,
+  fetchAccessGroups,
+  fetchAreaCollaborators,
   fetchPendingAccessRequests,
   fetchPendingRevisions,
+  removeAccessGroupMember,
+  submitAccessRequestDecision,
   submitRevisionDecision,
 } from '../../src/api/manager'
 
@@ -37,6 +44,31 @@ describe('manager api', () => {
     )
   })
 
+  it('should request the first page of the decision history by default', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(200, { count: 0, results: [] }))
+
+    await fetchDecisionHistory()
+
+    expect(globalThis.fetch.mock.calls[0][0]).toBe('/api/manager/decision-history?page=1')
+  })
+
+  it('should send only the filters that were chosen for the decision history', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(200, { count: 0, results: [] }))
+
+    await fetchDecisionHistory({
+      page: 2,
+      pageSize: 10,
+      requestType: 'ACCESS',
+      decision: '',
+      dateFrom: '2026-09-01',
+      dateTo: '2026-09-30',
+    })
+
+    expect(globalThis.fetch.mock.calls[0][0]).toBe(
+      '/api/manager/decision-history?page=2&page_size=10&request_type=ACCESS&date_from=2026-09-01&date_to=2026-09-30',
+    )
+  })
+
   it('should request the pending access requests', async () => {
     globalThis.fetch.mockResolvedValue(jsonResponse(200, { count: 0, results: [] }))
 
@@ -45,6 +77,24 @@ describe('manager api', () => {
     expect(globalThis.fetch.mock.calls[0][0]).toBe(
       '/api/manager/pending-access-requests?page=2&page_size=20',
     )
+  })
+
+  it('should submit an access request decision', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(200, { id: 7, status: 'APPROVED' }))
+
+    const result = await submitAccessRequestDecision(7, {
+      decision: 'APPROVED',
+      opinion: 'Parecer do gestor detalhado.',
+    })
+
+    const [url, init] = globalThis.fetch.mock.calls[0]
+    expect(url).toBe('/api/manager/access-requests/7/decision')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual({
+      decision: 'APPROVED',
+      opinion: 'Parecer do gestor detalhado.',
+    })
+    expect(result).toEqual({ id: 7, status: 'APPROVED' })
   })
 
   it('should reject with the status when the user is not allowed', async () => {
@@ -91,5 +141,50 @@ describe('manager api', () => {
       status: 409,
       details: { error: 'RevisionAlreadyDecided' },
     })
+  })
+
+  it('should list the active collaborators of the area', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(200, { results: [] }))
+
+    await fetchAreaCollaborators()
+
+    expect(globalThis.fetch.mock.calls[0][0]).toBe('/api/manager/users')
+  })
+
+  it('should list the access groups of the area', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(200, { results: [] }))
+
+    await fetchAccessGroups()
+
+    expect(globalThis.fetch.mock.calls[0][0]).toBe('/api/manager/access-groups')
+  })
+
+  it('should list the members of an access group', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(200, { results: [] }))
+
+    await fetchAccessGroupMembers(4)
+
+    expect(globalThis.fetch.mock.calls[0][0]).toBe('/api/manager/access-groups/4/users')
+  })
+
+  it('should add a user to an access group', async () => {
+    globalThis.fetch.mockResolvedValue(jsonResponse(201, { user_id: 9 }))
+
+    await addAccessGroupMember(4, 9)
+
+    const [url, init] = globalThis.fetch.mock.calls[0]
+    expect(url).toBe('/api/manager/access-groups/4/users')
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual({ user_id: 9 })
+  })
+
+  it('should remove a user from an access group', async () => {
+    globalThis.fetch.mockResolvedValue({ ok: true, status: 204, text: async () => '' })
+
+    await removeAccessGroupMember(4, 9)
+
+    const [url, init] = globalThis.fetch.mock.calls[0]
+    expect(url).toBe('/api/manager/access-groups/4/users/9')
+    expect(init.method).toBe('DELETE')
   })
 })

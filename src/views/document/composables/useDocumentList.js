@@ -1,6 +1,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { fetchDocuments } from '@/api/documents.js'
+import { fetchDocuments, setDocumentFavorite } from '@/api/documents.js'
+import { useNotificationStore } from '@/stores/notificationStore.js'
 import { buildDocumentQueryKey } from '@/utils/searchParams.js'
 
 export const ITEMS_PER_PAGE_OPTIONS = [5, 10, 20, 50]
@@ -19,6 +20,8 @@ export function normalizeDocument(document) {
     type: document.type?.name ?? document.type?.code ?? 'Não informado',
     revision: document.revision?.label ?? '-',
     status: document.status ?? null,
+    createdAt: document.created_at,
+    createdBy: document.created_by?.name ?? 'sistema',
     updatedAt: document.updated_at,
     updatedBy: document.updated_by?.name ?? document.created_by?.name ?? 'sistema',
     tags: [...new Set([...(document.tags ?? []), ...(document.thematic_tags ?? [])])],
@@ -95,14 +98,37 @@ export function useDocumentList({ fetchPage = fetchDocuments } = {}) {
   }
 
   function goToDocumentDetails(document) {
-    router.push({ name: 'document-details', params: { documentId: document.id } })
+    router.push({
+      name: 'document-details',
+      params: { documentId: document.id },
+      query: ['favorites', 'results'].includes(route.name) ? { from: route.name } : {},
+    })
   }
 
   function goToNewRevision(document) {
     router.push({ name: 'document-new-revision', params: { documentId: document.id } })
   }
 
+  async function toggleFavorite(document) {
+    const notifications = useNotificationStore()
+    const next = !document.is_favorite
+    try {
+      await setDocumentFavorite(document.id, next)
+      document.is_favorite = next
+      notifications.success(
+        next ? 'Documento adicionado aos favoritos.' : 'Documento removido dos favoritos.',
+      )
+      return true
+    } catch {
+      notifications.error('Não foi possível atualizar os favoritos.')
+      return false
+    }
+  }
+
   function handleDocumentAction({ document, action }) {
+    if (action === 'toggle-favorite') {
+      return toggleFavorite(document)
+    }
     if (action === 'new-revision') {
       goToNewRevision(document)
     } else if (action === 'view-details') {

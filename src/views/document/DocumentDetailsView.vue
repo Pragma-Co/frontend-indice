@@ -5,19 +5,27 @@ import { renderAsync } from 'docx-preview'
 import { fetchDocumentDetail, requestDocumentAccess } from '@/api/documents.js'
 import { useAuthStore } from '@/stores/authStore.js'
 import { useNotificationStore } from '@/stores/notificationStore.js'
-import {
-  REVISION_BLOCK_MESSAGES,
-  REVISION_BLOCK_REASONS,
-  hasDocumentAccess,
-  revisionBlockReason,
-  statusBadgeFor,
-} from '@/utils/documentStatus.js'
-import { formatDate } from '@/utils/formatters.js'
+import { hasDocumentAccess, revisionBlockReason } from '@/utils/documentStatus.js'
 import Breadcrumbs from '@/components/common/Breadcrumbs.vue'
-import StatusBadge from '@/components/common/StatusBadge.vue'
+import ProtectedContent from '@/components/common/ProtectedContent.vue'
+import ProtectedImage from '@/components/common/ProtectedImage.vue'
+import ProtectedPdf from '@/components/common/ProtectedPdf.vue'
 import DocumentAccessOverlay from '@/views/document/components/DocumentAccessOverlay.vue'
+import DocumentInfoCard from '@/views/document/components/DocumentInfoCard.vue'
+import RecommendedDocuments from '@/views/document/components/RecommendedDocuments.vue'
 
 const route = useRoute()
+
+const PARENT_CRUMBS = {
+  favorites: { label: 'Favoritos', to: '/favorites' },
+  results: { label: 'Resultados', to: '/results' },
+}
+const parentCrumb = computed(() => {
+  const crumb = PARENT_CRUMBS[route.query.from]
+  if (!crumb) return { label: 'Documentos', to: '/documents' }
+  const back = window.history.state?.back
+  return typeof back === 'string' && back.startsWith(crumb.to) ? { ...crumb, to: back } : crumb
+})
 const authStore = useAuthStore()
 const notifications = useNotificationStore()
 const document = ref(null)
@@ -30,6 +38,7 @@ const requestError = ref('')
 
 const docxContainer = ref(null)
 const docxLoading = ref(false)
+const docxError = ref('')
 
 const currentFileIndex = ref(0)
 const selectedRevisionId = ref(null)
@@ -59,11 +68,7 @@ const currentUserId = computed(() => authStore.currentUser?.id ?? null)
 const hasAccess = computed(() => hasDocumentAccess(document.value, currentUserId.value))
 
 const newRevisionBlockReason = computed(() =>
-  revisionBlockReason(document.value, currentUserId.value),
-)
-
-const newRevisionInProgress = computed(
-  () => newRevisionBlockReason.value === REVISION_BLOCK_REASONS.IN_PROGRESS,
+  revisionBlockReason(document.value, currentUserId.value, authStore.currentUser?.areaAcronym),
 )
 
 const newRevisionRoute = computed(() => ({
@@ -75,8 +80,16 @@ const accessRejected = computed(() => document.value?.access_request?.status ===
 
 const isRejectedRevision = computed(() => currentRevision.value?.status === 'REJECTED')
 
+const hasViewerIdentity = computed(
+  () =>
+    !!authStore.currentUser?.name?.trim() &&
+    !!authStore.currentUser?.email?.trim() &&
+    authStore.currentUser?.id != null,
+)
+
 const canPreview = computed(
-  () => !!currentFile.value && hasAccess.value && !isRejectedRevision.value,
+  () =>
+    !!currentFile.value && hasAccess.value && !isRejectedRevision.value && hasViewerIdentity.value,
 )
 
 const isPdf = computed(() => {
@@ -144,23 +157,34 @@ async function loadDocument() {
   }
 }
 
-async function handleRequestAccess() {
+async function handleRequestAccess(payload) {
+  if (requestingAccess.value || accessRequested.value) return
   requestingAccess.value = true
   requestError.value = ''
   try {
-    const result = await requestDocumentAccess(route.params.documentId, currentUserId.value)
+    const result = await requestDocumentAccess(
+      route.params.documentId,
+      currentUserId.value,
+      payload,
+    )
     if (result?.status === 'REJECTED') {
       await loadDocument()
       return
     }
     accessRequested.value = true
-    notifications.success('Solicitação enviada. O responsável pelo documento foi notificado.')
+    notifications.success('Solicitação enviada para análise de um gestor.')
   } catch (err) {
     if (err?.status === 409) {
       await loadDocument()
       return
     }
-    requestError.value = 'Não foi possível enviar a solicitação. Tente novamente.'
+    if (err?.status === 0) {
+      requestError.value = 'Sem conexão com o servidor. Verifique sua rede e tente novamente.'
+    } else if (err?.status === 400) {
+      requestError.value = 'Justificativa inválida. Revise o texto e tente novamente.'
+    } else {
+      requestError.value = 'Não foi possível enviar a solicitação. Tente novamente.'
+    }
     notifications.error(requestError.value)
   } finally {
     requestingAccess.value = false
@@ -172,6 +196,7 @@ async function renderDocx() {
   if (!canPreview.value || !isDocx.value || !fileUrl.value) return
 
   docxLoading.value = true
+  docxError.value = ''
   docxContainer.value.innerHTML = ''
 
   try {
@@ -190,7 +215,7 @@ async function renderDocx() {
     })
   } catch (e) {
     console.error('Erro ao renderizar DOCX:', e)
-    error.value = 'Não foi possível renderizar o arquivo .docx.'
+    docxError.value = 'Não foi possível renderizar o arquivo .docx.'
   } finally {
     docxLoading.value = false
   }
@@ -200,6 +225,7 @@ watch(
   [currentFile, canPreview],
   async () => {
     if (docxContainer.value) docxContainer.value.innerHTML = ''
+    docxError.value = ''
 
     if (canPreview.value && isDocx.value) {
       await nextTick()
@@ -209,13 +235,26 @@ watch(
   { immediate: false },
 )
 
+watch(
+  () => route.params.documentId,
+  (documentId, previousId) => {
+    if (!documentId || documentId === previousId) return
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+    loadDocument()
+  },
+)
+
 onMounted(loadDocument)
 </script>
 
 <template>
   <main class="details-page">
     <div class="details-shell">
-      <Breadcrumbs :title="document?.title ?? 'Documento'" />
+      <Breadcrumbs
+        :title="document?.title ?? 'Documento'"
+        :parent-label="parentCrumb.label"
+        :parent-to="parentCrumb.to"
+      />
 
       <div v-if="loading" class="details-grid" aria-busy="true" aria-live="polite">
         <section class="preview-panel preview-panel--skeleton" aria-label="Carregando documento">
@@ -267,32 +306,44 @@ onMounted(loadDocument)
                 <span>{{ document.code }}</span>
               </div>
 
-              <iframe
-                v-else-if="isPdf"
-                :key="currentFile.id"
-                :src="fileUrl"
-                class="preview-frame"
-                title="Visualização do PDF"
-                type="application/pdf"
-              />
-
-              <img
-                v-else-if="isImage"
-                :key="currentFile.id"
-                :src="fileUrl"
-                class="preview-image"
-                :alt="currentFile.original_name || document.title"
-              />
-
-              <div v-else-if="isDocx" class="preview-docx-wrapper">
-                <p v-if="docxLoading" class="preview-docx-loading">Carregando documento...</p>
-                <div ref="docxContainer" class="preview-docx" />
+              <div v-else-if="!hasViewerIdentity" class="preview-placeholder">
+                <p>
+                  Não foi possível identificar o usuário para exibir o documento protegido. Nome e
+                  e-mail são necessários.
+                </p>
               </div>
 
-              <div v-else class="preview-placeholder">
-                <p>Formato não suportado para visualização.</p>
-                <span>{{ currentFile?.original_name }}</span>
-              </div>
+              <ProtectedContent
+                v-else
+                class="preview-content"
+                :user="authStore.currentUser"
+                :document-id="document.id"
+                :file-id="currentFile?.id"
+              >
+                <ProtectedPdf v-if="isPdf" :key="currentFile.id" :url="fileUrl" />
+
+                <ProtectedImage
+                  v-else-if="isImage"
+                  :key="currentFile.id"
+                  :url="fileUrl"
+                  :alt="currentFile.original_name || document.title"
+                />
+
+                <div
+                  v-else-if="isDocx"
+                  class="preview-docx-wrapper"
+                  :class="{ 'is-error': docxError }"
+                >
+                  <p v-if="docxLoading" class="preview-docx-loading">Carregando documento...</p>
+                  <p v-if="docxError" class="preview-docx-error" role="alert">{{ docxError }}</p>
+                  <div v-show="!docxError" ref="docxContainer" class="preview-docx" />
+                </div>
+
+                <div v-else class="preview-placeholder">
+                  <p>Formato não suportado para visualização.</p>
+                  <span>{{ currentFile?.original_name }}</span>
+                </div>
+              </ProtectedContent>
             </div>
 
             <div v-if="canPreview && totalFiles > 0" class="preview-footer">
@@ -326,124 +377,21 @@ onMounted(loadDocument)
             />
           </section>
 
-          <aside class="document-card">
-            <header class="document-card-header">
-              <StatusBadge
-                v-if="statusBadgeFor(document.access_status)"
-                :status="statusBadgeFor(document.access_status)"
-              />
-              <span>Ref: {{ document.code }}</span>
-            </header>
-
-            <h1>{{ document.title }}</h1>
-
-            <dl class="metadata-list">
-              <div>
-                <dt>Código</dt>
-                <dd>{{ document.code }}</dd>
-              </div>
-              <div>
-                <dt>Tipo</dt>
-                <dd>{{ document.type.name }}</dd>
-              </div>
-              <div>
-                <dt>Disciplina</dt>
-                <dd>{{ document.discipline.name }}</dd>
-              </div>
-              <div>
-                <dt>Revisão atual</dt>
-                <dd>{{ document.revision ? `REV${document.revision.version}` : '-' }}</dd>
-              </div>
-              <div>
-                <dt>Data de Emissão</dt>
-                <dd>
-                  {{
-                    document.revision?.issue_date ? formatDate(document.revision.issue_date) : '-'
-                  }}
-                </dd>
-              </div>
-              <div>
-                <dt>Responsável</dt>
-                <dd>{{ document.responsible.name }}</dd>
-              </div>
-            </dl>
-
-            <div v-if="document.description" class="description-block">
-              <h2>Descrição</h2>
-              <p>{{ document.description }}</p>
-            </div>
-
-            <div v-if="document.areas?.length" class="tag-block">
-              <h2>Tags relacionadas</h2>
-              <div class="tags">
-                <span v-for="area in document.areas" :key="area.acronym">{{ area.acronym }}</span>
-              </div>
-            </div>
-
-            <div class="revision-block">
-              <h2>Histórico de versões</h2>
-              <div v-if="hasAccess && document.revision" class="revision-action">
-                <RouterLink
-                  v-if="!newRevisionBlockReason"
-                  :to="newRevisionRoute"
-                  class="revision-action-link"
-                >
-                  Nova Revisão
-                </RouterLink>
-                <span v-else class="revision-action-link is-disabled" aria-disabled="true">
-                  Nova Revisão
-                </span>
-                <p v-if="newRevisionInProgress" class="revision-action-hint">
-                  {{ REVISION_BLOCK_MESSAGES[REVISION_BLOCK_REASONS.IN_PROGRESS] }}
-                </p>
-              </div>
-              <p v-if="!document.versions?.length" class="tag-block-empty">
-                Nenhuma versão registrada.
-              </p>
-              <ul v-else class="revision-list">
-                <li
-                  v-for="version in document.versions"
-                  :key="version.id"
-                  role="button"
-                  tabindex="0"
-                  :aria-pressed="version.id === currentRevision?.id"
-                  :class="{
-                    'is-current': version.id === document.revision?.id,
-                    'is-selected': version.id === currentRevision?.id,
-                    'is-rejected': version.status === 'REJECTED',
-                  }"
-                  @click="selectRevision(version)"
-                  @keydown.enter.space.prevent="selectRevision(version)"
-                >
-                  <div class="revision-header">
-                    <strong class="revision-select"> REV{{ version.version }} </strong>
-                    <span v-if="version.id === document.revision?.id" class="current-tag">
-                      Versão atual
-                    </span>
-                  </div>
-                  <p class="revision-file-count">{{ version.files?.length ?? 0 }} arquivo(s)</p>
-                  <dl class="revision-meta">
-                    <div>
-                      <dt>Data de emissão</dt>
-                      <dd>
-                        {{ version.issue_date ? formatDate(version.issue_date) : '-' }}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Autor</dt>
-                      <dd>{{ version.author?.name ?? '-' }}</dd>
-                    </div>
-                    <div v-if="version.change_description">
-                      <dt>Descrição da mudança</dt>
-                      <dd>{{ version.change_description }}</dd>
-                    </div>
-                  </dl>
-                </li>
-              </ul>
-            </div>
-          </aside>
+          <DocumentInfoCard
+            :document="document"
+            :current-revision="currentRevision"
+            :has-access="hasAccess"
+            :new-revision-block-reason="newRevisionBlockReason"
+            :new-revision-route="newRevisionRoute"
+            @select-revision="selectRevision"
+          />
         </div>
       </template>
+
+      <RecommendedDocuments
+        v-if="!notFound && route.params.documentId"
+        :document-id="route.params.documentId"
+      />
     </div>
   </main>
 </template>
@@ -453,47 +401,6 @@ onMounted(loadDocument)
   min-height: calc(100vh - 56px);
   padding: 1.25rem 2rem 1.25rem;
   background: var(--color-background);
-}
-
-.revision-action {
-  margin: 0.5rem 0 0.85rem;
-}
-
-.revision-action-link {
-  display: block;
-  width: 100%;
-  text-align: center;
-  text-decoration: none;
-  padding: 0.7rem 1rem;
-  border: 1px solid var(--color-primary);
-  border-radius: var(--radius-sm);
-  background: var(--color-primary);
-  color: var(--color-on-primary, #fff);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.revision-action-link:hover:not(.is-disabled) {
-  background: var(--color-primary-hover);
-  border-color: var(--color-primary-hover);
-}
-
-.revision-action-link:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-.revision-action-link.is-disabled {
-  background: var(--color-surface-muted);
-  border-color: var(--color-border);
-  color: var(--color-text-muted);
-  cursor: not-allowed;
-}
-
-.revision-block .revision-action-hint {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  margin-top: 0.4rem;
 }
 
 .details-shell {
@@ -513,7 +420,8 @@ onMounted(loadDocument)
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  height: calc(100vh - 132px);
+  height: calc(100vh - 462px);
+  min-height: 600px;
 }
 
 .preview-panel {
@@ -562,19 +470,11 @@ onMounted(loadDocument)
   display: flex;
 }
 
-.preview-frame {
+.preview-content {
+  display: flex;
   flex: 1;
-  width: 100%;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-muted);
-}
-
-.preview-image {
-  max-width: 100%;
-  max-height: 100%;
-  margin: auto;
-  object-fit: contain;
+  min-width: 0;
+  min-height: 0;
 }
 
 .preview-docx-wrapper {
@@ -585,6 +485,17 @@ onMounted(loadDocument)
   background: var(--color-surface-muted);
   border-radius: var(--radius-sm);
   position: relative;
+}
+
+.preview-docx-wrapper.is-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.preview-docx-error {
+  padding: 1rem;
+  color: var(--color-text-muted);
 }
 
 .preview-docx {
@@ -696,86 +607,6 @@ onMounted(loadDocument)
   overflow: auto;
 }
 
-.document-card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  color: var(--color-text-muted);
-  font-size: 0.72rem;
-}
-
-.document-card h1 {
-  margin: 1rem 0 1.25rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid var(--color-border);
-  font-size: 1.05rem;
-  line-height: 1.35;
-}
-
-.metadata-list {
-  display: grid;
-  gap: 0.8rem;
-}
-
-.metadata-list div {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  font-size: 0.8rem;
-}
-
-dt {
-  color: var(--color-text-muted);
-}
-
-dd {
-  text-align: right;
-  font-weight: 600;
-}
-
-.description-block,
-.tag-block,
-.revision-block {
-  margin-top: 1.25rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--color-border);
-}
-
-.tag-block-empty {
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
-}
-
-.document-card h2 {
-  margin-bottom: 0.65rem;
-  font-size: 0.72rem;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.description-block p,
-.revision-block p {
-  color: var(--color-text-muted);
-  font-size: 0.8rem;
-  line-height: 1.5;
-}
-
-.tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
-.tags span {
-  padding: 0.25rem 0.45rem;
-  border-radius: 4px;
-  background: var(--color-background);
-  color: var(--color-text-muted);
-  font-size: 0.7rem;
-}
-
 .status-message {
   margin-top: 2rem;
   color: var(--color-text-muted);
@@ -783,88 +614,6 @@ dd {
 
 .error-message {
   color: var(--color-warning);
-}
-
-.revision-list {
-  display: grid;
-  gap: 0.75rem;
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.revision-list li {
-  padding: 0.65rem 0.75rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-muted);
-  transition:
-    border-color 0.15s ease,
-    background 0.15s ease;
-  cursor: pointer;
-}
-
-.revision-list li:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-.revision-list li.is-current {
-  border-color: var(--color-primary);
-  background: color-mix(in srgb, var(--color-primary) 8%, var(--color-surface-muted));
-}
-
-.revision-list li.is-rejected {
-  border-color: rgba(220, 38, 38, 0.4);
-  background: rgba(220, 38, 38, 0.06);
-}
-
-.revision-list li.is-selected {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 1px;
-}
-
-.revision-header {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.4rem;
-  font-size: 0.8rem;
-  color: var(--color-primary);
-}
-
-.revision-select {
-  color: var(--color-primary);
-}
-
-.revision-file-count {
-  margin: 0.35rem 0;
-  color: var(--color-text-muted);
-  font-size: 0.75rem;
-}
-
-.current-tag {
-  margin-left: auto;
-  padding: 0.15rem 0.45rem;
-  border-radius: 4px;
-  background: var(--color-primary);
-  color: var(--color-surface);
-  font-size: 0.65rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.revision-meta {
-  display: grid;
-  gap: 0.3rem;
-  font-size: 0.75rem;
-}
-
-.revision-meta div {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
 }
 
 .preview-panel--skeleton,
