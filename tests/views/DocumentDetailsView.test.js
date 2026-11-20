@@ -781,6 +781,73 @@ describe('DocumentDetailsView', () => {
     expect(wrapper.find('.preview-footer').exists()).toBe(false)
   })
 
+  describe('auditor comment', () => {
+    const auditedRevision = (id, version, status, comment) => ({
+      ...makeDocument().revision,
+      id,
+      version,
+      status,
+      auditor_comment: comment,
+      auditor: { id: 10, name: 'Thiago Serpa' },
+      audited_at: '2026-11-19T01:57:50.431168+00:00',
+    })
+
+    async function mountAudited(user) {
+      authStore.currentUser = user
+      const approved = auditedRevision(18, 2, 'APPROVED', 'Tudo conforme.')
+      const rejected = auditedRevision(17, 1, 'REJECTED', 'Códigos divergentes.')
+      fetchDocumentDetail.mockResolvedValue(
+        makeDocument({ revision: approved, versions: [approved, rejected] }),
+      )
+      const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
+      mountedViews.push(wrapper)
+      await flushPromises()
+      return wrapper
+    }
+
+    it('should show the approval reason below the description', async () => {
+      const wrapper = await mountAudited({
+        id: RESPONSIBLE_ID,
+        name: 'Beatriz Canuto',
+        email: 'beatriz@example.com',
+      })
+
+      const block = wrapper.find('.audit-block')
+      expect(block.text()).toContain('Motivo da aprovação')
+      expect(block.text()).toContain('Tudo conforme.')
+      expect(block.text()).toContain('Thiago Serpa')
+    })
+
+    it('should show the rejection reason when a rejected revision is selected', async () => {
+      const wrapper = await mountAudited({
+        id: RESPONSIBLE_ID,
+        name: 'Beatriz Canuto',
+        email: 'beatriz@example.com',
+      })
+
+      await wrapper.findAll('.revision-list li')[1].trigger('click')
+
+      const block = wrapper.find('.audit-block')
+      expect(block.text()).toContain('Motivo da recusa')
+      expect(block.text()).toContain('Códigos divergentes.')
+    })
+
+    it('should not show the section when the revision has no auditor comment', async () => {
+      authStore.currentUser = {
+        id: RESPONSIBLE_ID,
+        name: 'Beatriz Canuto',
+        email: 'beatriz@example.com',
+      }
+      fetchDocumentDetail.mockResolvedValue(makeDocument())
+
+      const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
+      mountedViews.push(wrapper)
+      await flushPromises()
+
+      expect(wrapper.find('.audit-block').exists()).toBe(false)
+    })
+  })
+
   describe('recommended documents', () => {
     afterEach(() => {
       routeParams.documentId = '23'
