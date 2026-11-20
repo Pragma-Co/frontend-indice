@@ -19,8 +19,10 @@ import {
   fetchAreaCollaborators,
   removeAccessGroupMember,
 } from '@/api/manager.js'
+import { useAuthStore } from '@/stores/authStore.js'
 import { useNotificationStore } from '@/stores/notificationStore.js'
 import {
+  LOCK_REASONS,
   mergeCollaborators,
   normalizeAccessGroup,
   useCollaboratorsPanel,
@@ -113,6 +115,37 @@ describe('mergeCollaborators', () => {
   })
 })
 
+describe('mergeCollaborators restrictions', () => {
+  const OUTSIDER = { user_id: 20, name: 'Caio Bertoni', email: 'caio@empresa.com' }
+  const REMOVED = {
+    user_id: 21,
+    name: 'Origenes Mota',
+    email: 'origenes@empresa.com',
+    is_active: false,
+  }
+
+  it('should leave the current manager out of the list even when in a group', () => {
+    const result = mergeCollaborators([MARINA, RAFAEL].map(asAreaUser), [{ id: 1 }], [[MARINA]], 7)
+
+    expect(result.map((person) => person.name)).toEqual(['Rafael Nunes'])
+  })
+
+  it('should let only the collaborators of the area be changed', () => {
+    const result = mergeCollaborators([asAreaUser(RAFAEL)], [{ id: 1 }], [[RAFAEL, OUTSIDER]])
+
+    expect(result.map((person) => [person.name, person.lockReason])).toEqual([
+      ['Caio Bertoni', LOCK_REASONS.OTHER_AREA],
+      ['Rafael Nunes', null],
+    ])
+  })
+
+  it('should lock a group member already removed from the system', () => {
+    const result = mergeCollaborators([], [{ id: 1 }], [[REMOVED]])
+
+    expect(result[0]).toMatchObject({ name: 'Origenes Mota', lockReason: LOCK_REASONS.REMOVED })
+  })
+})
+
 describe('useCollaboratorsPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -195,6 +228,44 @@ describe('useCollaboratorsPanel', () => {
       type: 'success',
       message: 'Grupos de acesso de Rafael Nunes atualizados.',
     })
+  })
+
+  it('should not list the manager who is using the screen', async () => {
+    useAuthStore().currentUser = { id: 7, name: 'Marina Duarte' }
+
+    const panel = await mountPanel()
+
+    expect(panel.collaboratorRows.value.map((row) => row.name)).toEqual(['Rafael Nunes'])
+  })
+
+  it('should not open the groups of a collaborator from another area', async () => {
+    const outsider = { user_id: 20, name: 'Caio Bertoni', email: 'caio@empresa.com' }
+    respondWith({ 1: [MARINA, outsider] })
+    const panel = await mountPanel()
+
+    panel.openMembershipDialog(20)
+    await panel.saveMemberships([])
+
+    expect(panel.editingCollaborator.value).toBeNull()
+    expect(removeAccessGroupMember).not.toHaveBeenCalled()
+  })
+
+  it('should not open the groups of a user removed from the system', async () => {
+    const removed = {
+      user_id: 21,
+      name: 'Origenes Mota',
+      email: 'origenes@empresa.com',
+      is_active: false,
+    }
+    respondWith({ 1: [MARINA, removed] })
+    const panel = await mountPanel()
+
+    panel.openMembershipDialog(21)
+
+    expect(panel.editingCollaborator.value).toBeNull()
+    expect(panel.collaboratorRows.value.find((row) => row.id === 21).lockReason).toBe(
+      LOCK_REASONS.REMOVED,
+    )
   })
 
   it('should treat a membership already applied elsewhere as saved', async () => {
