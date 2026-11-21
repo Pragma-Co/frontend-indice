@@ -32,7 +32,6 @@ const kind = computed(() => {
   return 'unsupported'
 })
 
-// The backend refuses files opened by iframe/img, so only docx supports zoom here
 const zoomable = computed(() => kind.value === 'docx')
 const zoomValue = computed(() => (zoom.value === FIT ? FIT_BASELINE : zoom.value))
 const zoomLabel = computed(() => (zoom.value === FIT ? 'Ajustado' : `${zoom.value}%`))
