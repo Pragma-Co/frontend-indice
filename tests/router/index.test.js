@@ -15,15 +15,8 @@ function startWithoutSession() {
 }
 
 describe('loginLocation', () => {
-  it('should keep the requested path to return to it after login', () => {
-    expect(loginLocation('/documents?q=asa')).toEqual({
-      name: 'login',
-      query: { redirect: '/documents?q=asa' },
-    })
-  })
-
-  it.each(['/', '/home', '', undefined])('should not keep a redirect to %s', (path) => {
-    expect(loginLocation(path)).toEqual({ name: 'login' })
+  it('should open the login screen without carrying the requested path', () => {
+    expect(loginLocation()).toEqual({ name: 'login' })
   })
 })
 
@@ -75,14 +68,14 @@ describe('router', () => {
     ])
   })
 
-  it('should send a visitor without a session to the login screen keeping the requested page', async () => {
+  it('should send a visitor without a session to the login screen', async () => {
     startWithoutSession()
 
     await router.push('/documents?q=asa')
 
     expect(fetchCurrentUser).toHaveBeenCalledTimes(1)
     expect(router.currentRoute.value.name).toBe('login')
-    expect(router.currentRoute.value.query).toEqual({ redirect: '/documents?q=asa' })
+    expect(router.currentRoute.value.query).toEqual({})
     expect(document.title).toBe('Índice - Entrar')
   })
 
@@ -142,7 +135,7 @@ describe('router', () => {
 
     expect(fetchCurrentUser).not.toHaveBeenCalled()
     expect(router.currentRoute.value.name).toBe('login')
-    expect(router.currentRoute.value.query).toEqual({ redirect: '/profile' })
+    expect(router.currentRoute.value.query).toEqual({})
   })
 
   it.each(['/revisions', '/collaborators'])(

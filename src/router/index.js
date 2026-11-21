@@ -2,11 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
 import { useSearchStore } from '../stores/searchStore'
 
-const PATHS_WITHOUT_REDIRECT = ['/', '/home']
-
-export function loginLocation(fullPath) {
-  if (!fullPath || PATHS_WITHOUT_REDIRECT.includes(fullPath)) return { name: 'login' }
-  return { name: 'login', query: { redirect: fullPath } }
+export function loginLocation() {
+  return { name: 'login' }
 }
 
 const router = createRouter({
@@ -104,7 +101,7 @@ router.beforeEach(async (to, from) => {
 
   if (to.name === 'login' && auth.isAuthenticated) return { name: 'home' }
   if (to.meta.public) return true
-  if (!auth.isAuthenticated) return loginLocation(to.fullPath)
+  if (!auth.isAuthenticated) return loginLocation()
   if (to.meta.managerOnly && !auth.isManager) return { name: 'home' }
   if (to.meta.collaboratorOnly && auth.isManager) return { name: 'home' }
   return true

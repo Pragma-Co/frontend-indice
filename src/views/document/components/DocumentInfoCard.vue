@@ -18,21 +18,30 @@ const newRevisionHint = computed(() => REVISION_BLOCK_MESSAGES[props.newRevision
 
 const auditorComment = computed(() => props.currentRevision?.auditor_comment?.trim() || '')
 
+const documentStatusBadge = computed(() => statusBadgeFor(props.document.revision?.status))
+
+const managersLabel = computed(() =>
+  (props.document.managers ?? []).map((manager) => manager.name).join(', '),
+)
+
 const auditSectionTitle = computed(() => {
   const status = props.currentRevision?.status
   if (status === 'APPROVED') return 'Motivo da aprovação'
   if (status === 'REJECTED') return 'Motivo da recusa'
   return 'Parecer do auditor'
 })
+
+const emptyAuditMessage = computed(() =>
+  props.currentRevision?.status === 'PENDING'
+    ? 'Esta revisão ainda aguarda análise do auditor.'
+    : 'O auditor não registrou justificativa para esta revisão.',
+)
 </script>
 
 <template>
   <aside class="document-card">
     <header class="document-card-header">
-      <StatusBadge
-        v-if="statusBadgeFor(currentRevision?.status)"
-        :status="statusBadgeFor(currentRevision?.status)"
-      />
+      <StatusBadge v-if="documentStatusBadge" :status="documentStatusBadge" />
       <span>Ref: {{ document.code }}</span>
     </header>
 
@@ -61,26 +70,34 @@ const auditSectionTitle = computed(() => {
           {{ document.revision?.issue_date ? formatDate(document.revision.issue_date) : '-' }}
         </dd>
       </div>
+      <div v-if="managersLabel">
+        <dt>{{ document.managers.length > 1 ? 'Gestores' : 'Gestor' }}</dt>
+        <dd>{{ managersLabel }}</dd>
+      </div>
       <div>
         <dt>Responsável</dt>
         <dd>{{ document.responsible.name }}</dd>
       </div>
     </dl>
 
-    <div v-if="document.description" class="description-block">
+    <div class="description-block">
       <h2>Descrição</h2>
-      <p>{{ document.description }}</p>
+      <p v-if="document.description">{{ document.description }}</p>
+      <p v-else class="block-empty">Nenhuma descrição foi cadastrada para este documento.</p>
     </div>
 
-    <div v-if="hasAccess && auditorComment" class="description-block audit-block">
+    <div class="description-block audit-block">
       <h2>{{ auditSectionTitle }}</h2>
-      <p>{{ auditorComment }}</p>
-      <p v-if="currentRevision?.auditor?.name" class="audit-author">
-        {{ currentRevision.auditor.name }}
-        <template v-if="currentRevision.audited_at">
-          · {{ formatDate(currentRevision.audited_at) }}
-        </template>
-      </p>
+      <template v-if="auditorComment">
+        <p>{{ auditorComment }}</p>
+        <p v-if="currentRevision?.auditor?.name" class="audit-author">
+          {{ currentRevision.auditor.name }}
+          <template v-if="currentRevision.audited_at">
+            · {{ formatDate(currentRevision.audited_at) }}
+          </template>
+        </p>
+      </template>
+      <p v-else class="block-empty">{{ emptyAuditMessage }}</p>
     </div>
 
     <div v-if="document.areas?.length" class="tag-block">
@@ -273,6 +290,10 @@ dd {
 .audit-block .audit-author {
   margin-top: 0.4rem;
   font-size: 0.72rem;
+}
+
+.description-block p.block-empty {
+  font-style: italic;
 }
 
 .tags {

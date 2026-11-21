@@ -33,7 +33,7 @@ describe('createSessionExpiryHandler', () => {
     setActivePinia(createPinia())
   })
 
-  it('should log out, warn the user and go to the login keeping the current page', async () => {
+  it('should log out, warn the user and go to the login screen', async () => {
     const router = await createTestRouter('/documents?q=asa')
     useAuthStore().setSession(MANAGER_ACCOUNT)
 
@@ -42,16 +42,6 @@ describe('createSessionExpiryHandler', () => {
 
     expect(useAuthStore().isAuthenticated).toBe(false)
     expect(errorMessages()).toEqual([SESSION_EXPIRED_MESSAGE])
-    expect(router.currentRoute.value.query).toEqual({ redirect: '/documents?q=asa' })
-  })
-
-  it('should not keep a redirect when the session expires on the home page', async () => {
-    const router = await createTestRouter('/home')
-    useAuthStore().setSession(MANAGER_ACCOUNT)
-
-    createSessionExpiryHandler(router)()
-    await vi.waitFor(() => expect(router.currentRoute.value.name).toBe('login'))
-
     expect(router.currentRoute.value.query).toEqual({})
   })
 

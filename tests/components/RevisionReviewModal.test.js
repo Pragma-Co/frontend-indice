@@ -9,6 +9,12 @@ vi.mock('@/stores/authStore.js', () => ({
   useAuthStore: () => ({ currentUser: { id: 10, name: 'Thiago Serpa' } }),
 }))
 vi.mock('docx-preview', () => ({ renderAsync: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('@/components/common/ProtectedPdf.vue', () => ({
+  default: { name: 'ProtectedPdf', props: ['url'], template: '<div />' },
+}))
+vi.mock('@/components/common/ProtectedImage.vue', () => ({
+  default: { name: 'ProtectedImage', props: ['url', 'alt'], template: '<div />' },
+}))
 
 import { submitRevisionDecision } from '@/api/manager.js'
 import RevisionReviewModal from '@/views/manager/components/RevisionReviewModal.vue'
@@ -102,7 +108,10 @@ describe('RevisionReviewModal', () => {
 
     expect(fileColumn.find('.review-file-name').text()).toContain('memorial_pilone_rev02.pdf')
     expect(fileColumn.find('.review-file-name').text()).toContain('4.2 MB')
-    expect(fileColumn.find('iframe').attributes('src')).toContain('/api/files/58/view?user_id=10')
+    expect(fileColumn.findComponent({ name: 'ProtectedPdf' }).props('url')).toBe(
+      '/api/files/58/view?user_id=10',
+    )
+    expect(fileColumn.find('iframe').exists()).toBe(false)
     expect(fileColumn.find('button[aria-label="Aumentar zoom"]').exists()).toBe(true)
     expect(fileColumn.text()).toContain('Arquivo 1 de 1')
   })
@@ -156,7 +165,9 @@ describe('RevisionReviewModal', () => {
     expect(previousDisabled.disabled).toBeDefined()
     expect(wrapper.text()).toContain('Arquivo 2 de 2')
     expect(wrapper.find('.review-file-name').text()).toContain('detalhe.png')
-    expect(wrapper.find('img').attributes('src')).toBe('/api/files/59/view?user_id=10')
+    expect(wrapper.findComponent({ name: 'ProtectedImage' }).props('url')).toBe(
+      '/api/files/59/view?user_id=10',
+    )
   })
 
   it('should approve the revision and report the decision', async () => {
