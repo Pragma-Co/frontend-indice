@@ -275,7 +275,7 @@ describe('NewRevisionView', () => {
 
     expect(wrapper.find('[role="alert"]').text()).toBe('Documento não encontrado.')
     expect(wrapper.find('#revision-justification').exists()).toBe(false)
-    expect(findButton(wrapper, 'Voltar para a listagem')).toBeDefined()
+    expect(wrapper.find('.page-footer button').text()).toBe('Voltar')
   })
 
   it('should not offer the form when the document already has a revision under review', () => {
@@ -298,6 +298,6 @@ describe('NewRevisionView', () => {
     expect(wrapper.find('[role="alert"]').text()).toContain('colaboradores das áreas')
     expect(wrapper.find('#revision-justification').exists()).toBe(false)
     expect(wrapper.find('input[type="file"]').exists()).toBe(false)
-    expect(findButton(wrapper, 'Voltar para a listagem')).toBeDefined()
+    expect(wrapper.find('.page-footer button').text()).toBe('Voltar')
   })
 })

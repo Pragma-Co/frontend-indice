@@ -888,6 +888,24 @@ describe('DocumentDetailsView', () => {
       mountedViews.push(wrapper)
       await flushPromises()
 
+      expect(wrapper.find('.audit-block').text()).toContain('ainda aguarda análise do auditor')
+    })
+
+    it('should explain that a decided revision has no registered justification', async () => {
+      authStore.currentUser = {
+        id: RESPONSIBLE_ID,
+        name: 'Beatriz Canuto',
+        email: 'beatriz@example.com',
+      }
+      const approved = auditedRevision(18, 2, 'APPROVED', '')
+      fetchDocumentDetail.mockResolvedValue(
+        makeDocument({ revision: approved, versions: [approved] }),
+      )
+
+      const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
+      mountedViews.push(wrapper)
+      await flushPromises()
+
       expect(wrapper.find('.audit-block').text()).toContain('não registrou justificativa')
     })
   })
