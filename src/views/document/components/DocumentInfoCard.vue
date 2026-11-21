@@ -14,9 +14,6 @@ const props = defineProps({
 
 defineEmits(['select-revision'])
 
-const NO_ACCESS_MESSAGE =
-  'Conteúdo restrito: você ainda não tem acesso aprovado a este documento. Solicite acesso para visualizá-lo.'
-
 const newRevisionHint = computed(() => REVISION_BLOCK_MESSAGES[props.newRevisionBlockReason] ?? '')
 
 const auditorComment = computed(() => props.currentRevision?.auditor_comment?.trim() || '')
@@ -85,15 +82,13 @@ const emptyAuditMessage = computed(() =>
 
     <div class="description-block">
       <h2>Descrição</h2>
-      <p v-if="!hasAccess" class="block-empty">{{ NO_ACCESS_MESSAGE }}</p>
-      <p v-else-if="document.description">{{ document.description }}</p>
+      <p v-if="document.description">{{ document.description }}</p>
       <p v-else class="block-empty">Nenhuma descrição foi cadastrada para este documento.</p>
     </div>
 
     <div class="description-block audit-block">
       <h2>{{ auditSectionTitle }}</h2>
-      <p v-if="!hasAccess" class="block-empty">{{ NO_ACCESS_MESSAGE }}</p>
-      <template v-else-if="auditorComment">
+      <template v-if="auditorComment">
         <p>{{ auditorComment }}</p>
         <p v-if="currentRevision?.auditor?.name" class="audit-author">
           {{ currentRevision.auditor.name }}

@@ -648,17 +648,46 @@ describe('DocumentDetailsView', () => {
     expect(wrapper.text()).toContain('Beatriz Canuto')
   })
 
-  it('should render the reduced payload the backend sends to a user without access', async () => {
+  it('should show the description and the decision reason to a user without access', async () => {
     authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante', email: 'visitante@example.com' }
-    const { description, ...reduced } = makeDocument({ access_status: 'PENDING' })
+    const reduced = makeDocument({
+      access_status: 'PENDING',
+      description: 'Norma interna de furação das carenagens',
+    })
+    reduced.revision = {
+      ...reduced.revision,
+      status: 'APPROVED',
+      auditor_comment: 'Tudo conforme.',
+      auditor: { id: 10, name: 'Thiago Serpa' },
+    }
     delete reduced.revision.files
 
     const wrapper = await mountAsStranger(reduced)
 
-    expect(wrapper.find('.description-block').text()).toContain('Conteúdo restrito')
-    expect(wrapper.find('.audit-block').text()).toContain('Conteúdo restrito')
+    expect(wrapper.find('.description-block').text()).toContain(
+      'Norma interna de furação das carenagens',
+    )
+    expect(wrapper.find('.audit-block').text()).toContain('Motivo da aprovação')
+    expect(wrapper.find('.audit-block').text()).toContain('Tudo conforme.')
     expect(wrapper.find('.access-overlay').exists()).toBe(true)
-    expect(description).toBeDefined()
+  })
+
+  it('should list the managers of the document areas', async () => {
+    authStore.currentUser = { id: OTHER_USER_ID, name: 'Visitante', email: 'visitante@example.com' }
+    fetchDocumentDetail.mockResolvedValue(
+      makeDocument({
+        managers: [
+          { id: 10, name: 'Thiago Serpa', email: 'thiago@example.com' },
+          { id: 11, name: 'Patrícia Lemos', email: 'patricia@example.com' },
+        ],
+      }),
+    )
+
+    const wrapper = mount(DocumentDetailsView, { global: { stubs: globalStubs } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('Gestores')
+    expect(wrapper.text()).toContain('Thiago Serpa, Patrícia Lemos')
   })
 
   it('should allow the responsible user to preview even when access is PENDING', async () => {
