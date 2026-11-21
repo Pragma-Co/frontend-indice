@@ -21,6 +21,7 @@ const removeFiles = vi.fn((ids) => {
 })
 const resolveDuplicate = vi.fn()
 const goToDocumentList = vi.fn()
+const goBack = vi.fn()
 const submit = vi.fn()
 
 vi.mock('@/views/document/composables/useNewRevision.js', () => ({
@@ -49,6 +50,7 @@ vi.mock('@/views/document/composables/useNewRevision.js', () => ({
     removeFiles,
     resolveDuplicate,
     goToDocumentList,
+    goBack,
     submit,
   }),
 }))
@@ -148,12 +150,12 @@ describe('NewRevisionView', () => {
     expect(submit).toHaveBeenCalledTimes(1)
   })
 
-  it('should return to the list from the cancel button', async () => {
+  it('should go back to the previous screen from the cancel button', async () => {
     const wrapper = mount(NewRevisionView)
 
     await findButton(wrapper, 'Cancelar e Voltar').trigger('click')
 
-    expect(goToDocumentList).toHaveBeenCalledTimes(1)
+    expect(goBack).toHaveBeenCalledTimes(1)
   })
 
   it('should write the justification and count its characters', async () => {
@@ -273,7 +275,7 @@ describe('NewRevisionView', () => {
 
     expect(wrapper.find('[role="alert"]').text()).toBe('Documento não encontrado.')
     expect(wrapper.find('#revision-justification').exists()).toBe(false)
-    expect(findButton(wrapper, 'Voltar para a listagem')).toBeDefined()
+    expect(wrapper.find('.page-footer button').text()).toBe('Voltar')
   })
 
   it('should not offer the form when the document already has a revision under review', () => {
@@ -296,6 +298,6 @@ describe('NewRevisionView', () => {
     expect(wrapper.find('[role="alert"]').text()).toContain('colaboradores das áreas')
     expect(wrapper.find('#revision-justification').exists()).toBe(false)
     expect(wrapper.find('input[type="file"]').exists()).toBe(false)
-    expect(findButton(wrapper, 'Voltar para a listagem')).toBeDefined()
+    expect(wrapper.find('.page-footer button').text()).toBe('Voltar')
   })
 })

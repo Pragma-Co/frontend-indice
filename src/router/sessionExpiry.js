@@ -12,6 +12,6 @@ export function createSessionExpiryHandler(router) {
     useNotificationStore().error(SESSION_EXPIRED_MESSAGE)
     const current = router.currentRoute.value
     if (current.name === 'login') return
-    router.push(loginLocation(current.fullPath)).catch(() => null)
+    router.push(loginLocation()).catch(() => null)
   }
 }

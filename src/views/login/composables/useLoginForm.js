@@ -1,5 +1,5 @@
 import { computed, reactive, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/authStore'
 import { validateLoginForm } from '@/utils/validators'
 
@@ -15,19 +15,9 @@ export function signInErrorMessage(status) {
   return SIGN_IN_ERROR_MESSAGES[status] ?? FALLBACK_SIGN_IN_ERROR
 }
 
-export function resolveRedirectTarget(redirect) {
-  const isSafePath =
-    typeof redirect === 'string' &&
-    redirect.startsWith('/') &&
-    !redirect.startsWith('//') &&
-    !redirect.startsWith('/\\')
-  return isSafePath ? redirect : { name: 'home' }
-}
-
 export function useLoginForm() {
   const auth = useAuthStore()
   const router = useRouter()
-  const route = useRoute()
 
   const form = reactive({ email: '', password: '' })
   const touched = reactive({ email: false, password: false })
@@ -69,7 +59,7 @@ export function useLoginForm() {
     } finally {
       submitting.value = false
     }
-    await router.push(resolveRedirectTarget(route.query?.redirect))
+    await router.push({ name: 'home' })
   }
 
   return { form, errors, serverError, submitting, onBlur, clearServerError, submit }
