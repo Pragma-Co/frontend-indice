@@ -100,6 +100,11 @@ export function useNewRevision() {
     router.push({ name: 'document-list' })
   }
 
+  function goBack() {
+    if (window.history.state?.back) router.back()
+    else goToDocumentList()
+  }
+
   function submitErrorMessage(error) {
     const reason = SUBMIT_BLOCK_REASONS[error?.details?.error]
     if (reason) return REVISION_BLOCK_MESSAGES[reason]
@@ -151,6 +156,7 @@ export function useNewRevision() {
     removeFiles,
     resolveDuplicate,
     goToDocumentList,
+    goBack,
     submit,
   }
 }

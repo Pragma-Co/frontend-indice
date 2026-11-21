@@ -138,26 +138,14 @@ describe('LoginView', () => {
     expect(push).toHaveBeenCalledWith({ name: 'home' })
   })
 
-  it('should return to a safe redirect path after signing in', async () => {
+  it('should open the home route even when the url carries a redirect', async () => {
     route.query = { redirect: '/documents/23?tab=history' }
 
     await fillAndSubmit(view, {})
     await flushPromises()
 
-    expect(push).toHaveBeenCalledWith('/documents/23?tab=history')
+    expect(push).toHaveBeenCalledWith({ name: 'home' })
   })
-
-  it.each(['//evil.com', 'https://evil.com', '/\\evil.com', ['/home']])(
-    'should ignore the unsafe redirect %s',
-    async (redirect) => {
-      route.query = { redirect }
-
-      await fillAndSubmit(view, {})
-      await flushPromises()
-
-      expect(push).toHaveBeenCalledWith({ name: 'home' })
-    },
-  )
 
   it('should show the wrong credentials message and keep the typed values', async () => {
     view.auth.signIn.mockRejectedValue(apiError(401))

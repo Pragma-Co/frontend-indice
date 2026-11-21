@@ -655,7 +655,8 @@ describe('DocumentDetailsView', () => {
 
     const wrapper = await mountAsStranger(reduced)
 
-    expect(wrapper.find('.description-block').exists()).toBe(false)
+    expect(wrapper.find('.description-block').text()).toContain('Conteúdo restrito')
+    expect(wrapper.find('.audit-block').text()).toContain('Conteúdo restrito')
     expect(wrapper.find('.access-overlay').exists()).toBe(true)
     expect(description).toBeDefined()
   })
@@ -875,7 +876,7 @@ describe('DocumentDetailsView', () => {
       expect(block.text()).toContain('Códigos divergentes.')
     })
 
-    it('should not show the section when the revision has no auditor comment', async () => {
+    it('should explain the missing justification when the revision has no auditor comment', async () => {
       authStore.currentUser = {
         id: RESPONSIBLE_ID,
         name: 'Beatriz Canuto',
@@ -887,7 +888,7 @@ describe('DocumentDetailsView', () => {
       mountedViews.push(wrapper)
       await flushPromises()
 
-      expect(wrapper.find('.audit-block').exists()).toBe(false)
+      expect(wrapper.find('.audit-block').text()).toContain('não registrou justificativa')
     })
   })
 
