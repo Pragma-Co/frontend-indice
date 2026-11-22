@@ -6,7 +6,8 @@ vi.mock('vue-router', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 vi.mock('@/api/documents', () => ({ fetchSimpleFilters: vi.fn().mockResolvedValue({}) }))
 
 import HomeView from '@/views/home/HomeView.vue'
-import { PROFILES, useAuthStore } from '@/stores/authStore'
+import { useAuthStore } from '@/stores/authStore'
+import { COLLABORATOR_ACCOUNT } from '../fixtures/accounts'
 
 describe('HomeView', () => {
   beforeEach(() => {
@@ -16,7 +17,7 @@ describe('HomeView', () => {
 
   it('should greet the user again when the account name changes, without a reload', async () => {
     const auth = useAuthStore()
-    auth.login(PROFILES.COLLABORATOR)
+    auth.setSession(COLLABORATOR_ACCOUNT)
     const wrapper = mount(HomeView, { global: { stubs: { SearchPanel: true } } })
     await flushPromises()
     const before = wrapper.find('h1').text()

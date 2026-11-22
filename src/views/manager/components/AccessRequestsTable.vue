@@ -1,4 +1,5 @@
 <script setup>
+import Button from '@/components/common/Button.vue'
 import OverflowPill from '@/views/manager/components/OverflowPill.vue'
 import PendingStatusBadge from '@/views/manager/components/PendingStatusBadge.vue'
 import { formatDateTime } from '@/utils/formatters.js'
@@ -6,6 +7,8 @@ import { formatDateTime } from '@/utils/formatters.js'
 defineProps({
   requests: { type: Array, required: true },
 })
+
+const emit = defineEmits(['evaluate'])
 </script>
 
 <template>
@@ -18,6 +21,7 @@ defineProps({
         <col class="col-requester" />
         <col class="col-date" />
         <col class="col-status" />
+        <col class="col-actions" />
       </colgroup>
       <thead>
         <tr>
@@ -27,6 +31,7 @@ defineProps({
           <th scope="col">Solicitante</th>
           <th scope="col">Data do pedido</th>
           <th scope="col">Status</th>
+          <th scope="col">Ações</th>
         </tr>
       </thead>
       <tbody>
@@ -46,6 +51,15 @@ defineProps({
           <td>
             <PendingStatusBadge />
           </td>
+          <td>
+            <Button
+              type="button"
+              :aria-label="`Avaliar acesso de ${request.requesterName} para ${request.code}`"
+              @click="emit('evaluate', request)"
+            >
+              Avaliar Acesso
+            </Button>
+          </td>
         </tr>
       </tbody>
     </table>
@@ -56,31 +70,45 @@ defineProps({
 
 <style scoped>
 .col-code {
-  width: 17%;
+  width: 208px;
 }
 
 .col-title {
-  width: 31%;
+  width: auto;
+  min-width: 180px;
 }
 
 .col-discipline {
-  width: 13%;
+  width: 130px;
 }
 
 .col-requester {
-  width: 15%;
+  width: 170px;
 }
 
 .col-date {
-  width: 14%;
+  width: 154px;
 }
 
 .col-status {
-  width: 10%;
+  width: 129px;
+}
+
+.col-actions {
+  width: 146px;
 }
 
 .cell-date {
   color: var(--color-text-muted);
   white-space: nowrap;
+}
+
+td :deep(.btn) {
+  padding: 0.45rem 0.65rem;
+  font-size: 0.78rem;
+}
+
+.table-scroll :deep(.panel-table) {
+  min-width: 72rem;
 }
 </style>

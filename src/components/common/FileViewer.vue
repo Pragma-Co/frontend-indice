@@ -2,6 +2,8 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import { Minus, Plus } from '@lucide/vue'
 import { renderAsync } from 'docx-preview'
+import ProtectedImage from '@/components/common/ProtectedImage.vue'
+import ProtectedPdf from '@/components/common/ProtectedPdf.vue'
 
 const props = defineProps({
   file: { type: Object, default: null },
@@ -30,18 +32,12 @@ const kind = computed(() => {
   return 'unsupported'
 })
 
-const zoomable = computed(() => ['pdf', 'image', 'docx'].includes(kind.value))
+const zoomable = computed(() => kind.value === 'docx')
 const zoomValue = computed(() => (zoom.value === FIT ? FIT_BASELINE : zoom.value))
 const zoomLabel = computed(() => (zoom.value === FIT ? 'Ajustado' : `${zoom.value}%`))
 const canZoomOut = computed(() => zoomable.value && zoomValue.value > ZOOM_LEVELS[0])
 const canZoomIn = computed(() => zoomable.value && zoomValue.value < ZOOM_LEVELS.at(-1))
 
-const pdfUrl = computed(() => {
-  const zoomParam = zoom.value === FIT ? 'page-width' : zoom.value
-  return `${props.url}#toolbar=0&navpanes=0&zoom=${zoomParam}`
-})
-
-const scaledWidth = computed(() => (zoom.value === FIT ? null : `${zoom.value}%`))
 const docxZoom = computed(() => (zoom.value === FIT ? null : zoom.value / 100))
 
 function zoomOut() {
@@ -134,20 +130,12 @@ watch(
         Nenhum arquivo disponível para esta revisão.
       </p>
 
-      <iframe
-        v-else-if="kind === 'pdf'"
-        :key="`${file.id}-${zoom}`"
-        :src="pdfUrl"
-        class="viewer-frame"
-        :title="`Visualização de ${file.original_name}`"
-      />
+      <ProtectedPdf v-else-if="kind === 'pdf'" :key="file.id" :url="url" />
 
-      <img
+      <ProtectedImage
         v-else-if="kind === 'image'"
-        :src="url"
-        class="viewer-image"
-        :class="{ 'viewer-image-fit': zoom === FIT }"
-        :style="{ width: scaledWidth }"
+        :key="file.id"
+        :url="url"
         :alt="file.original_name"
       />
 
@@ -245,24 +233,6 @@ watch(
   flex: 1;
   min-height: 0;
   overflow: auto;
-}
-
-.viewer-frame {
-  flex: 1;
-  width: 100%;
-  border: 0;
-  background: var(--color-surface-muted);
-}
-
-.viewer-image {
-  flex-shrink: 0;
-  margin: auto;
-}
-
-.viewer-image-fit {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
 }
 
 .viewer-docx {

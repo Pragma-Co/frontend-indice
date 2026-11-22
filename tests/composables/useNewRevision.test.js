@@ -3,6 +3,7 @@ import { defineComponent, h, ref } from 'vue'
 import { flushPromises, mount } from '@vue/test-utils'
 
 const route = { params: { documentId: '23' } }
+const currentAuth = { currentUser: { id: 12, name: 'Beatriz Canuto', areaAcronym: 'EST' } }
 const router = { push: vi.fn() }
 const notifications = { success: vi.fn(), error: vi.fn() }
 const queue = ref([])
@@ -17,7 +18,7 @@ vi.mock('@/api/documents.js', () => ({
   createDocumentRevision: vi.fn(),
 }))
 vi.mock('@/stores/authStore.js', () => ({
-  useAuthStore: () => ({ currentUser: { id: 12, name: 'Beatriz Canuto' } }),
+  useAuthStore: () => currentAuth,
 }))
 vi.mock('@/stores/notificationStore.js', () => ({
   useNotificationStore: () => notifications,
@@ -45,6 +46,7 @@ function makeDocument(overrides = {}) {
     revision: { id: 5, version: 1, status: 'APPROVED' },
     access_status: 'APPROVED',
     responsible: { id: 12, name: 'Beatriz Canuto' },
+    areas: [{ acronym: 'EST', name: 'Engenharia Estrutural' }],
     ...overrides,
   }
 }
@@ -163,6 +165,36 @@ describe('useNewRevision', () => {
     expect(revision.canSubmit.value).toBe(false)
   })
 
+  it('should let the responsible open a revision outside the areas of the document', async () => {
+    fetchDocumentDetail.mockResolvedValue(
+      makeDocument({ areas: [{ acronym: 'QUA', name: 'Qualidade e Inspeção' }] }),
+    )
+
+    const revision = await mountRevision()
+
+    expect(revision.revisionBlocked.value).toBe(false)
+  })
+
+  it('should block a user outside the areas of the document', async () => {
+    fetchDocumentDetail.mockResolvedValue(
+      makeDocument({
+        areas: [{ acronym: 'QUA', name: 'Qualidade e Inspeção' }],
+        responsible: { id: 3, name: 'Caio Bertoni' },
+      }),
+    )
+    const revision = await mountRevision()
+    queue.value = [makeFile()]
+    revision.justification.value = VALID_JUSTIFICATION
+
+    await revision.submit()
+
+    expect(revision.revisionBlocked.value).toBe(true)
+    expect(revision.revisionBlockedMessage.value).toBe(
+      'Somente colaboradores das áreas deste documento podem criar uma revisão.',
+    )
+    expect(createDocumentRevision).not.toHaveBeenCalled()
+  })
+
   it('should block a document that already has a revision under review', async () => {
     fetchDocumentDetail.mockResolvedValue(
       makeDocument({ revision: { id: 5, version: 2, status: 'PENDING' } }),
@@ -178,20 +210,15 @@ describe('useNewRevision', () => {
     expect(createDocumentRevision).not.toHaveBeenCalled()
   })
 
-  it('should block a document the user has no permission to see', async () => {
+  it('should allow a collaborator of the area without an access grant', async () => {
     fetchDocumentDetail.mockResolvedValue(
       makeDocument({ access_status: 'PENDING', responsible: { id: 3, name: 'Caio Bertoni' } }),
     )
+
     const revision = await mountRevision()
-    queue.value = [makeFile()]
-    revision.justification.value = VALID_JUSTIFICATION
 
-    await revision.submit()
-
-    expect(revision.revisionBlocked.value).toBe(true)
-    expect(revision.revisionBlockedMessage.value).toContain('não tem permissão')
-    expect(revision.canSubmit.value).toBe(false)
-    expect(createDocumentRevision).not.toHaveBeenCalled()
+    expect(revision.revisionBlocked.value).toBe(false)
+    expect(revision.revisionBlockedMessage.value).toBe('')
   })
 
   it('should allow the responsible even without an explicit access grant', async () => {
@@ -240,6 +267,34 @@ describe('useNewRevision', () => {
     expect(router.push).not.toHaveBeenCalled()
     expect(revision.submitting.value).toBe(false)
   })
+
+  it.each([
+    [
+      403,
+      'RevisionOutsideArea',
+      'Somente colaboradores das áreas deste documento podem criar uma revisão.',
+    ],
+    [
+      409,
+      'RevisionInProgress',
+      'Este documento já possui uma revisão em andamento. Aguarde a conclusão para criar outra.',
+    ],
+  ])(
+    'should explain a submission refused by the backend with %s %s',
+    async (status, code, message) => {
+      createDocumentRevision.mockRejectedValue(
+        Object.assign(new Error('refused'), { status, details: { error: code } }),
+      )
+      const revision = await mountRevision()
+      queue.value = [makeFile()]
+      revision.justification.value = VALID_JUSTIFICATION
+
+      await revision.submit()
+
+      expect(notifications.error).toHaveBeenCalledWith(message)
+      expect(router.push).not.toHaveBeenCalled()
+    },
+  )
 
   it('should return to the documents list on cancel', async () => {
     const revision = await mountRevision()

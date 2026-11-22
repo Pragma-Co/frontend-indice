@@ -2,6 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, mount } from '@vue/test-utils'
 
 vi.mock('docx-preview', () => ({ renderAsync: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('../../src/components/common/ProtectedPdf.vue', () => ({
+  default: { name: 'ProtectedPdf', props: ['url'], template: '<div />' },
+}))
+vi.mock('../../src/components/common/ProtectedImage.vue', () => ({
+  default: { name: 'ProtectedImage', props: ['url', 'alt'], template: '<div />' },
+}))
 
 import { renderAsync } from 'docx-preview'
 import FileViewer from '../../src/components/common/FileViewer.vue'
@@ -39,15 +45,13 @@ describe('FileViewer', () => {
     vi.unstubAllGlobals()
   })
 
-  it('should embed a pdf fitted to the width of the viewer', () => {
+  it('should show a pdf through the protected viewer instead of an iframe', () => {
     const wrapper = mountViewer(PDF)
 
-    const frame = wrapper.find('iframe')
-
-    expect(frame.attributes('src')).toBe(
-      '/api/files/58/view?user_id=10#toolbar=0&navpanes=0&zoom=page-width',
+    expect(wrapper.findComponent({ name: 'ProtectedPdf' }).props('url')).toBe(
+      '/api/files/58/view?user_id=10',
     )
-    expect(frame.attributes('title')).toBe('Visualização de Memorial.PDF')
+    expect(wrapper.find('iframe').exists()).toBe(false)
     expect(wrapper.find('.viewer-zoom-label').text()).toBe('Ajustado')
   })
 
@@ -57,21 +61,32 @@ describe('FileViewer', () => {
     expect(wrapper.find('.toolbar-info').text()).toBe('Arquivo 1 de 1')
   })
 
-  it('should zoom the pdf in and out through the controls', async () => {
-    const wrapper = mountViewer(PDF)
+  it('should keep the zoom disabled for pdf and image', () => {
+    for (const file of [PDF, IMAGE]) {
+      const wrapper = mountViewer(file)
+
+      expect(control(wrapper, 'Aumentar zoom').attributes('disabled')).toBeDefined()
+      expect(control(wrapper, 'Diminuir zoom').attributes('disabled')).toBeDefined()
+      expect(fitButton(wrapper).attributes('disabled')).toBeDefined()
+    }
+  })
+
+  it('should zoom a docx in and out through the controls', async () => {
+    const wrapper = mountViewer(DOCX)
+    await flushPromises()
 
     await control(wrapper, 'Aumentar zoom').trigger('click')
-    const zoomedIn = wrapper.find('iframe').attributes('src')
+    const zoomedIn = wrapper.find('.viewer-zoom-label').text()
     await control(wrapper, 'Diminuir zoom').trigger('click')
     await control(wrapper, 'Diminuir zoom').trigger('click')
 
-    expect(zoomedIn).toContain('zoom=125')
-    expect(wrapper.find('iframe').attributes('src')).toContain('zoom=75')
+    expect(zoomedIn).toBe('125%')
     expect(wrapper.find('.viewer-zoom-label').text()).toBe('75%')
   })
 
   it('should stop at the smallest and at the largest zoom', async () => {
-    const wrapper = mountViewer(PDF)
+    const wrapper = mountViewer(DOCX)
+    await flushPromises()
 
     for (let step = 0; step < 6; step += 1) {
       await control(wrapper, 'Aumentar zoom').trigger('click')
@@ -89,29 +104,26 @@ describe('FileViewer', () => {
     expect(control(wrapper, 'Diminuir zoom').attributes('disabled')).toBeDefined()
   })
 
-  it('should fit the file again on Ajustar', async () => {
-    const wrapper = mountViewer(PDF)
+  it('should fit the docx again on Ajustar', async () => {
+    const wrapper = mountViewer(DOCX)
+    await flushPromises()
     const disabledWhileFitted = fitButton(wrapper).attributes('disabled')
     await control(wrapper, 'Aumentar zoom').trigger('click')
 
     await fitButton(wrapper).trigger('click')
 
     expect(disabledWhileFitted).toBeDefined()
-    expect(wrapper.find('iframe').attributes('src')).toContain('zoom=page-width')
+    expect(wrapper.find('.viewer-zoom-label').text()).toBe('Ajustado')
   })
 
-  it('should scale an image with the zoom', async () => {
+  it('should show an image through the protected viewer', () => {
     const wrapper = mountViewer(IMAGE)
-    const fitted = wrapper.find('img').classes()
 
-    await control(wrapper, 'Aumentar zoom').trigger('click')
+    const image = wrapper.findComponent({ name: 'ProtectedImage' })
 
-    const image = wrapper.find('img')
-    expect(fitted).toContain('viewer-image-fit')
-    expect(image.attributes('src')).toBe('/api/files/59/view?user_id=10')
-    expect(image.attributes('alt')).toBe('detalhe.png')
-    expect(image.attributes('style')).toContain('width: 125%')
-    expect(image.classes()).not.toContain('viewer-image-fit')
+    expect(image.props('url')).toBe('/api/files/59/view?user_id=10')
+    expect(image.props('alt')).toBe('detalhe.png')
+    expect(wrapper.find('img').exists()).toBe(false)
   })
 
   it('should render a docx file with the embedded renderer', async () => {
@@ -152,12 +164,13 @@ describe('FileViewer', () => {
   })
 
   it('should fit the next file again when the file changes', async () => {
-    const wrapper = mountViewer(PDF)
+    const wrapper = mountViewer(DOCX)
+    await flushPromises()
     await control(wrapper, 'Aumentar zoom').trigger('click')
 
     await wrapper.setProps({ file: IMAGE, url: '/api/files/59/view?user_id=10' })
 
     expect(wrapper.find('.viewer-zoom-label').text()).toBe('Ajustado')
-    expect(wrapper.find('img').classes()).toContain('viewer-image-fit')
+    expect(wrapper.findComponent({ name: 'ProtectedImage' }).exists()).toBe(true)
   })
 })

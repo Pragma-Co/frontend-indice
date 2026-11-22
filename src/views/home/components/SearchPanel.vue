@@ -1,11 +1,14 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, useId } from 'vue'
 import { useRoute } from 'vue-router'
 import { ArrowRight, Building2, Calendar, ChevronDown, FileText, Search, Upload } from '@lucide/vue'
 import { buildDocumentSearchQuery } from '@/utils/searchParams'
 import { useSearchStore } from '@/stores/searchStore.js'
 import { useAuthStore } from '@/stores/authStore.js'
 import Button from '@/components/common/Button.vue'
+import DatePicker from '@/components/common/DatePicker.vue'
+import RecentSearchesPopover from '@/components/common/RecentSearchesPopover.vue'
+import { useRecentSearches } from '@/composables/useRecentSearches.js'
 
 const props = defineProps({
   filters: { type: Object, required: true },
@@ -18,10 +21,15 @@ const route = useRoute()
 const searchStore = useSearchStore()
 const authStore = useAuthStore()
 const form = reactive({ query: '', date: '', dateFrom: '', dateTo: '', area: '', type: '' })
-const dateInputs = reactive({ from: '', to: '' })
 const dateMenuOpen = ref(false)
 const filterMenuOpen = ref('')
-const datePickerRefs = { from: null, to: null }
+const recentSearchesId = `recent-searches-${useId()}`
+const recentSearches = useRecentSearches({ onSelect: searchRecentTerm })
+const activeRecentSearchId = computed(() =>
+  recentSearches.isVisible.value && recentSearches.activeIndex.value >= 0
+    ? `${recentSearchesId}-option-${recentSearches.activeIndex.value}`
+    : undefined,
+)
 
 function formatDateForDisplay(value) {
   if (!value) return ''
@@ -29,40 +37,9 @@ function formatDateForDisplay(value) {
   return `${day}/${month}/${year}`
 }
 
-function parseDateInput(value) {
-  const match = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
-  if (!match) return ''
-
-  const [, day, month, year] = match
-  const parsedDate = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)))
-  if (
-    parsedDate.getUTCFullYear() !== Number(year) ||
-    parsedDate.getUTCMonth() !== Number(month) - 1 ||
-    parsedDate.getUTCDate() !== Number(day)
-  )
-    return ''
-  return `${year}-${month}-${day}`
-}
-
-function updateDateInput(field, event) {
-  const value = event.target.value.replace(/[^\d/]/g, '').slice(0, 10)
-  dateInputs[field] = value
-  form[field === 'from' ? 'dateFrom' : 'dateTo'] = parseDateInput(value)
+function setDate(formField, value) {
+  form[formField] = value
   form.date = ''
-}
-
-function selectNativeDate(field, event) {
-  const formField = field === 'from' ? 'dateFrom' : 'dateTo'
-  form[formField] = event.target.value
-  dateInputs[field] = formatDateForDisplay(event.target.value)
-  form.date = ''
-}
-
-function openDatePicker(field) {
-  const picker = datePickerRefs[field]
-  if (!picker) return
-  if (typeof picker.showPicker === 'function') picker.showPicker()
-  else picker.click()
 }
 
 const dateLabel = computed(() => {
@@ -80,12 +57,10 @@ const typeLabel = computed(() => (form.type ? `Tipo ${form.type}` : 'Tipo'))
 
 function restoreFilters() {
   const source = Object.keys(route.query).length ? route.query : searchStore.lastSearch
-  form.query = String(source.q ?? '')
+  form.query = searchStore.currentTerm || String(source.q ?? '')
   form.date = String(source.data ?? '')
   form.dateFrom = String(source.date_from ?? '')
   form.dateTo = String(source.date_to ?? '')
-  dateInputs.from = formatDateForDisplay(form.dateFrom)
-  dateInputs.to = formatDateForDisplay(form.dateTo)
   form.area = String(source.area ?? '')
   form.type = String(source.tipo ?? '')
 }
@@ -94,8 +69,6 @@ function selectDatePreset(event) {
   form.date = event.target.value
   form.dateFrom = ''
   form.dateTo = ''
-  dateInputs.from = ''
-  dateInputs.to = ''
 }
 
 function toggleFilterMenu(filter) {
@@ -115,15 +88,21 @@ function toggleDateMenu() {
 
 function resetFilters() {
   Object.assign(form, { query: '', date: '', dateFrom: '', dateTo: '', area: '', type: '' })
-  dateInputs.from = ''
-  dateInputs.to = ''
   dateMenuOpen.value = false
   filterMenuOpen.value = ''
+  searchStore.clearCurrentTerm()
   searchStore.forget()
 }
 
+function searchRecentTerm(term) {
+  form.query = term
+  search()
+}
+
 function search() {
+  recentSearches.close()
   const query = buildDocumentSearchQuery(form)
+  searchStore.setCurrentTerm(form.query)
   searchStore.remember(query)
   emit('search', query)
 }
@@ -133,15 +112,38 @@ onMounted(restoreFilters)
 
 <template>
   <form class="search-panel card" @submit.prevent="search">
-    <label class="search-field">
-      <span class="sr-only">Pesquisar documentos</span>
-      <Search :size="18" :stroke-width="2" aria-hidden="true" />
-      <input
-        v-model="form.query"
-        type="search"
-        placeholder="Pesquisar por título, código, descrição ou termos-chave..."
+    <div class="search-box">
+      <label class="search-field">
+        <span class="sr-only">Pesquisar documentos</span>
+        <Search :size="18" :stroke-width="2" aria-hidden="true" />
+        <input
+          v-model="form.query"
+          type="search"
+          role="combobox"
+          autocomplete="off"
+          aria-autocomplete="list"
+          :aria-expanded="recentSearches.isVisible.value"
+          :aria-controls="recentSearchesId"
+          :aria-activedescendant="activeRecentSearchId"
+          placeholder="Pesquisar por título, código, descrição ou termos-chave..."
+          @focus="recentSearches.open"
+          @click="recentSearches.open"
+          @input="recentSearches.filterBy($event.target.value)"
+          @blur="recentSearches.close"
+          @keydown="recentSearches.handleKeydown"
+        />
+      </label>
+      <RecentSearchesPopover
+        v-if="recentSearches.isVisible.value"
+        :id="recentSearchesId"
+        :terms="recentSearches.visibleTerms.value"
+        :active-index="recentSearches.activeIndex.value"
+        @select="recentSearches.select"
+        @remove="recentSearches.remove"
+        @clear="recentSearches.clear"
+        @activate="recentSearches.setActive"
       />
-    </label>
+    </div>
     <Button>Pesquisar</Button>
     <RouterLink v-if="!authStore.isManager" class="upload-button" :to="{ name: 'document-upload' }">
       <Upload :size="17" :stroke-width="2" aria-hidden="true" />
@@ -179,51 +181,19 @@ onMounted(restoreFilters)
           </label>
           <label
             >De
-            <span class="date-input">
-              <input
-                class="date-display"
-                :value="dateInputs.from"
-                type="text"
-                inputmode="numeric"
-                placeholder="dd/mm/yyyy"
-                maxlength="10"
-                @click="openDatePicker('from')"
-                @input="updateDateInput('from', $event)"
-              />
-              <input
-                :ref="(element) => (datePickerRefs.from = element)"
-                class="date-picker"
-                :value="form.dateFrom"
-                lang="pt-BR"
-                type="date"
-                aria-label="Data inicial"
-                @change="selectNativeDate('from', $event)"
-              />
-            </span>
+            <DatePicker
+              label="Data inicial"
+              :model-value="form.dateFrom"
+              @update:model-value="setDate('dateFrom', $event)"
+            />
           </label>
           <label
             >Até
-            <span class="date-input">
-              <input
-                class="date-display"
-                :value="dateInputs.to"
-                type="text"
-                inputmode="numeric"
-                placeholder="dd/mm/yyyy"
-                maxlength="10"
-                @click="openDatePicker('to')"
-                @input="updateDateInput('to', $event)"
-              />
-              <input
-                :ref="(element) => (datePickerRefs.to = element)"
-                class="date-picker"
-                :value="form.dateTo"
-                lang="pt-BR"
-                type="date"
-                aria-label="Data final"
-                @change="selectNativeDate('to', $event)"
-              />
-            </span>
+            <DatePicker
+              label="Data final"
+              :model-value="form.dateTo"
+              @update:model-value="setDate('dateTo', $event)"
+            />
           </label>
           <button class="date-apply" type="button" @click="toggleDateMenu">Aplicar</button>
         </div>
@@ -307,7 +277,13 @@ onMounted(restoreFilters)
   grid-template-columns: 1fr auto auto;
   gap: 1rem;
 }
+.search-box {
+  position: relative;
+  display: flex;
+  min-width: 0;
+}
 .search-field {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 0.65rem;
@@ -316,6 +292,10 @@ onMounted(restoreFilters)
   border-radius: var(--radius-sm);
   padding: 0 0.8rem;
   color: var(--color-text-muted);
+}
+.search-field:focus-within {
+  border-color: var(--color-primary);
+  outline: 2px solid var(--color-primary-bg);
 }
 .search-field input {
   width: 100%;
@@ -467,23 +447,6 @@ onMounted(restoreFilters)
   border-radius: var(--radius-sm);
   background: white;
   font: inherit;
-}
-.date-input {
-  position: relative;
-  display: block;
-}
-.date-display {
-  position: relative;
-  z-index: 1;
-}
-.date-picker {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  padding: 0 !important;
-  border: 0 !important;
-  opacity: 0;
-  pointer-events: none;
 }
 .date-apply {
   padding: 0.5rem;

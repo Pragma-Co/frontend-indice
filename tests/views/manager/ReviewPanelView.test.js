@@ -1,6 +1,17 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { reactive, ref } from 'vue'
 import { mount } from '@vue/test-utils'
+
+function makeHistory(overrides = {}) {
+  return makeList({
+    filters: { requestType: '', decision: '', dateFrom: '', dateTo: '' },
+    periodInvalid: false,
+    hasFilters: false,
+    setFilter: vi.fn(),
+    clearFilters: vi.fn(),
+    ...overrides,
+  })
+}
 
 function makeList(overrides = {}) {
   return reactive({
@@ -38,8 +49,22 @@ const ACCESS_REQUEST = {
   discipline: 'Hidráulica',
   requesterName: 'Caio Bertoni',
   requesterArea: 'EST',
+  justification: 'Preciso consultar o documento para a inspeção.',
   requestedAt: '2026-09-25T17:46:00',
   status: 'PENDING',
+}
+
+const DECISION = {
+  id: 501,
+  code: 'AK-2100-PES-MEM-0005',
+  title: 'Memorial de pesos',
+  revision: 'REV01',
+  requestType: 'REVISION',
+  decision: 'APPROVED',
+  requesterName: 'Caio Bertoni',
+  reason: 'Memorial conforme a norma aplicável.',
+  userName: 'Marina Duarte',
+  decidedAt: '2026-09-26T14:32:00',
 }
 
 const activeTab = ref('revisions')
@@ -47,6 +72,14 @@ const selectTab = vi.fn((tab) => {
   activeTab.value = tab
 })
 const revisionUnderReview = ref(null)
+const accessRequestDecision = ref(null)
+const accessRequestUnderReview = ref(null)
+const openAccessRequestReview = vi.fn((request) => {
+  accessRequestUnderReview.value = request
+})
+const closeAccessRequestReview = vi.fn(() => {
+  accessRequestUnderReview.value = null
+})
 const openRevisionReview = vi.fn((revision) => {
   revisionUnderReview.value = revision
 })
@@ -55,8 +88,10 @@ const closeRevisionReview = vi.fn(() => {
 })
 const handleRevisionDecided = vi.fn()
 const handleRevisionUnavailable = vi.fn()
+const handleAccessRequestDecision = vi.fn()
 let revisions
 let accessRequests
+let history
 
 vi.mock('@/views/manager/composables/useReviewPanel.js', () => ({
   PANEL_PAGE_SIZE_OPTIONS: [5, 10, 20, 50],
@@ -74,12 +109,18 @@ vi.mock('@/views/manager/composables/useReviewPanel.js', () => ({
     activeTab,
     revisions,
     accessRequests,
+    history,
     revisionUnderReview,
+    accessRequestDecision,
+    accessRequestUnderReview,
+    openAccessRequestReview,
+    closeAccessRequestReview,
     selectTab,
     openRevisionReview,
     closeRevisionReview,
     handleRevisionDecided,
     handleRevisionUnavailable,
+    handleAccessRequestDecision,
   }),
 }))
 
@@ -98,13 +139,27 @@ function findTab(wrapper, label) {
   return wrapper.findAll('[role="tab"]').find((tab) => tab.text().startsWith(label))
 }
 
+function findFilter(wrapper, label) {
+  return wrapper.findAll('.filter-trigger').find((trigger) => trigger.text().startsWith(label))
+}
+
 describe('ReviewPanelView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    HTMLDialogElement.prototype.showModal = vi.fn()
+    HTMLDialogElement.prototype.close = vi.fn()
     activeTab.value = 'revisions'
     revisionUnderReview.value = null
+    accessRequestDecision.value = null
+    accessRequestUnderReview.value = null
     revisions = makeList({ items: [REVISION], count: 1 })
     accessRequests = makeList({ items: [ACCESS_REQUEST], count: 1 })
+    history = makeHistory({ items: [DECISION], count: 1 })
+  })
+
+  afterEach(() => {
+    delete HTMLDialogElement.prototype.showModal
+    delete HTMLDialogElement.prototype.close
   })
 
   it('should present the panel with its three tabs', () => {
@@ -205,7 +260,21 @@ describe('ReviewPanelView', () => {
     expect(selectTab).toHaveBeenCalledWith('access-requests')
     expect(wrapper.find('[role="tabpanel"] h2').text()).toBe('Pedidos de acesso aguardando decisão')
     expect(wrapper.find('tbody').text()).toContain('Caio Bertoni')
-    expect(wrapper.find('tbody button').exists()).toBe(false)
+    expect(wrapper.findAll('tbody button').map((button) => button.text())).toEqual([
+      'Avaliar Acesso',
+    ])
+  })
+
+  it('should open the selected access request and show its justification', async () => {
+    const wrapper = mount(ReviewPanelView, { global: { stubs: { teleport: true } } })
+    await findTab(wrapper, 'Pedidos de Acesso').trigger('click')
+
+    await wrapper.get('button[aria-label^="Avaliar acesso"]').trigger('click')
+
+    expect(openAccessRequestReview).toHaveBeenCalledWith(ACCESS_REQUEST)
+    expect(wrapper.get('dialog .justification').text()).toBe(ACCESS_REQUEST.justification)
+    await wrapper.get('dialog button[aria-label="Fechar"]').trigger('click')
+    expect(wrapper.find('dialog').exists()).toBe(false)
   })
 
   it('should show an empty state when there is no access request', async () => {
@@ -217,16 +286,129 @@ describe('ReviewPanelView', () => {
     expect(wrapper.find('.panel-empty').text()).toContain('Nenhum pedido de acesso pendente')
   })
 
-  it('should explain that the history is not available yet', async () => {
-    const wrapper = mount(ReviewPanelView)
+  describe('history tab', () => {
+    async function openHistory() {
+      const wrapper = mount(ReviewPanelView)
+      await findTab(wrapper, 'Histórico').trigger('click')
+      return wrapper
+    }
 
-    await findTab(wrapper, 'Histórico').trigger('click')
+    it('should list the decisions already taken', async () => {
+      const wrapper = await openHistory()
 
-    expect(wrapper.find('[role="tabpanel"]').attributes('aria-labelledby')).toBe(
-      'panel-tab-history',
-    )
-    expect(wrapper.find('.panel-empty').text()).toContain('Histórico ainda não disponível')
-    expect(wrapper.find('table').exists()).toBe(false)
+      expect(wrapper.find('[role="tabpanel"]').attributes('aria-labelledby')).toBe(
+        'panel-tab-history',
+      )
+      expect(wrapper.find('[role="tabpanel"] h2').text()).toBe('Histórico de decisões')
+      expect(wrapper.find('tbody').text()).toContain('AK-2100-PES-MEM-0005')
+      expect(wrapper.find('tbody').text()).toContain('Aprovada')
+      expect(wrapper.find('.panel-empty').exists()).toBe(false)
+    })
+
+    it('should be read only, with no evaluation action on the records', async () => {
+      const wrapper = await openHistory()
+
+      expect(wrapper.findAll('tbody button').map((button) => button.classes())).toEqual([
+        ['code-link'],
+      ])
+      expect(wrapper.find('thead').text()).not.toContain('Ações')
+    })
+
+    it('should show the reason of a decision when its code is clicked', async () => {
+      const wrapper = mount(ReviewPanelView, { global: { stubs: { teleport: true } } })
+      await findTab(wrapper, 'Histórico').trigger('click')
+
+      await wrapper.find('button.code-link').trigger('click')
+
+      const dialog = wrapper.get('dialog')
+      expect(dialog.text()).toContain('Motivo do aceite')
+      expect(dialog.text()).toContain('Memorial conforme a norma aplicável.')
+      await dialog.get('button[aria-label="Fechar"]').trigger('click')
+      expect(wrapper.find('dialog').exists()).toBe(false)
+    })
+
+    it('should show the filters and name the decisions in the pagination', async () => {
+      const wrapper = await openHistory()
+
+      expect(wrapper.find('form[role="search"]').exists()).toBe(true)
+      expect(wrapper.find('.pagination-summary').text()).toBe('Mostrando 1 a 1 de 1 decisões')
+    })
+
+    it('should keep the filters out of the other tabs', () => {
+      const wrapper = mount(ReviewPanelView)
+
+      expect(wrapper.find('form[role="search"]').exists()).toBe(false)
+    })
+
+    it('should show a skeleton while the history is loading', async () => {
+      history = makeHistory({ loading: true, updatedAt: null, count: null })
+
+      const wrapper = await openHistory()
+
+      expect(wrapper.find('.panel-skeleton').attributes('aria-label')).toBe(
+        'Carregando histórico de decisões',
+      )
+      expect(wrapper.find('table').exists()).toBe(false)
+      expect(wrapper.find('form[role="search"]').exists()).toBe(true)
+    })
+
+    it('should show the empty state when no decision was recorded yet', async () => {
+      history = makeHistory()
+
+      const wrapper = await openHistory()
+
+      expect(wrapper.find('.panel-empty').text()).toContain('Nenhuma decisão registrada')
+      expect(wrapper.find('table').exists()).toBe(false)
+    })
+
+    it('should say that nothing matches when the filters leave no decision', async () => {
+      history = makeHistory({ hasFilters: true })
+
+      const wrapper = await openHistory()
+
+      expect(wrapper.find('.panel-empty').text()).toContain('Nenhuma decisão encontrada')
+    })
+
+    it('should show the error, keep the filters and load again on retry', async () => {
+      history = makeHistory({ error: 'Não foi possível carregar o histórico de decisões.' })
+      const wrapper = await openHistory()
+
+      await wrapper.find('[role="alert"] button').trigger('click')
+
+      expect(wrapper.find('[role="alert"]').text()).toContain('histórico de decisões')
+      expect(wrapper.find('form[role="search"]').exists()).toBe(true)
+      expect(wrapper.find('.panel-pagination').exists()).toBe(false)
+      expect(history.load).toHaveBeenCalled()
+    })
+
+    it('should hand the filters to the history and clear them', async () => {
+      history = makeHistory({ hasFilters: true })
+      const wrapper = await openHistory()
+
+      await findFilter(wrapper, 'Decisão').trigger('click')
+      await wrapper
+        .findAll('[role="option"]')
+        .find((option) => option.text() === 'Reprovada / Indeferida')
+        .trigger('click')
+      await wrapper
+        .findAll('form button')
+        .find((button) => button.text() === 'Limpar filtros')
+        .trigger('click')
+
+      expect(history.setFilter).toHaveBeenCalledWith('decision', 'REJECTED')
+      expect(history.clearFilters).toHaveBeenCalled()
+    })
+
+    it('should page through the history', async () => {
+      history = makeHistory({ items: [DECISION], count: 45, totalPages: 3, currentPage: 2 })
+      const wrapper = await openHistory()
+
+      await wrapper.find('.panel-pagination .page-nav').trigger('click')
+      await wrapper.find('.panel-pagination select').setValue('10')
+
+      expect(history.goToPage).toHaveBeenCalledWith(1)
+      expect(history.setPageSize).toHaveBeenCalledWith(10)
+    })
   })
 
   it('should always show the pagination of the list with its own item name', () => {
@@ -270,14 +452,11 @@ describe('ReviewPanelView', () => {
     expect(wrapper.find('.pagination-summary').text()).toBe('Mostrando 1 a 1 de 1 pedidos')
   })
 
-  it('should hide the pagination on the history tab and when the list fails', async () => {
+  it('should hide the pagination when the list fails', () => {
     revisions = makeList({ error: 'Não foi possível carregar as revisões pendentes.' })
+
     const wrapper = mount(ReviewPanelView)
-    const shownOnError = wrapper.find('.panel-pagination').exists()
 
-    await findTab(wrapper, 'Histórico').trigger('click')
-
-    expect(shownOnError).toBe(false)
     expect(wrapper.find('.panel-pagination').exists()).toBe(false)
   })
 })

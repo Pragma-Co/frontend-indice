@@ -1,5 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { Lock } from '@lucide/vue'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import Button from '@/components/common/Button.vue'
@@ -9,12 +10,15 @@ import {
   TERM_STATES,
   useTermsAcceptanceHistory,
 } from '@/views/user-management/composables/useTermsAcceptanceHistory.js'
+import { useAuthStore } from '@/stores/authStore.js'
 import { formatDateAtTime } from '@/utils/formatters.js'
 
 const { rows, loading, error, busyKey, load, revoke, accept } = useTermsAcceptanceHistory()
+const auth = useAuthStore()
+const router = useRouter()
 
 const countLabel = computed(() =>
-  rows.value.length === 1 ? '1 termo' : `${rows.value.length} termos`,
+  rows.value.length === 1 ? '1 registro' : `${rows.value.length} registros`,
 )
 
 const rowToRead = ref(null)
@@ -49,7 +53,9 @@ const changeDialog = computed(() => {
   const situation =
     row.state === TERM_STATES.REVOKED
       ? `Você revogou o aceite de ${term} em ${formatDateAtTime(row.revokedAt)}.`
-      : `Você ainda não aceitou ${target}.`
+      : row.state === TERM_STATES.DECLINED
+        ? `Você discordou de ${term} em ${formatDateAtTime(row.acceptedAt)}.`
+        : `Você ainda não aceitou ${target}.`
   return {
     title: 'Alterar aceite',
     message: `${situation} Ao aceitar ${target}, você concorda com todas as cláusulas desta versão, inclusive as opcionais. Leia o termo antes pelo menu "Ler termo".`,
@@ -60,8 +66,21 @@ const changeDialog = computed(() => {
 
 async function confirmChange() {
   const row = rowToChange.value
-  if (row.state === TERM_STATES.ACCEPTED) await revoke(row)
-  else await accept(row)
+  if (!row) return
+
+  if (row.state === TERM_STATES.ACCEPTED) {
+    const revoked = await revoke(row)
+    rowToChange.value = null
+    if (!revoked) return
+    await auth.signOut()
+    const navigation = router.push({ name: 'login' })
+    if (navigation && typeof navigation.catch === 'function') {
+      await navigation.catch(() => null)
+    }
+    return
+  }
+
+  await accept(row)
   rowToChange.value = null
 }
 </script>
@@ -72,7 +91,8 @@ async function confirmChange() {
       <div>
         <h2 id="terms-history-title">Histórico de Termos e Consentimentos</h2>
         <p class="muted">
-          Confira as versões das políticas da plataforma e seus registros formais de aceite.
+          Consulte as versões dos termos e cada manifestação registrada, com data e respostas por
+          ponto.
         </p>
       </div>
       <span v-if="!loading && !error" class="count-pill">{{ countLabel }}</span>
@@ -125,8 +145,8 @@ async function confirmChange() {
 
     <p class="muted audit-note">
       <Lock :size="13" aria-hidden="true" />
-      A tabela mostra a situação atual de cada termo. Todos os aceites e revogações continuam
-      registrados para fins de auditoria, rastreabilidade e conformidade regulatória.
+      A tabela mostra as manifestações por versão. Todos os aceites, discordâncias e revogações
+      continuam registrados para fins de auditoria, rastreabilidade e conformidade regulatória.
     </p>
 
     <LegalTermDialog
@@ -135,6 +155,7 @@ async function confirmChange() {
       :title="rowToRead.title"
       :version-label="rowToRead.versionLabel"
       :decisions="rowToRead.decisions"
+      :accepted="rowToRead.accepted"
       :accepted-at="rowToRead.acceptedAt"
       :revoked-at="rowToRead.revokedAt"
       @close="rowToRead = null"
@@ -237,6 +258,11 @@ async function confirmChange() {
   white-space: nowrap;
 }
 
+.cell-actions {
+  width: 3rem;
+  text-align: right;
+}
+
 .status-pill {
   padding: 0.15rem 0.6rem;
   border: 1px solid var(--color-success-border);
@@ -248,7 +274,8 @@ async function confirmChange() {
   white-space: nowrap;
 }
 
-.status-pill.pending {
+.status-pill.pending,
+.status-pill.declined {
   border-color: var(--color-warning-border);
   background: var(--color-warning-bg);
   color: var(--color-warning);
@@ -258,11 +285,6 @@ async function confirmChange() {
   border-color: var(--color-border);
   background: var(--color-surface-muted);
   color: var(--color-text-muted);
-}
-
-.cell-actions {
-  width: 3rem;
-  text-align: right;
 }
 
 .audit-note {

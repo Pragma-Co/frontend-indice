@@ -1,9 +1,13 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import Button from '@/components/common/Button.vue'
 import Pagination from '@/components/common/Pagination.vue'
 import PageLayout from '@/components/layout/PageLayout.vue'
 import AccessRequestsTable from '@/views/manager/components/AccessRequestsTable.vue'
+import DecisionDetailModal from '@/views/manager/components/DecisionDetailModal.vue'
+import DecisionHistoryFilters from '@/views/manager/components/DecisionHistoryFilters.vue'
+import DecisionHistoryTable from '@/views/manager/components/DecisionHistoryTable.vue'
+import AccessReviewModal from '@/views/manager/components/AccessReviewModal.vue'
 import PanelEmptyState from '@/views/manager/components/PanelEmptyState.vue'
 import PanelTableSkeleton from '@/views/manager/components/PanelTableSkeleton.vue'
 import PanelTabs from '@/views/manager/components/PanelTabs.vue'
@@ -21,12 +25,18 @@ const {
   activeTab,
   revisions,
   accessRequests,
+  history,
   revisionUnderReview,
+  accessRequestDecision,
+  accessRequestUnderReview,
   selectTab,
   openRevisionReview,
   closeRevisionReview,
   handleRevisionDecided,
   handleRevisionUnavailable,
+  handleAccessRequestDecision,
+  openAccessRequestReview,
+  closeAccessRequestReview,
   refreshActiveList,
 } = useReviewPanel()
 
@@ -42,13 +52,18 @@ const SECTIONS = {
   [PANEL_TABS.ACCESS_REQUESTS]: {
     title: 'Pedidos de acesso aguardando decisão',
     loadingLabel: 'Carregando pedidos de acesso',
-    columns: 6,
+    columns: 7,
     itemLabel: 'pedidos',
     emptyTitle: 'Nenhum pedido de acesso pendente',
     emptyDescription: 'Não há pedidos de acesso a documentos restritos no momento.',
   },
   [PANEL_TABS.HISTORY]: {
     title: 'Histórico de decisões',
+    loadingLabel: 'Carregando histórico de decisões',
+    columns: 7,
+    itemLabel: 'decisões',
+    emptyTitle: 'Nenhuma decisão registrada',
+    emptyDescription: 'As aprovações, reprovações, deferimentos e indeferimentos aparecerão aqui.',
   },
 }
 
@@ -57,11 +72,24 @@ const section = computed(() => SECTIONS[activeTab.value])
 const activeList = computed(() => {
   if (activeTab.value === PANEL_TABS.REVISIONS) return revisions
   if (activeTab.value === PANEL_TABS.ACCESS_REQUESTS) return accessRequests
-  return null
+  return history
 })
 
+const decisionUnderView = ref(null)
+
+const isHistory = computed(() => activeTab.value === PANEL_TABS.HISTORY)
+
+const emptyState = computed(() =>
+  isHistory.value && history.hasFilters
+    ? {
+        title: 'Nenhuma decisão encontrada',
+        description: 'Nenhuma decisão corresponde aos filtros selecionados.',
+      }
+    : { title: section.value.emptyTitle, description: section.value.emptyDescription },
+)
+
 const updatedLabel = computed(() =>
-  activeList.value?.updatedAt ? `Atualizado hoje • ${formatTime(activeList.value.updatedAt)}` : '',
+  activeList.value.updatedAt ? `Atualizado hoje • ${formatTime(activeList.value.updatedAt)}` : '',
 )
 </script>
 
@@ -81,7 +109,7 @@ const updatedLabel = computed(() =>
     >
       <header class="panel-card-header">
         <h2>{{ section.title }}</h2>
-        <div v-if="activeList" class="panel-updated-group">
+        <div class="panel-updated-group">
           <span v-if="updatedLabel && !activeList.loading" class="panel-updated">
             <span class="panel-updated-dot" aria-hidden="true" />
             {{ updatedLabel }}
@@ -106,15 +134,17 @@ const updatedLabel = computed(() =>
         </div>
       </header>
 
-      <PanelEmptyState
-        v-if="!activeList"
-        class="panel-content"
-        title="Histórico ainda não disponível"
-        description="As decisões já tomadas serão listadas aqui quando o histórico for liberado."
+      <DecisionHistoryFilters
+        v-if="isHistory"
+        :filters="history.filters"
+        :period-invalid="history.periodInvalid"
+        :has-filters="history.hasFilters"
+        @change="history.setFilter"
+        @clear="history.clearFilters"
       />
 
       <PanelTableSkeleton
-        v-else-if="activeList.loading"
+        v-if="activeList.loading"
         class="panel-content"
         :columns="section.columns"
         :label="section.loadingLabel"
@@ -128,8 +158,8 @@ const updatedLabel = computed(() =>
       <PanelEmptyState
         v-else-if="!activeList.items.length"
         class="panel-content"
-        :title="section.emptyTitle"
-        :description="section.emptyDescription"
+        :title="emptyState.title"
+        :description="emptyState.description"
       />
 
       <PendingRevisionsTable
@@ -138,9 +168,20 @@ const updatedLabel = computed(() =>
         :revisions="activeList.items"
         @evaluate="openRevisionReview"
       />
-      <AccessRequestsTable v-else class="panel-content" :requests="activeList.items" />
+      <DecisionHistoryTable
+        v-else-if="isHistory"
+        class="panel-content"
+        :decisions="activeList.items"
+        @select="decisionUnderView = $event"
+      />
+      <AccessRequestsTable
+        v-else
+        class="panel-content"
+        :requests="activeList.items"
+        @evaluate="openAccessRequestReview"
+      />
 
-      <footer v-if="activeList && !activeList.error" class="panel-pagination">
+      <footer v-if="!activeList.error" class="panel-pagination">
         <Pagination
           :current-page="activeList.currentPage"
           :total-pages="activeList.totalPages"
@@ -154,6 +195,11 @@ const updatedLabel = computed(() =>
       </footer>
     </section>
 
+    <DecisionDetailModal
+      v-if="decisionUnderView"
+      :decision="decisionUnderView"
+      @close="decisionUnderView = null"
+    />
     <RevisionReviewModal
       v-if="revisionUnderReview"
       :key="revisionUnderReview.id"
@@ -161,6 +207,13 @@ const updatedLabel = computed(() =>
       @close="closeRevisionReview"
       @decided="handleRevisionDecided"
       @unavailable="handleRevisionUnavailable"
+    />
+    <AccessReviewModal
+      v-if="accessRequestUnderReview"
+      :request="accessRequestUnderReview"
+      :pending-decision="accessRequestDecision?.decision ?? null"
+      @close="closeAccessRequestReview"
+      @decide="handleAccessRequestDecision"
     />
   </PageLayout>
 </template>
@@ -265,5 +318,15 @@ const updatedLabel = computed(() =>
 
 .panel-pagination :deep(.pagination) {
   margin-top: 0;
+}
+
+@media (max-width: 640px) {
+  .panel-card {
+    height: auto;
+  }
+
+  .panel-card-header {
+    flex-wrap: wrap;
+  }
 }
 </style>

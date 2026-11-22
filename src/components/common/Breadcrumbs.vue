@@ -1,12 +1,14 @@
 <script setup>
 defineProps({
   title: { type: String, required: true },
+  parentLabel: { type: String, default: 'Documentos' },
+  parentTo: { type: String, default: '/documents' },
 })
 </script>
 
 <template>
   <nav class="breadcrumbs" aria-label="Breadcrumb">
-    <RouterLink to="/documents">Documentos</RouterLink>
+    <RouterLink :to="parentTo">{{ parentLabel }}</RouterLink>
     <span aria-hidden="true">&gt;</span>
     <span class="current" aria-current="page">{{ title }}</span>
   </nav>

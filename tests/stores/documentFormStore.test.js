@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { ApiError } from '../../src/api/client'
-import { PROFILES, useAuthStore } from '../../src/stores/authStore'
+import { useAuthStore } from '../../src/stores/authStore'
+import { COLLABORATOR_ACCOUNT } from '../fixtures/accounts'
 import { useDocumentFormStore } from '../../src/stores/documentFormStore'
 
 vi.mock('../../src/api/projects', () => ({ listProjects: vi.fn() }))
@@ -47,7 +48,7 @@ describe('documentFormStore', () => {
 
   beforeEach(() => {
     setActivePinia(createPinia())
-    useAuthStore().login(PROFILES.COLLABORATOR)
+    useAuthStore().setSession(COLLABORATOR_ACCOUNT)
     store = useDocumentFormStore()
     vi.clearAllMocks()
     listProjects.mockResolvedValue(PROJECTS)

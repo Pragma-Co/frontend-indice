@@ -1,5 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
+import { useAuthStore } from '@/stores/authStore.js'
 import DocumentsTable from '@/views/document/components/DocumentsTable.vue'
 
 function makeDocument(overrides = {}) {
@@ -14,11 +16,17 @@ function makeDocument(overrides = {}) {
     updatedAt: '2026-09-18T21:30:04+00:00',
     updatedBy: 'sistema',
     action: 'view-details',
+    areas: [{ acronym: 'EST', name: 'Engenharia Estrutural' }],
     ...overrides,
   }
 }
 
 describe('DocumentsTable', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    useAuthStore().currentUser = { id: 12, name: 'Beatriz Canuto', areaAcronym: 'EST' }
+  })
+
   it('should render the essential columns of a result', () => {
     const wrapper = mount(DocumentsTable, { props: { documents: [makeDocument()] } })
 
@@ -56,23 +64,14 @@ describe('DocumentsTable', () => {
     expect(wrapper.find('.cell-discipline').exists()).toBe(false)
   })
 
-  it('should open the details when the row itself is clicked', async () => {
+  it('should open the details when the title is clicked', async () => {
     const wrapper = mount(DocumentsTable, { props: { documents: [makeDocument()] } })
 
-    await wrapper.find('tbody tr').trigger('click')
+    await wrapper.find('.cell-title-text').trigger('click')
 
     expect(wrapper.emitted('action')).toEqual([
       [{ document: expect.objectContaining({ id: 33 }), action: 'view-details' }],
     ])
-  })
-
-  it('should open the details from the keyboard with Enter on the row', async () => {
-    const wrapper = mount(DocumentsTable, { props: { documents: [makeDocument()] } })
-
-    await wrapper.find('tbody tr').trigger('keydown.enter')
-
-    expect(wrapper.emitted('action')).toHaveLength(1)
-    expect(wrapper.emitted('action')[0][0].action).toBe('view-details')
   })
 
   it('should not offer the more-actions menu', () => {
@@ -113,6 +112,22 @@ describe('DocumentsTable', () => {
     expect(button.classes()).toContain('action-button-disabled')
     expect(tooltip.text()).toContain('revisão em andamento')
     expect(button.attributes('aria-describedby')).toBe(tooltip.attributes('id'))
+    expect(wrapper.emitted('action')).toBeUndefined()
+  })
+
+  it('should disable the new revision button for a document of another area', async () => {
+    useAuthStore().currentUser = { id: 12, name: 'Beatriz Canuto', areaAcronym: 'QUA' }
+    const wrapper = mount(DocumentsTable, {
+      props: { documents: [makeDocument({ status: 'APPROVED' })] },
+    })
+
+    const button = wrapper.find('.action-button')
+    await button.trigger('click')
+
+    expect(button.attributes('aria-disabled')).toBe('true')
+    expect(wrapper.find('.action-tooltip').text()).toBe(
+      'Somente colaboradores das áreas deste documento podem criar uma revisão.',
+    )
     expect(wrapper.emitted('action')).toBeUndefined()
   })
 })

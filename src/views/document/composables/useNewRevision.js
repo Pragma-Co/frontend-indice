@@ -5,7 +5,11 @@ import { useDocumentUpload } from '@/composables/useDocumentUpload.js'
 import { useAuthStore } from '@/stores/authStore.js'
 import { useNotificationStore } from '@/stores/notificationStore.js'
 import { revisionLabel } from '@/utils/documentCode.js'
-import { REVISION_BLOCK_MESSAGES, revisionBlockReason } from '@/utils/documentStatus.js'
+import {
+  REVISION_BLOCK_MESSAGES,
+  REVISION_BLOCK_REASONS,
+  revisionBlockReason,
+} from '@/utils/documentStatus.js'
 
 export const JUSTIFICATION_MIN_LENGTH = 20
 export const JUSTIFICATION_MAX_LENGTH = 255
@@ -17,6 +21,10 @@ const NOT_FOUND_MESSAGE = 'Documento não encontrado.'
 const SUBMIT_ERROR_MESSAGE = 'Não foi possível enviar a nova revisão. Tente novamente.'
 const DUPLICATE_FILE_MESSAGE =
   'Um dos arquivos já existe no sistema e não pode ser usado nesta revisão.'
+const SUBMIT_BLOCK_REASONS = {
+  RevisionOutsideArea: REVISION_BLOCK_REASONS.OUTSIDE_AREA,
+  RevisionInProgress: REVISION_BLOCK_REASONS.IN_PROGRESS,
+}
 
 export function useNewRevision() {
   const route = useRoute()
@@ -42,7 +50,11 @@ export function useNewRevision() {
   const nextRevisionLabel = computed(() => revisionLabel(currentVersion.value + 1))
   const blockReason = computed(() =>
     parentDocument.value
-      ? revisionBlockReason(parentDocument.value, authStore.currentUser?.id)
+      ? revisionBlockReason(
+          parentDocument.value,
+          authStore.currentUser?.id,
+          authStore.currentUser?.areaAcronym,
+        )
       : null,
   )
   const revisionBlocked = computed(() => blockReason.value !== null)
@@ -88,6 +100,17 @@ export function useNewRevision() {
     router.push({ name: 'document-list' })
   }
 
+  function goBack() {
+    if (window.history.state?.back) router.back()
+    else goToDocumentList()
+  }
+
+  function submitErrorMessage(error) {
+    const reason = SUBMIT_BLOCK_REASONS[error?.details?.error]
+    if (reason) return REVISION_BLOCK_MESSAGES[reason]
+    return error?.status === 409 ? DUPLICATE_FILE_MESSAGE : SUBMIT_ERROR_MESSAGE
+  }
+
   async function submit() {
     if (!canSubmit.value) return
 
@@ -101,7 +124,7 @@ export function useNewRevision() {
       notifications.success(`Revisão ${nextRevisionLabel.value} enviada para análise.`)
       goToDocumentList()
     } catch (error) {
-      notifications.error(error?.status === 409 ? DUPLICATE_FILE_MESSAGE : SUBMIT_ERROR_MESSAGE)
+      notifications.error(submitErrorMessage(error))
     } finally {
       submitting.value = false
     }
@@ -133,6 +156,7 @@ export function useNewRevision() {
     removeFiles,
     resolveDuplicate,
     goToDocumentList,
+    goBack,
     submit,
   }
 }

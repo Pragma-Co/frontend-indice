@@ -14,6 +14,7 @@ import {
 } from '@/api/users.js'
 import { useAuthStore } from '@/stores/authStore.js'
 import { useNotificationStore } from '@/stores/notificationStore.js'
+import { findConfidentiality } from '@/utils/documentCatalog.js'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -32,6 +33,15 @@ const form = reactive({ ...saved.value })
 
 const isDirty = computed(() => Object.keys(form).some((key) => form[key] !== saved.value[key]))
 const lastUpdate = ref('')
+
+const accessGroupsLabel = computed(() =>
+  (user.value.access_groups ?? [])
+    .map((group) => {
+      const level = findConfidentiality(group.secrecy_level)?.label
+      return level ? `${group.name} (${level})` : group.name
+    })
+    .join(', '),
+)
 
 function splitName(fullName = '') {
   const [first = '', ...rest] = fullName.trim().split(/\s+/)
@@ -141,6 +151,18 @@ async function requestAccountDeletion() {
 
         <FormField label="Departamento / Área" html-for="department">
           <input id="department" class="input" type="text" :value="user.area?.name" readonly />
+          <span class="readonly-tag">Somente leitura</span>
+        </FormField>
+
+        <FormField label="Grupos de Acesso" html-for="access-groups">
+          <input
+            id="access-groups"
+            class="input"
+            type="text"
+            placeholder="Nenhum grupo de acesso"
+            :value="accessGroupsLabel"
+            readonly
+          />
           <span class="readonly-tag">Somente leitura</span>
         </FormField>
         <aside class="protected-box">
@@ -273,6 +295,7 @@ async function requestAccountDeletion() {
 }
 
 .protected-box {
+  grid-column: 1 / -1;
   display: flex;
   gap: 0.75rem;
   align-items: center;

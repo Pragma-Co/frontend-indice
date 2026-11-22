@@ -118,8 +118,6 @@ function onDrop(event) {
 .dropzone-icon,
 .dropzone-title,
 .dropzone-subtitle {
-  /* Keeps drag events targeting the dropzone itself instead of bubbling
-     through these children, so dragenter/dragleave stay reliable. */
   pointer-events: none;
 }
 

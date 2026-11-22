@@ -3,6 +3,39 @@ import { readCookie } from '../utils/cookies'
 const API_BASE_URL = '/api'
 const CSRF_COOKIE_NAME = 'csrftoken'
 const SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS']
+const UNAUTHORIZED_STATUS = 401
+const PATHS_WITHOUT_SESSION_EXPIRY = ['/auth/login']
+const NDJSON_CONTENT_TYPE = 'application/x-ndjson'
+
+let unauthorizedHandler = null
+let legalRequiredHandler = null
+
+export function setLegalRequiredHandler(handler) {
+  legalRequiredHandler = typeof handler === 'function' ? handler : null
+}
+
+function reportLegalRequired(status, details) {
+  if (status !== 403 || details?.error !== 'LegalAcceptanceRequired') return
+  try {
+    legalRequiredHandler?.()
+  } catch {
+    return
+  }
+}
+
+export function setUnauthorizedHandler(handler) {
+  unauthorizedHandler = typeof handler === 'function' ? handler : null
+}
+
+function reportUnauthorized(path, status) {
+  if (status !== UNAUTHORIZED_STATUS || !unauthorizedHandler) return
+  if (PATHS_WITHOUT_SESSION_EXPIRY.includes(path)) return
+  try {
+    unauthorizedHandler({ path })
+  } catch {
+    return
+  }
+}
 
 export function uploadWithProgress(path, formData, { onProgress, signal } = {}) {
   return new Promise((resolve, reject) => {
@@ -28,6 +61,7 @@ export function uploadWithProgress(path, formData, { onProgress, signal } = {}) 
       if (isSuccessOrDuplicate) {
         resolve(body)
       } else {
+        reportUnauthorized(path, xhr.status)
         reject(
           Object.assign(new Error(`Upload failed with status ${xhr.status}`), {
             status: xhr.status,
@@ -64,7 +98,8 @@ export class ApiError extends Error {
 
 function messageFor(status) {
   if (status === 400) return 'Dados inválidos. Verifique os campos e tente novamente.'
-  if (status === 401 || status === 403) return 'Você não tem permissão para esta ação.'
+  if (status === 401) return 'Sua sessão expirou. Entre novamente.'
+  if (status === 403) return 'Você não tem permissão para esta ação.'
   if (status === 404) return 'Recurso não encontrado.'
   if (status === 409) return 'Já existe um documento com este código.'
   if (status >= 500) return 'Erro interno do servidor. Tente novamente mais tarde.'
@@ -81,7 +116,15 @@ async function parseBody(response) {
   }
 }
 
-export async function request(path, { method = 'GET', body, headers = {}, signal } = {}) {
+function parseLine(line) {
+  try {
+    return JSON.parse(line)
+  } catch {
+    return null
+  }
+}
+
+async function send(path, { method = 'GET', body, headers = {}, signal } = {}) {
   const init = { method, signal, headers: { Accept: 'application/json', ...headers } }
 
   if (body !== undefined) {
@@ -100,15 +143,46 @@ export async function request(path, { method = 'GET', body, headers = {}, signal
     throw new ApiError('Não foi possível conectar ao servidor.', { status: 0 })
   }
 
-  const data = await parseBody(response)
   if (!response.ok) {
-    throw new ApiError(messageFor(response.status), { status: response.status, details: data })
+    const details = await parseBody(response)
+    reportUnauthorized(path, response.status)
+    reportLegalRequired(response.status, details)
+    throw new ApiError(messageFor(response.status), { status: response.status, details })
   }
-  return data
+  return response
+}
+
+export async function request(path, options) {
+  const response = await send(path, options)
+  return parseBody(response)
+}
+
+export async function streamJsonLines(path, { onLine, headers = {}, ...options } = {}) {
+  const response = await send(path, {
+    method: 'POST',
+    ...options,
+    headers: { Accept: NDJSON_CONTENT_TYPE, ...headers },
+  })
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let pending = ''
+  for (;;) {
+    const { value, done } = await reader.read()
+    pending += done ? decoder.decode() : decoder.decode(value, { stream: true })
+    const lines = pending.split('\n')
+    pending = done ? '' : lines.pop()
+    for (const line of lines) {
+      const parsed = line.trim() ? parseLine(line) : null
+      if (parsed !== null) onLine?.(parsed)
+    }
+    if (done) return
+  }
 }
 
 export const api = {
   get: (path, options) => request(path, options),
   post: (path, body) => request(path, { method: 'POST', body }),
   put: (path, body) => request(path, { method: 'PUT', body }),
+  patch: (path, body) => request(path, { method: 'PATCH', body }),
+  delete: (path) => request(path, { method: 'DELETE' }),
 }

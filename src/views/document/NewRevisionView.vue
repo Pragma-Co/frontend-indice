@@ -39,7 +39,7 @@ const {
   addFiles,
   removeFiles,
   resolveDuplicate,
-  goToDocumentList,
+  goBack,
   submit,
 } = useNewRevision()
 
@@ -85,8 +85,8 @@ onUnmounted(() => {
         {{ loadError || revisionBlockedMessage }}
       </p>
       <footer class="page-footer">
-        <Button variant="outline" @click="goToDocumentList">
-          <ArrowLeft :size="16" aria-hidden="true" class="button-icon" />Voltar para a listagem
+        <Button variant="outline" @click="goBack">
+          <ArrowLeft :size="16" aria-hidden="true" class="button-icon" />Voltar
         </Button>
       </footer>
     </template>
@@ -195,7 +195,7 @@ onUnmounted(() => {
       </div>
 
       <footer class="page-footer">
-        <Button variant="outline" @click="goToDocumentList">
+        <Button variant="outline" @click="goBack">
           <ArrowLeft :size="16" aria-hidden="true" class="button-icon" />Cancelar e Voltar
         </Button>
         <div class="submit-area">
@@ -234,7 +234,11 @@ onUnmounted(() => {
 <style scoped>
 .status-message {
   color: var(--color-text-muted);
-  text-align: center;
+  height: calc(100vh - 280px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .revision-layout {

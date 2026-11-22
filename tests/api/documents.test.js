@@ -4,6 +4,8 @@ import {
   createDocument,
   createDocumentRevision,
   fetchDocuments,
+  fetchFavoriteDocuments,
+  setDocumentFavorite,
   toDocumentPayload,
 } from '../../src/api/documents'
 
@@ -50,6 +52,36 @@ describe('toDocumentPayload', () => {
     payload.areas.push('SIS')
 
     expect(FORM.areas).toEqual(['EST', 'QUA'])
+  })
+
+  it('should send the authorized access groups of a confidential document as numbers', () => {
+    const payload = toDocumentPayload(
+      { ...FORM, authorizedGroups: ['7', '9'], authorizedUsers: ['3'] },
+      { tempFileId: 'temp-1', responsibleId: 12 },
+    )
+
+    expect(payload.authorized_group_ids).toEqual([7, 9])
+    expect(payload).not.toHaveProperty('authorized_user_ids')
+  })
+
+  it('should send the authorized users of a secret document as numbers', () => {
+    const payload = toDocumentPayload(
+      { ...FORM, confidentiality: 'SECRET', authorizedGroups: ['7'], authorizedUsers: ['3', '4'] },
+      { tempFileId: 'temp-1', responsibleId: 12 },
+    )
+
+    expect(payload.authorized_user_ids).toEqual([3, 4])
+    expect(payload).not.toHaveProperty('authorized_group_ids')
+  })
+
+  it('should not send access lists for a public document', () => {
+    const payload = toDocumentPayload(
+      { ...FORM, confidentiality: 'PUBLIC', authorizedGroups: ['7'], authorizedUsers: ['3'] },
+      { tempFileId: 'temp-1', responsibleId: 12 },
+    )
+
+    expect(payload).not.toHaveProperty('authorized_group_ids')
+    expect(payload).not.toHaveProperty('authorized_user_ids')
   })
 
   it('should map multiple temporary files to one document payload', () => {
@@ -137,6 +169,48 @@ describe('createDocument', () => {
     expect(error.status).toBe(500)
     expect(error.message).toBe('Erro interno do servidor. Tente novamente mais tarde.')
     expect(error.message).not.toContain('DatabaseError')
+  })
+})
+
+describe('personal library', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn())
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('should fetch saved documents from the authenticated users library', async () => {
+    globalThis.fetch.mockResolvedValue(mockResponse({ count: 1, results: [{ id: 7 }] }))
+
+    await fetchFavoriteDocuments({ page: 1, page_size: 20 })
+
+    expect(globalThis.fetch).toHaveBeenCalledWith('/api/users/me/library?page=1&page_size=20')
+  })
+
+  it('should save a document with POST on the personal library item', async () => {
+    globalThis.fetch.mockResolvedValue(
+      mockResponse({ document_id: 7, saved: true }, { status: 201 }),
+    )
+
+    await setDocumentFavorite(7, true)
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      '/api/users/me/library/7',
+      expect.objectContaining({ method: 'POST' }),
+    )
+  })
+
+  it('should remove a document with DELETE on the personal library item', async () => {
+    globalThis.fetch.mockResolvedValue(mockResponse(undefined, { status: 204 }))
+
+    await setDocumentFavorite(7, false)
+
+    expect(globalThis.fetch).toHaveBeenCalledWith(
+      '/api/users/me/library/7',
+      expect.objectContaining({ method: 'DELETE' }),
+    )
   })
 })
 

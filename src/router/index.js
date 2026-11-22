@@ -1,5 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/authStore'
+import { useSearchStore } from '../stores/searchStore'
+
+export function loginLocation() {
+  return { name: 'login' }
+}
 
 const router = createRouter({
   history: createWebHistory(),
@@ -28,6 +33,12 @@ const router = createRouter({
       name: 'document-list',
       component: () => import('../views/document/DocumentsListView.vue'),
       meta: { title: 'Colaborador - Documentos', collaboratorOnly: true },
+    },
+    {
+      path: '/favorites',
+      name: 'favorites',
+      component: () => import('../views/document/FavoritesListView.vue'),
+      meta: { title: 'Colaborador - Favoritos' },
     },
     {
       path: '/documents/:documentId',
@@ -68,8 +79,8 @@ const router = createRouter({
     {
       path: '/collaborators',
       name: 'collaborators',
-      component: () => import('../views/UnderConstructionView.vue'),
-      meta: { title: 'Gestor - Colaboradores', heading: 'Colaboradores', managerOnly: true },
+      component: () => import('../views/manager/CollaboratorsView.vue'),
+      meta: { title: 'Gestor - Colaboradores', managerOnly: true },
     },
     {
       path: '/profile',
@@ -80,18 +91,30 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to, from) => {
+router.beforeEach(async (to, from) => {
   if (to.path === from.path && JSON.stringify(to.query) === JSON.stringify(from.query)) {
     return false
   }
 
   const auth = useAuthStore()
-  if (!to.meta.public && !auth.isAuthenticated) return { name: 'login' }
+  await auth.ensureSession()
+
+  if (to.name === 'login' && auth.isAuthenticated) return { name: 'home' }
+  if (to.meta.public) return true
+  if (!auth.isAuthenticated) return loginLocation()
   if (to.meta.managerOnly && !auth.isManager) return { name: 'home' }
   if (to.meta.collaboratorOnly && auth.isManager) return { name: 'home' }
+  return true
 })
 
-router.afterEach((to) => {
+router.afterEach((to, from) => {
+  const searchStore = useSearchStore()
+  const isLeavingSearchRoutes =
+    ['home', 'results'].includes(from.name) && !['home', 'results'].includes(to.name)
+  if (isLeavingSearchRoutes) {
+    searchStore.clearCurrentTerm()
+    searchStore.forget()
+  }
   document.title = to.meta.title ?? 'Índice'
 })
 

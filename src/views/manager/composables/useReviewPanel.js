@@ -1,9 +1,12 @@
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  ACCESS_REQUEST_DECISIONS,
   REVISION_DECISIONS,
+  fetchDecisionHistory,
   fetchPendingAccessRequests,
   fetchPendingRevisions,
+  submitAccessRequestDecision,
 } from '@/api/manager.js'
 import { useNotificationStore } from '@/stores/notificationStore.js'
 import { findConfidentiality } from '@/utils/documentCatalog.js'
@@ -19,9 +22,14 @@ export const PANEL_PAGE_SIZE_OPTIONS = [5, 10, 20, 50]
 export const PANEL_PAGE_SIZE = 20
 export const PANEL_AUTO_REFRESH_INTERVAL = 60_000
 
+const EMPTY_HISTORY_FILTERS = { requestType: '', decision: '', dateFrom: '', dateTo: '' }
+
 const PERMISSION_ERROR_MESSAGE = 'Você não tem permissão para acessar o painel de gestão.'
 const REVISIONS_ERROR_MESSAGE = 'Não foi possível carregar as revisões pendentes.'
 const ACCESS_REQUESTS_ERROR_MESSAGE = 'Não foi possível carregar os pedidos de acesso.'
+const HISTORY_ERROR_MESSAGE = 'Não foi possível carregar o histórico de decisões.'
+const ACCESS_REQUEST_DECISION_ERROR_MESSAGE =
+  'Não foi possível registrar a decisão. Tente novamente.'
 
 export function normalizePendingRevision(revision) {
   const version = revision.version ?? 1
@@ -53,13 +61,29 @@ export function normalizeAccessRequest(request) {
     discipline: request.document?.discipline?.name ?? '-',
     requesterName: request.requester?.name ?? '-',
     requesterArea: request.requester?.area?.acronym ?? null,
+    justification: request.justification?.trim() ?? '',
     requestedAt: request.requested_at ?? null,
     status: request.status ?? null,
     source: request,
   }
 }
 
-function usePendingList(fetchPage, normalize, errorMessage) {
+export function normalizeDecision(entry) {
+  return {
+    id: entry.id,
+    code: entry.document?.code ?? '-',
+    title: entry.document?.title ?? '',
+    revision: entry.revision ?? null,
+    requestType: entry.request_type,
+    decision: entry.decision,
+    requesterName: entry.requester?.name ?? '-',
+    reason: entry.reason ?? '',
+    userName: entry.user?.name ?? '-',
+    decidedAt: entry.timestamp ?? null,
+  }
+}
+
+function usePagedList(fetchPage, normalize, errorMessage, { getParams, canLoad } = {}) {
   const items = ref([])
   const count = ref(null)
   const totalPages = ref(1)
@@ -71,11 +95,12 @@ function usePendingList(fetchPage, normalize, errorMessage) {
   let latestRequest = 0
 
   async function load(page = currentPage.value, { silent = false } = {}) {
+    if (canLoad && !canLoad()) return
     const request = ++latestRequest
     if (!silent) loading.value = true
     error.value = ''
     try {
-      const response = await fetchPage({ page, pageSize: pageSize.value })
+      const response = await fetchPage({ page, pageSize: pageSize.value, ...getParams?.() })
       if (request !== latestRequest) return
       items.value = (response?.results ?? []).map(normalize)
       count.value = response?.count ?? items.value.length
@@ -128,22 +153,50 @@ function usePendingList(fetchPage, normalize, errorMessage) {
   })
 }
 
+function useHistoryList() {
+  const filters = reactive({ ...EMPTY_HISTORY_FILTERS })
+  const periodInvalid = computed(
+    () => Boolean(filters.dateFrom && filters.dateTo) && filters.dateFrom > filters.dateTo,
+  )
+  const hasFilters = computed(() => Object.values(filters).some(Boolean))
+  const list = usePagedList(fetchDecisionHistory, normalizeDecision, HISTORY_ERROR_MESSAGE, {
+    getParams: () => ({ ...filters }),
+    canLoad: () => !periodInvalid.value,
+  })
+
+  function setFilter(name, value) {
+    if (filters[name] === value) return
+    filters[name] = value
+    list.load(1)
+  }
+
+  function clearFilters() {
+    Object.assign(filters, EMPTY_HISTORY_FILTERS)
+    list.load(1)
+  }
+
+  return Object.assign(list, { filters, periodInvalid, hasFilters, setFilter, clearFilters })
+}
+
 export function useReviewPanel() {
   const route = useRoute()
   const router = useRouter()
   const notifications = useNotificationStore()
 
-  const revisions = usePendingList(
+  const revisions = usePagedList(
     fetchPendingRevisions,
     normalizePendingRevision,
     REVISIONS_ERROR_MESSAGE,
   )
-  const accessRequests = usePendingList(
+  const accessRequests = usePagedList(
     fetchPendingAccessRequests,
     normalizeAccessRequest,
     ACCESS_REQUESTS_ERROR_MESSAGE,
   )
+  const history = useHistoryList()
   const revisionUnderReview = ref(null)
+  const accessRequestDecision = ref(null)
+  const accessRequestUnderReview = ref(null)
 
   const activeTab = computed(() =>
     Object.values(PANEL_TABS).includes(route.query.tab) ? route.query.tab : PANEL_TABS.REVISIONS,
@@ -180,19 +233,55 @@ export function useReviewPanel() {
     const outcome = decision === REVISION_DECISIONS.APPROVED ? 'aprovada' : 'recusada'
     closeRevisionReview()
     notifications.success(`Revisão ${revision.toRevision} de ${revision.code} ${outcome}.`)
-    return revisions.refresh()
+    return Promise.all([revisions.refresh(), history.refresh()])
   }
 
   function handleRevisionUnavailable(message) {
     closeRevisionReview()
     notifications.error(message)
-    return revisions.refresh()
+    return Promise.all([revisions.refresh(), history.refresh()])
+  }
+
+  function openAccessRequestReview(request) {
+    accessRequestUnderReview.value = request
+  }
+
+  function closeAccessRequestReview() {
+    if (!accessRequestDecision.value) accessRequestUnderReview.value = null
+  }
+
+  async function handleAccessRequestDecision({ request, decision, opinion }) {
+    if (accessRequestDecision.value) return
+
+    accessRequestDecision.value = { requestId: request.id, decision }
+    try {
+      await submitAccessRequestDecision(request.id, { decision, opinion })
+      accessRequestUnderReview.value = null
+      const outcome = decision === ACCESS_REQUEST_DECISIONS.APPROVED ? 'aprovado' : 'recusado'
+      notifications.success(`Pedido de acesso a ${request.code} ${outcome}.`)
+      await Promise.all([accessRequests.refresh(), history.refresh()])
+    } catch (failure) {
+      const code = failure?.details?.error
+      if (code === 'AccessRequestAlreadyDecided' || failure?.status === 404) {
+        accessRequestUnderReview.value = null
+        notifications.error('Este pedido já não está disponível para decisão.')
+        await accessRequests.refresh()
+      } else if (code === 'AccessRequestExpired') {
+        notifications.error('O prazo deste pedido expirou e ele não pode ser aprovado.')
+      } else if (failure?.status === 401 || failure?.status === 403) {
+        notifications.error(PERMISSION_ERROR_MESSAGE)
+      } else {
+        notifications.error(ACCESS_REQUEST_DECISION_ERROR_MESSAGE)
+      }
+    } finally {
+      accessRequestDecision.value = null
+    }
   }
 
   function refreshActiveList() {
     if (activeTab.value === PANEL_TABS.REVISIONS) return revisions.refresh()
     if (activeTab.value === PANEL_TABS.ACCESS_REQUESTS) return accessRequests.refresh()
-    return null
+    return history.refresh()
   }
 
   let autoRefreshTimer = null
@@ -200,9 +289,11 @@ export function useReviewPanel() {
   onMounted(() => {
     revisions.load(1)
     accessRequests.load(1)
+    history.load(1)
     autoRefreshTimer = setInterval(() => {
       revisions.refresh({ silent: true })
       accessRequests.refresh({ silent: true })
+      if (activeTab.value === PANEL_TABS.HISTORY) history.refresh({ silent: true })
     }, PANEL_AUTO_REFRESH_INTERVAL)
   })
 
@@ -215,12 +306,18 @@ export function useReviewPanel() {
     activeTab,
     revisions,
     accessRequests,
+    history,
     revisionUnderReview,
+    accessRequestDecision,
+    accessRequestUnderReview,
     selectTab,
     openRevisionReview,
     closeRevisionReview,
     handleRevisionDecided,
     handleRevisionUnavailable,
+    handleAccessRequestDecision,
+    openAccessRequestReview,
+    closeAccessRequestReview,
     refreshActiveList,
   }
 }

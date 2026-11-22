@@ -1,7 +1,11 @@
 import { api } from './client'
 
-export function startDevelopmentSession(userId) {
-  return api.post('/dev/login', { user_id: userId })
+export function fetchCsrfCookie() {
+  return api.get('/auth/csrf')
+}
+
+export function startSession(credentials) {
+  return api.post('/auth/login', credentials)
 }
 
 export function endSession() {

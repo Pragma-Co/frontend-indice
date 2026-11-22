@@ -4,12 +4,20 @@ export function fetchCurrentUser() {
   return api.get('/users/me')
 }
 
+export function listUsers() {
+  return api.get('/users')
+}
+
 export function updateCurrentUser({ name, email }) {
   return api.put('/users/me', { name, email })
 }
 
 export function requestAccountDeletion() {
   return api.post('/users/me/request-deletion')
+}
+
+export function fetchPendingLegalTerms() {
+  return api.get('/users/me/legal-pending')
 }
 
 export function fetchLegalAcceptances() {

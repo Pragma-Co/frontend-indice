@@ -5,6 +5,35 @@ the Django backend (`VITE_API_PORT`, default 8000). Responses are JSON. Error bo
 the UI as-is: `src/api/client.js` maps the HTTP status to a user-facing message and keeps the body
 in `ApiError.details` for the callers that need it.
 
+## Authentication
+
+The backend keeps a Django session cookie; the frontend never stores the user in `localStorage`.
+Every request that changes data (`POST`, `PUT`, `PATCH`, `DELETE`) sends the `X-CSRFToken` header
+with the value of the `csrftoken` cookie (`src/api/client.js`).
+
+| Endpoint | Request | Responses |
+| --- | --- | --- |
+| `GET /auth/csrf` | none | `204`, sets the `csrftoken` cookie |
+| `POST /auth/login` | `{ "email", "password" }` | `200` user (same body as `GET /users/me`); `400` `{ "errors": { "email"?, "password"? } }` or `{ "error": "InvalidJSON" }`; `401` `{ "error": "InvalidCredentials" }` |
+| `POST /auth/logout` | none | `204`, ends the session |
+| `GET /users/me` | none | `200` user `{ "id", "name", "email", "role", "area": { "id", "acronym", "name" }, ... }`; `401` without a session |
+
+Every other route requires a session and answers `401` `{ "error": "AuthenticationRequired" }`
+without one. The public routes are `/auth/csrf`, `/auth/login`, `/auth/logout`,
+`/legal-documents*` and `/health/`.
+
+How the frontend uses them:
+
+| Moment | Frontend |
+| --- | --- |
+| Login (`authStore.signIn`) | `GET /auth/csrf`, then `POST /auth/login`; the returned user opens the session in memory. `400` and `401` stay on the login screen with an inline message |
+| First navigation (`authStore.ensureSession`) | the router guard waits for one `GET /users/me`; `200` opens the session, `401` or a network error keeps the user signed out. Simultaneous checks share the same request |
+| Protected route without session | goes to `/login?redirect=<path>` (no `redirect` for `/` or `/home`); after login the user returns to that path |
+| Signed in user on `/login` | goes to `/home` |
+| `401` on any other request | the handler registered with `setUnauthorizedHandler` (`src/router/sessionExpiry.js`) clears the session, shows "Sua sessão expirou. Entre novamente." once and opens `/login?redirect=<current path>`. `401` from `/auth/login` is ignored |
+| `403` | the request fails with "Você não tem permissão para esta ação."; the session is kept |
+| Logout (`authStore.signOut`) | `POST /auth/logout`, then clears the user, the `csrftoken` cookie and the legacy `indice.profile` / `indice.user` keys, even if the request fails |
+
 ## Catalogs
 
 | Endpoint | Response |
@@ -13,6 +42,46 @@ in `ApiError.details` for the callers that need it.
 | `GET /disciplines/` | `[{ "id", "code", "name" }]`, active only, ordered by name |
 
 Document types and areas are static lists in `src/utils/documentCatalog.js`, mirroring the seed.
+
+## Access groups (manager, `/collaborators`)
+
+Requires an active `AUDITOR` or `ADMIN` in an active area. Only the area groups of the caller's
+area are reachable; any other group answers `404`.
+
+| Endpoint | Request | Responses |
+| --- | --- | --- |
+| `GET /manager/users` | none | `200` `{ "results": [user] }`, active users of the caller's area ordered by name. User: `{ "id", "name", "email" }` |
+| `GET /manager/access-groups` | none | `200` `{ "results": [group] }`, inactive groups included. Group: `{ "id", "name", "description", "scope", "area_id", "secrecy_level", "active", "created_by", "created_at" }` |
+| `GET /manager/access-groups/{id}/users` | none | `200` `{ "results": [member] }`. Member: `{ "user_id", "name", "email", "added_by", "added_at" }` |
+| `POST /manager/access-groups/{id}/users` | `{ "user_id" }` | `201` member; `404` for a missing group or user; `409` `{ "error": "AccessGroupMemberExists" }` or `{ "error": "AccessGroupInactive" }` |
+| `DELETE /manager/access-groups/{id}/users/{user_id}` | none | `204`; `404` `{ "error": "AccessGroupMemberNotFound" }` |
+
+How the frontend uses them (`useCollaboratorsPanel`):
+
+| Moment | Frontend |
+| --- | --- |
+| Opening the page | loads the users of the area (`GET /manager/users`) and the groups in parallel, then the members of each group. The table starts from the users of the area, so collaborators without any group are listed and can be added to one; members of the area groups who belong to other areas are listed too |
+| Saving a collaborator's groups | sends one `POST` or `DELETE` per changed group and updates the row as each call succeeds. `AccessGroupMemberExists` and `AccessGroupMemberNotFound` count as already applied; other failures keep the dialog open listing the groups that failed |
+| Choosing the groups | a collaborator can belong to any number of the area groups, one per secrecy level or more; only inactive groups the collaborator is not in yet are locked |
+
+## Decision history (manager, `/revisions`, "Histórico" tab)
+
+Requires an active `AUDITOR` or `ADMIN`: an `AUDITOR` receives the decisions taken by users of the own
+area (the team), an `ADMIN` receives every decision. Read only.
+
+| Endpoint | Request | Responses |
+| --- | --- | --- |
+| `GET /manager/decision-history` | query `page`, `page_size`, `request_type` (`REVISION` \| `ACCESS`), `decision` (`APPROVED` \| `REJECTED`), `date_from`, `date_to` (`YYYY-MM-DD`, both days included) | `200` `{ "count", "total_pages", "current_page", "page_size", "results": [decision] }`, newest first. Decision: `{ "id", "timestamp", "request_type", "decision", "document": { "id", "code", "title" }, "revision" (e.g. "REV01", null for access), "requester": { "id", "name" } (revision author or access requester), "user": { "id", "name" }, "reason" (justification or opinion, null if none) }`; `400` `{ "errors": { field: { "code", "message" } } }`; `401`; `403` |
+
+How the frontend uses it (`useReviewPanel`, `DecisionHistoryTable`, `DecisionHistoryFilters`):
+
+| Moment | Frontend |
+| --- | --- |
+| Opening the panel | loads the first page of the history together with the pending lists |
+| Changing a filter or clearing them | reloads from page 1 with the active filters. A period whose end is before its start shows a warning and is not sent |
+| A decision made in the panel, the refresh button, or the minute-by-minute refresh while the tab is open | reloads the current page |
+| Wording | revision: "Aprovada" / "Reprovada"; access request: "Deferido" / "Indeferido" |
+| No record, no match for the filters, loading, failure | "Nenhuma decisão registrada", "Nenhuma decisão encontrada", a skeleton, and the error message with "Tentar novamente" |
 
 ## Documents list
 
@@ -69,9 +138,36 @@ back to the last valid page. `status` is the status of the latest revision and b
 | `PENDING` | Em revisão |
 | `APPROVED` | Vigente |
 | `REJECTED` | Rejeitado |
-| `OBSOLETE` | Obsoleto |
 
 The list is always fetched fresh from the API by query string; no client-side cache is kept.
+
+## Search history
+
+Every successful `GET /documents/search` records the `q` term for the signed in user; the
+frontend never writes the history itself. Terms that differ only in letter case or whitespace
+are the same entry, and repeating one moves it to the front keeping the latest spelling.
+
+| Endpoint | Request | Responses |
+| --- | --- | --- |
+| `GET /users/me/search-history` | none | `200` `{ "results": ["MIL-C-5541", "Relatório de cargas"] }`, up to 10 unique terms, most recent first; `{ "results": [] }` when empty |
+| `DELETE /users/me/search-history` | none | `204`, clears the whole history of the signed in user, even if it was already empty |
+| `DELETE /users/me/search-history?term=<term>` | `term` URL-encoded | `204`, removes only that term (case and whitespace ignored), even if it was not in the history; `400` `{ "errors": { "term": { "code": "required", "message" } } }` for a blank term |
+
+Both `DELETE` requests send the `X-CSRFToken` header like any other change, and only ever touch
+the history of the signed in user.
+
+How the frontend uses them (`src/api/searchHistory.js`, `src/composables/useRecentSearches.js`,
+`src/components/common/RecentSearchesPopover.vue`):
+
+| Moment | Frontend |
+| --- | --- |
+| Focus, click or typing in the search bar (home and results page) | opens the "Buscas recentes" popover and fetches `GET /users/me/search-history` again, so the latest searches appear. Nothing is fetched before the first focus |
+| Load failure or empty history | the popover stays hidden; the search bar keeps working |
+| Typing after the popover opens | narrows the list to the terms containing the typed text, without a new request. The term already in the input when it opens does not filter, so the results page shows the whole history |
+| Click on a term, or `Enter` on the term highlighted with `↑`/`↓` | fills the input and runs the search again right away; on the home it keeps the selected date, area and type filters |
+| "X" on a term | removes it from the list at once and calls `DELETE ...?term=<term>`; on failure the term comes back |
+| "Limpar histórico" | empties the list at once, hides the popover and calls `DELETE /users/me/search-history`; on failure the history comes back |
+| `Esc` or leaving the input | closes the popover |
 
 
 ## Upload (step 1)
@@ -110,7 +206,7 @@ The list is always fetched fresh from the API by query string; no client-side ca
 | `discipline_id` | yes | `form.disciplineId` |
 | `document_type` | yes | `form.documentType` (code, e.g. `DWG`) |
 | `confidentiality` | yes | `form.confidentiality` (`PUBLIC`, `CONFIDENTIAL`, `SECRET`) |
-| `responsible_id` | yes | `authStore.currentUser.id` (seeded user until authentication exists) |
+| `responsible_id` | yes | `authStore.currentUser.id` (the signed in user) |
 | `areas` | yes, at least one | `form.areas` (acronyms, e.g. `["EST"]`) |
 
 The mapping lives in `toDocumentPayload` (`src/api/documents.js`); the call is `createDocument`.
